@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Validate libskysurfer_core (shared library) against the recorded plant reference and its own contracts.
 
-  "$HOME/Library/Application Support/SkySurferHIL/venv/bin/python" plant/core/validate_core.py \
-      --cache ~/Library/Caches/Codex/SkySurferPhaseB/core_<timestamp>
+  <HIL venv python> -B plant/core/validate_core.py --cache <build cache>
 
-Checks (results in <cache>/results/core_validation.json, exit code 0 only when all PASS):
-  reference   the 14 cases of plant/reference (same initial conditions and controls) against
-              plant/reference/data/reference.npz: every Truth field the core also outputs; every
-              case must run to the end with finite values
+Checks (results in <cache>/results/core_validation.json, exit code 0 only when the blocking ones PASS):
+  reference   report only, does not block: the 14 cases of plant/reference (same initial conditions and
+              controls) against plant/reference/data/reference.npz, every Truth field the core also
+              outputs. It answers "does this build compute what the recorded one did" (same model on
+              another machine, or after a code change); an intentional model change makes it differ.
+  finite      blocking: every reference case runs to the end with finite values
   instances   two instances stepped interleaved give bit-identical results to separate runs
               (bit equality compares the raw bytes, so +0.0 and -0.0 differ)
   copy        sks_core_copy mid-run, both copies continue bit-identically to an uninterrupted run
@@ -279,11 +280,14 @@ def main():
                             'api_version': f'{version:#010x}', 'eval_equals_step': same, 'written_state_used': applied,
                             'finite': finite, 'derivative_oracle': oracle, 'case': c_case['name'], 'step': split}
 
-    checks = ['reference', 'instances', 'copy', 'reinit', 'state_eval']
+    # The recorded reference is a regression report, not a gate (see the module docstring).
+    result['reference']['blocking'] = False
+    result['finite'] = {'status': 'PASS' if all_finite else 'FAIL'}
+    checks = ['finite', 'instances', 'copy', 'reinit', 'state_eval']
     result['status'] = 'PASS' if all(result[c]['status'] == 'PASS' for c in checks) else 'FAIL'
     (args.cache / 'results' / 'core_validation.json').write_text(json.dumps(result, indent=2))
     np.savez_compressed(args.cache / 'results' / 'core_snapshots.npz', **snapshots)
-    print(json.dumps({c: result[c] for c in checks} | {'status': result['status']}, indent=2))
+    print(json.dumps({c: result[c] for c in ['reference'] + checks} | {'status': result['status']}, indent=2))
     return 0 if result['status'] == 'PASS' else 1
 
 

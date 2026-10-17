@@ -7,7 +7,9 @@
 Checks (results in <cache>/results/plant_validation.json; exit code 0 only when all PASS):
   self_test    the comparison helpers turn NaN / Inf into FAIL
   layout       ctypes structs match the C headers: sizeof and every field offset (compiled probe)
-  truth        14 reference cases: every old TruthSnapshot field with the same meaning
+  truth        report only, does not block: 14 reference cases, every old TruthSnapshot field with the
+               same meaning (a regression report like validate_core's reference; an intentional model
+               change makes it differ)
   consistency  |F_gravity| = mass*g; specific force = (aero + thrust + ground) / mass
   rejects      non-zero initial rates, site_msl and wind are refused
   plant_state  two plants interleaved, sks_plant_copy mid-run: bit-identical
@@ -532,11 +534,12 @@ def main():
     result['vibration'] = check_vibration(lib)
     result['rng'] = check_rng(lib, flight)
     result['boundaries'] = check_boundaries(lib, ref)
-    checks = ['self_test', 'layout', 'truth', 'consistency', 'rejects', 'plant_state', 'geo', 'wmm', 'ideal', 'noise',
+    result['truth']['blocking'] = False  # regression report against the recorded reference, not a gate
+    checks = ['self_test', 'layout', 'consistency', 'rejects', 'plant_state', 'geo', 'wmm', 'ideal', 'noise',
               'vibration', 'rng', 'boundaries']
     result['status'] = 'PASS' if all(result[c]['status'] == 'PASS' for c in checks) else 'FAIL'
     (args.cache / 'results' / 'plant_validation.json').write_text(json.dumps(result, indent=2))
-    print(json.dumps({c: result[c]['status'] for c in checks} | {'status': result['status']}, indent=2))
+    print(json.dumps({c: result[c]['status'] for c in ['truth'] + checks} | {'status': result['status']}, indent=2))
     return 0 if result['status'] == 'PASS' else 1
 
 

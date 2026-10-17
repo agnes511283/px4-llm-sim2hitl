@@ -370,6 +370,10 @@ class Core(SdFiles):
                         # PX4 (mavlink_main.cpp): the first 5 bytes of the git hash, little-endian, in the top 5
                         # bytes; the low 3 bytes are the vendor version (0 for a plain vX.Y.Z tag).
                         'git_hash_prefix': custom[3:][::-1].hex(),
+                        # The first 16 hex digits of the NuttX commit (os_git_version_binary, little-endian):
+                        # tells a firmware with a NuttX patch committed apart from the native one.
+                        'os_custom_version': bytes(m.os_custom_version).hex(),
+                        'os_hash_prefix': bytes(m.os_custom_version)[::-1].hex(),
                         'vendor_id': m.vendor_id,
                         'product_id': m.product_id,
                         'uid': m.uid,
@@ -908,6 +912,12 @@ class Core(SdFiles):
     def param_readback(self, out, param_list=None, txn=None):
         return self._transfer(self._param_readback, out, param_list, txn)
 
+    def release_param_list(self, release):
+        """The parameter list of a deploy release's firmware (params.json firmware_params); the native one by default."""
+        release_dir = Path(release) if release else self.project / PARAM_RELEASE
+        config = json.loads((release_dir / 'params.json').read_text())
+        return release_dir / config['firmware_params']['file']
+
     def _fetch_log(self, out, log_id=None, list_only=False):
         """Download one FC ULog (the newest, or log_id) over the owner's own link into directory out; with
         list_only, return the FC's log list (no download, out unused). Without log_id the list must be
@@ -1298,7 +1308,7 @@ class Core(SdFiles):
         config = json.loads((release_dir / 'params.json').read_text())
         firmware = checker.load_firmware(release_dir / config['firmware_params']['file'])
         generation = self.fc_generation
-        before = self.param_readback(out / 'before', txn=txn)
+        before = self.param_readback(out / 'before', self.release_param_list(release_dir), txn=txn)
         report = checker.check(release_dir, before['path'])
         values = {p['name']: p for p in json.loads(Path(before['path']).read_text())['parameters']}
         blocking, writes = [], []
@@ -1413,7 +1423,7 @@ class Core(SdFiles):
             raise ParamTxnStop(what + ' stopped: the FC reconnected while it was being identified')
         planned = txn['version']
         if not version or identity != txn['identity'] or any(
-                version.get(k) != planned.get(k) for k in ['uid', 'board_version', 'git_hash_prefix']):
+                version.get(k) != planned.get(k) for k in ['uid', 'board_version', 'git_hash_prefix', 'os_hash_prefix']):
             raise ParamTxnStop(f'{what} stopped: not the planned FC (planned {planned}, now {version})')
         txn['generation'] = generation
 
@@ -1688,7 +1698,7 @@ class Core(SdFiles):
             self._param_save_and_reboot(txn)
             journal['state'] = 'verifying'
             save()
-            after = self.param_readback(out / 'after', txn=txn)
+            after = self.param_readback(out / 'after', self.release_param_list(release_dir), txn=txn)
             problems, others = self._param_deploy_verify(plan, release_dir, after, 'new', entries)
             watched = self._param_watch_conflicts(plan, before)
             if others or watched:
@@ -1771,7 +1781,7 @@ class Core(SdFiles):
             raise OperationError(f'{foreign} hold a value neither planned nor written by this deploy: left alone')
         if any(e.get('rollback') == 'written' for e in touched):
             self._param_save_and_reboot(txn)
-        restored = self.param_readback(out / 'rollback', txn=txn)
+        restored = self.param_readback(out / 'rollback', self.release_param_list(release_dir), txn=txn)
         problems, others = self._param_deploy_verify(plan, release_dir, restored, 'old', touched)
         if problems:
             raise OperationError('rollback verification: ' + '; '.join(problems[:10]))

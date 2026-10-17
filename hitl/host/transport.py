@@ -166,13 +166,24 @@ class FakeFC:
                 )
 
     def fake_logs(self):
-        """Deterministic ULog-headed byte strings (sizes from config 'fc_logs'); the newest is last."""
+        """Deterministic, well-formed ULog files (sizes from config 'fc_logs', at least 71 bytes); the newest is
+        last: header, flag bits, then logged-string messages ('L') whose text differs per log and offset, so a
+        byte-exact download also parses strictly (analysis/ulog_strict.py)."""
         logs = []
         for index, size in enumerate(self.config.get('fc_logs', [4000, 50003]) + [30003] * self.flights):
-            body = bytearray()
-            while len(body) < size:
-                body += hashlib.sha256(b'fake-ulog-%d-%d' % (index, len(body))).digest()
-            logs.append(bytes(b'ULog\x01\x12\x35\x01' + bytes(body))[:size])
+            data = bytearray(b'ULog\x01\x12\x35\x01' + struct.pack('<Q', 1000 + index))
+            data += struct.pack('<HB', 40, ord('B')) + bytes(40)
+            while len(data) < size:
+                remaining = size - len(data)
+                take = min(remaining, 3 + 4000)
+                if 0 < remaining - take < 12:
+                    take = remaining - 12
+                text = bytearray()
+                while len(text) < take - 12:
+                    text += hashlib.sha256(b'fake-ulog-%d-%d-%d' % (index, len(data), len(text))).hexdigest().encode()
+                payload = bytes([6]) + struct.pack('<Q', len(data)) + bytes(text[:take - 12])
+                data += struct.pack('<HB', len(payload), ord('L')) + payload
+            logs.append(bytes(data))
         return logs
 
     def pack(self, msg):
@@ -627,8 +638,10 @@ class FakeFC:
                 if m.command == 512 and int(m.param1) == 148 and not self.config.get('no_autopilot_version'):
                     # As PX4 v1.17.0 (release type 0xFF): git hash & 0xFFFFFFFFFF000000, little-endian.
                     custom = list(struct.pack('<Q', 0xD6F12AD1C4F70AD3 & 0xFFFFFFFFFF000000))
+                    # os_custom_version: the first 16 hex digits of the NuttX commit (v1.17.0: fb2fadf6...).
+                    os_custom = list(struct.pack('<Q', int(self.config.get('nuttx_hash16', 'fb2fadf6f599c140'), 16)))
                     self.output.extend(self.pack(mav.MAVLink_autopilot_version_message(
-                        0, 0x011100FF, 0, 0, 56, custom, [0] * 8, [0] * 8, 0x3185, 0x0038,
+                        0, 0x011100FF, 0, 0, 56, custom, [0] * 8, os_custom, 0x3185, 0x0038,
                         self.config.get('autopilot_uid', 0))))
                 if m.command == 400:
                     if m.param1 and not self.armed:

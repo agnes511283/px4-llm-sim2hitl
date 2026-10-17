@@ -8,6 +8,7 @@ import importlib.util
 import json
 import os
 import struct
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -160,7 +161,7 @@ def run_hitl(runtime, args):
 
     def readback(name):
         """(params json path or None, readback verdict, error)."""
-        response = call('param-readback', {'out': str(run / name)}, timeout_s=600)
+        response = call('param-readback', {'out': str(run / name), 'release': str(release)}, timeout_s=600)
         if response.get('status') != 'complete':
             return None, None, str(response.get('error') or response.get('operation', {}).get('error'))
         result = response['operation']['result']
@@ -354,8 +355,27 @@ def run_hitl(runtime, args):
             elif sha256(log['path']) != log.get('sha256'):
                 part('fc_log', 'FAIL', ['FC log file differs from the downloaded one (SHA-256)'])
             else:
-                part('fc_log', 'PASS', [], id=log.get('id'), before=result.get('fc_log_before'), sha256=log['sha256'],
-                     size=log.get('size'))
+                # The same log downloaded once more must be byte-identical, and the whole file must parse strictly:
+                # a firmware that corrupted SD reads gave downloads with valid MAVLink CRCs but wrong 32-byte runs.
+                sys.path.insert(0, str(project / 'analysis'))
+                import ulog_strict
+
+                again = call('fetch-log', {'out': str(run / 'fc_log_again'), 'log_id': log['id']}, timeout_s=1800)
+                second = (again.get('operation') or {}).get('result') if again.get('status') == 'complete' else None
+                strict = ulog_strict.parse(log['path'])
+                reasons, failed = [], False
+                if not second or not second.get('sha256'):
+                    reasons.append(f'second download failed: {again.get("error") or again}')
+                elif second['sha256'] != log['sha256']:
+                    reasons.append('the second download differs from the first (SHA-256)')
+                    failed = True
+                if not strict['ok']:
+                    reasons.append('strict ULog parse failed: ' + '; '.join(strict['errors'][:3]))
+                    failed = True
+                part('fc_log', 'FAIL' if failed else 'INCOMPLETE' if reasons else 'PASS', reasons, id=log.get('id'),
+                     before=result.get('fc_log_before'), sha256=log['sha256'], size=log.get('size'),
+                     second_sha256=second and second.get('sha256'),
+                     strict={k: strict.get(k) for k in ['ok', 'end', 'file_size', 'formats', 'errors']})
 
         def data():
             # This run's raw data, kept with the manifest: the owner's timing rows of this run, and the records of

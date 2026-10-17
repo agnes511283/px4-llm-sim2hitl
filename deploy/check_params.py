@@ -134,6 +134,13 @@ def check(release_dir, readback_path):
         if version.get('git_hash_prefix') != embedded['git_hash'][:10]:
             report['identity'].append({'problem': 'git hash', 'fc': version.get('git_hash_prefix'),
                                        'expected': embedded['git_hash'][:10], 'kind': 'fail'})
+        # NuttX commit (os_custom_version): a NuttX patch committed in the build tree changes it.
+        if embedded.get('nuttx_git_hash'):
+            if not version.get('os_hash_prefix'):
+                report['identity'].append({'problem': 'missing NuttX hash in AUTOPILOT_VERSION', 'kind': 'incomplete'})
+            elif version['os_hash_prefix'] != embedded['nuttx_git_hash'][:16]:
+                report['identity'].append({'problem': 'NuttX hash', 'fc': version['os_hash_prefix'],
+                                           'expected': embedded['nuttx_git_hash'][:16], 'kind': 'fail'})
     if readback.get('param_list', {}).get('sha256') != actual:
         report['identity'].append({'problem': 'readback used another parameter list', 'kind': 'incomplete'})
     # The ownership rules must still resolve to the reviewed set (a new firmware may add matching names).

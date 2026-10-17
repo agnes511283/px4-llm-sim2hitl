@@ -342,6 +342,8 @@ class RunbridgeFakeTests(unittest.TestCase):
         verdicts={k:v['verdict'] for k,v in manifest['parts'].items()}
         self.assertEqual(verdicts,{'identity':'PASS','params_before':'PASS','flight':'FAIL','identity_end':'PASS',
                                    'params_after':'FAIL','fc_log':'PASS','data':'PASS'})
+        # The FC log was downloaded twice (same bytes) and parses strictly (a corrupting firmware fails here).
+        log=manifest['parts']['fc_log'];self.assertEqual(log['second_sha256'],log['sha256']);self.assertTrue(log['strict']['ok'])
         self.assertEqual(manifest['parts']['flight']['reasons'],['hold shorter than 60 s'])
         self.assertEqual(manifest['params']['after']['changed_other'],['FW_R_TC'])
         # Review 11 F5: this run's raw data is kept with the manifest and checked: every HIL_SENSOR of the run is

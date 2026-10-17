@@ -23,6 +23,10 @@ AI 先查好現況、提出建議，只跟人確認**目標、選擇與成功條
 
 不替使用者預先決定客製方式；把要想的問題提出來，依 PX4 原始碼給建議。
 
+**建議先做「最小打通」**：開發位置確定後（例如只做導引），先不寫正式算法，而是架好開發框架，用一個極簡的版本（例如把 PX4 原本的導引換成一個很簡單的測試）走完 SITL → 編韌體 → 燒錄 → HITL 一次，並記錄下來。之後每次修改都交給自動化（第 2 段的指令與第 3 段的 `deploy-test`），不必每次重新摸索接法，可以省下很多 token。把這個建議告訴使用者，由使用者決定要不要做。
+
+**PX4 v1.17.0 的記憶卡讀取問題（要告訴使用者）**：在 Pixhawk 6C（STM32H7）上，v1.17.0 用的 NuttX 在 SD 卡 DMA 讀取完成後沒有清除快取，曾讓自建韌體下載的飛控記錄出現 32 bytes 一段的錯誤（MAVLink 檢查碼正確，看起來像好的）。NuttX 官方修正 82d1285 不在 v1.17.0 裡，專案保存在 `px4/patches/`。自建韌體的配方都要套它（`deploy/01_sdfix` 是範例）；`hitl-run` 會把同一份記錄下載兩次比對、再做嚴格解析，用來抓這類錯誤。原生 `00_native` 至今沒有出現過，但沒有證明不受影響。升級 PX4 版本時，先查新版是否已經包含這個修正。
+
 ## 2. 接手時先查平台
 
 - 只在 Ubuntu 24.04 x86-64 驗證過。換平台時，照 README「環境準備」逐項查官方文件，確認做法再裝。
@@ -55,7 +59,7 @@ AI 先查好現況、提出建議，只跟人確認**目標、選擇與成功條
 | `plant/` 的 C、`hitl/` 的 `native/`、`interface/`、`aircraft/`、`update.py` | `./runbridge update-model`（四道檢查）→ 離線測試 |
 | `hitl/host/` 等 runtime 程式 | 離線測試；影響時序時加跑 600 s 負載 |
 | `sitl/`、`modules/` | `sitl/build_sitl.py` → `sitl/run_sitl.py` → `analysis/response.py` |
-| 韌體、參數、開機檔 | 第 3 段 |
+| 韌體、參數、開機檔（`deploy/<配方>/`、`modules/`、`px4/patches/`） | 第 3 段：`./runbridge deploy-test --release deploy/<配方>` 先看計畫（只讀），再由人選 `--flash`（必要時先編韌體、燒錄）或 `--reuse`（沿用 FC 上的韌體）；只編韌體：`./runbridge build-firmware --release deploy/<配方>` |
 
 離線測試與負載（`PY` = venv 的 python，例如 `~/.local/share/SkySurfer/venv/bin/python`）：
 
@@ -73,6 +77,6 @@ for f in hitl/tests/test_*.py deploy/test_*.py; do echo "== $f"; "$PY" -B "$f" 2
 | `sitl/` | 精簡 PX4 的 plant 模組 `sks_sim`、情境、配平、ULog 重播 |
 | `modules/` | 自己的 PX4 模組（同一份原始碼編進 SITL 與韌體；`sks_hello` 是範本） |
 | `hitl/` | runtime（owner、worker、`hitl-run`）、起飛與起飛後動作腳本、`flight_test.json`（預設飛行與判定）、模型 release |
-| `deploy/` | 部署配方：`00_native`（原生韌體＋參數，可隨時刷回） |
+| `deploy/` | 部署配方：`00_native`（原生韌體＋參數，可隨時刷回）、`01_sdfix`（原生＋記憶卡修正 patch）；自建配方的 `firmware/firmware.json` 的 `recipe` 寫要套的 patch 與 `modules/` 的模組，`px4/build_firmware.py` 在 PX4 原始碼樹旁的建置樹編譯（原樹不動），patch 以固定作者與日期 commit，FC 回報的 NuttX hash 因此可預期、可核對 |
 | `px4/` | PX4 版本鎖、原始碼樹核對、修正 patch |
 | `analysis/` | 響應指標、ULog 讀檔與嚴格解析、重播比對 |

@@ -189,7 +189,7 @@ class Endpoint:
                                     elif action == 'param-readback':
                                         if not args.get('out'):
                                             raise ValueError('param-readback needs an output directory')
-                                        op['result'] = core.param_readback(args.get('out'))
+                                        op['result'] = core.param_readback(args.get('out'), core.release_param_list(args.get('release')))
                                     elif action == 'fetch-log':
                                         if not args.get('out') and not args.get('list'):
                                             raise ValueError('fetch-log needs an output directory')

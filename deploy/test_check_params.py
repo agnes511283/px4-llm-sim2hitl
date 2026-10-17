@@ -25,6 +25,7 @@ FIRMWARE = [
 GOOD = {'SYS_AUTOSTART': (2100, 6), 'CA_SV_CS_COUNT': (4, 6), 'SYS_HITL': (1, 6), 'FW_R_TC': (0.4, 9),
         'NAV_ACC_RAD': (10.0, 9), 'GPS_1_CONFIG': (0, 6), 'CAL_ACC0_XOFF': (0.123, 9)}
 GIT = 'd6f12ad1c4f70ad3230afd7d86e971421e02fef4'
+NUTTX = 'fb2fadf6f599c1406f052db013efd00a2518e72c'
 
 
 def bits(value, kind):
@@ -99,6 +100,18 @@ class CheckParamsTests(unittest.TestCase):
         self.assertEqual((r['verdict'], r['identity'][0]['problem']), ('FAIL', 'git hash'))
         self.assertEqual(self.readback(autopilot_version=None)['verdict'], 'INCOMPLETE')
         self.assertEqual(self.readback(param_list={'sha256': 'x'})['verdict'], 'INCOMPLETE')
+
+    def test_nuttx_identity(self):
+        # A recipe that records its NuttX commit: the FC's os_custom_version must match (a committed NuttX patch
+        # changes it); an old readback without it is incomplete. Without the record nothing is compared.
+        self.assertEqual(self.readback()['verdict'], 'PASS')
+        self.info['embedded']['nuttx_git_hash'] = NUTTX
+        (self.dir / 'firmware/firmware.json').write_text(json.dumps(self.info))
+        version = {'board_version': 56, 'git_hash_prefix': GIT[:10]}
+        self.assertEqual(self.readback(autopilot_version=dict(version, os_hash_prefix=NUTTX[:16]))['verdict'], 'PASS')
+        r = self.readback(autopilot_version=dict(version, os_hash_prefix='0' * 16))
+        self.assertEqual((r['verdict'], r['identity'][0]['problem']), ('FAIL', 'NuttX hash'))
+        self.assertEqual(self.readback(autopilot_version=version)['verdict'], 'INCOMPLETE')
 
     def test_local_files_must_match_the_recipe(self):
         (self.dir / 'firmware/fw.px4').write_bytes(b'other image')

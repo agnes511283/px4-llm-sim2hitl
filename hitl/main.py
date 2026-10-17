@@ -50,6 +50,9 @@ def main(argv=None):
             'sd-put',
             'sd-rm',
             'hitl-run',
+            'build-firmware',
+            'flash',
+            'deploy-test',
         ],
     )
     p.add_argument('--fake-fc', action='store_true')
@@ -63,7 +66,11 @@ def main(argv=None):
     p.add_argument('--out', type=Path,
                    help='fetch-log: directory for the downloaded FC ULog; param-readback/-plan/-deploy: directory for the files')
     p.add_argument('--release', type=Path,
-                   help='param-plan/param-deploy/hitl-run: release directory (default deploy/00_native)')
+                   help='param-readback/-plan/-deploy, hitl-run, build-firmware, flash, deploy-test: deploy recipe '
+                        'folder (default deploy/00_native)')
+    p.add_argument('--flash', action='store_true', help='deploy-test: build if needed and flash this recipe')
+    p.add_argument('--reuse', action='store_true', help='deploy-test: the FC already runs this recipe; no flashing')
+    p.add_argument('--no-hitl', action='store_true', help='deploy-test: stop after parameters and boot file')
     p.add_argument('--log-id', type=int, help='fetch-log: FC log id (default: the newest)')
     p.add_argument('--list', action='store_true', help='fetch-log: only list the FC logs')
     p.add_argument('--sd-path', help='sd-*: path on the FC SD card (sd-list default /fs/microsd/etc)')
@@ -133,6 +140,23 @@ def main(argv=None):
         from host.hitl_run import run_hitl
 
         return run_hitl(RUNTIME, args)
+    if args.action == 'build-firmware':
+        if not args.release:
+            raise ValueError('build-firmware needs --release deploy/<name>')
+        return subprocess.call([sys.executable, '-B', str(RUNTIME.parent / 'px4/build_firmware.py'), '--release',
+                                str(args.release)])
+    if args.action in ['flash', 'deploy-test']:
+        # Stage 3 (host/deploy.py): a client of the owner like hitl-run; plan only without --flash / --reuse.
+        if args.flash and args.reuse:
+            raise ValueError('--flash or --reuse, not both')
+        if args.fake_fc:
+            raise ValueError(args.action + ' drives a physical FC only')
+        from host.deploy import run_deploy
+
+        report, path = run_deploy(RUNTIME, args)
+        print(json.dumps({'verdict': report['verdict'], 'report': str(path),
+                          'steps': [(s['step'], s['verdict']) for s in report['steps']]}))
+        return {'PASS': 0, 'PLAN': 0}.get(report['verdict'], 3)
     if args.action != 'bridge':
         result = request(
             RUNTIME,

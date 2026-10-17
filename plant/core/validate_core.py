@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate libskysurfer_core.dylib against the recorded plant reference and its own contracts.
+"""Validate libskysurfer_core (shared library) against the recorded plant reference and its own contracts.
 
   "$HOME/Library/Application Support/SkySurferHIL/venv/bin/python" plant/core/validate_core.py \
       --cache ~/Library/Caches/Codex/SkySurferPhaseB/core_<timestamp>
@@ -35,6 +35,8 @@ import numpy as np
 
 CORE = Path(__file__).resolve().parent
 PLANT = CORE.parent
+sys.path.insert(0, str(CORE))
+import toolchain  # noqa: E402
 TOLERANCE = 1e-9  # absolute, after scaling by max(1, |reference|)
 
 # CoreSnapshot index -> reference raw index (docs/MODEL_INTERFACE.md section 6).
@@ -168,7 +170,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--cache', type=Path, required=True)
     args = parser.parse_args()
-    library = args.cache / 'native' / 'libskysurfer_core.dylib'
+    library = args.cache / 'native' / toolchain.lib('skysurfer_core')
     core = Core(library)
     ref = load_reference_module()
     data = np.load(PLANT / 'reference' / 'data' / 'reference.npz')

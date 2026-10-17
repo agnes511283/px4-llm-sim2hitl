@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Record reference trajectories from the active model release for the C plant port.
 
-Loads the active release's libskysurfer.dylib through the existing ctypes ABI (hil_runtime/host/abi.py),
+Loads the active release's model library through the existing ctypes ABI (hitl/host/abi.py),
 runs fixed cases step by step and stores every step's 58 raw fields. Only the model ABI is called:
 no serial port, no PX4, no MATLAB.
 
-  "$HOME/Library/Application Support/SkySurferHIL/venv/bin/python" plant/reference/record_reference.py
+  <HIL venv python> -B plant/reference/record_reference.py
 
 Outputs plant/reference/data/reference.npz and manifest.json (source identity, cases, sample counts).
 """
@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
-RUNTIME = ROOT / 'hil_runtime'
+RUNTIME = ROOT / 'hitl'
 sys.path.insert(0, str(RUNTIME))
 from host.abi import Initial, Input, Model, Output, header  # noqa: E402
 from host.release import read_release  # noqa: E402
@@ -117,7 +117,7 @@ def main():
     parser.add_argument('--out', type=Path, default=Path(__file__).resolve().parent / 'data')
     args = parser.parse_args()
     release, manifest = read_release(RUNTIME)
-    library = release / 'libskysurfer.dylib'
+    library = release / manifest['library']
     model = Model(library)
     columns = json.loads((RUNTIME / 'poc' / 'source_columns.json').read_text())
     arrays, cases = {}, []

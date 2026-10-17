@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate libskysurfer_plant.dylib: C Truth (SksPlant) and C sensors (SksSensors).
+"""Validate libskysurfer_plant (shared library): C Truth (SksPlant) and C sensors (SksSensors).
 
   "$HOME/Library/Application Support/SkySurferHIL/venv/bin/python" plant/core/validate_plant.py \
       --cache ~/Library/Caches/Codex/SkySurferPhaseB/core_<timestamp>
@@ -33,8 +33,10 @@ import numpy as np
 
 CORE = Path(__file__).resolve().parent
 PLANT = CORE.parent
+sys.path.insert(0, str(CORE))
+import toolchain  # noqa: E402
 TOL = 1e-9
-MASS, G = 1.3, 9.80665
+MASS, G = None, None  # from the model: <cache>/results/core_build.json (set in main)
 D3, D4 = C.c_double * 3, C.c_double * 4
 
 
@@ -87,7 +89,7 @@ def compile_and_run(source):
     with tempfile.TemporaryDirectory() as tmp:
         src, exe = Path(tmp) / 'probe.c', Path(tmp) / 'probe'
         src.write_text(source)
-        subprocess.run(['xcrun', 'clang', '-std=c99', '-I', str(PLANT / 'include'), str(src), '-o', str(exe), '-lm'],
+        subprocess.run(toolchain.cc() + ['-std=c99', '-I', str(PLANT / 'include'), str(src), '-o', str(exe), '-lm'],
                        check=True)
         return subprocess.check_output([str(exe)], text=True)
 
@@ -508,7 +510,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--cache', type=Path, required=True)
     args = parser.parse_args()
-    library = args.cache / 'native' / 'libskysurfer_plant.dylib'
+    global MASS, G
+    MASS, G = toolchain.model_constants(args.cache)
+    library = args.cache / 'native' / toolchain.lib('skysurfer_plant')
     lib = Lib(library)
     result = {'library': str(library), 'self_test': check_self_test(), 'layout': check_layout()}
     if result['layout']['status'] != 'PASS' or result['self_test']['status'] != 'PASS':

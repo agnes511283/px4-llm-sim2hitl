@@ -7,14 +7,20 @@ function cacheRoot = build_core()
 % per-instance model parameters, and generates ERT C with CodeInterfacePackaging = Reusable function.
 % It also simulates the source copy and the core copy with the same controls (ground and air) and
 % writes results/source_<case>.csv and core_<case>.csv: the HIL release validation
-% (hil_runtime/tests/validate_library.py) requires them to be identical and compares the native
-% library against them. Compile and validate with plant/core/compile_core.py. The formal source is
+% (hitl/tests/validate_library.py) requires them to be identical and compares the native
+% library against them. `hitl/update.py --generate --cache <returned folder>` stores the generated code
+% and these results in model/generated; compile and validate run from there. The formal source is
 % never modified. It refuses to start unless the reuse-library policy gate passes
-% (reuse_policy_gate.m; result in results/reuse_policy.json).
+% (reuse_policy_gate.m; result in results/reuse_policy.json). Source file hashes are recorded by
+% update.py, so this builder needs no Java.
+%
+% The cache folder is SKYSURFER_CACHE, or the platform's user cache + SkySurfer (same rule as
+% plant/core/toolchain.py). Code is generated for a Linux x86-64 host (where the plant runs).
 coreDir = fileparts(mfilename('fullpath'));
 projectRoot = fileparts(fileparts(coreDir));
+modelDir = fullfile(projectRoot, 'model');
 sourceModel = 'FW_SkySurfer_HIL';
-sourceFile = fullfile(projectRoot, [sourceModel '.slx']);
+sourceFile = fullfile(modelDir, [sourceModel '.slx']);
 if bdIsLoaded(sourceModel)
     assert(strcmp(get_param(sourceModel, 'Dirty'), 'off'), 'Save the source model before building the core.');
     assert(strcmp(get_param(sourceModel, 'SimulationStatus'), 'stopped'), 'Stop the source model before building the core.');
@@ -24,14 +30,13 @@ gate = reuse_policy_gate(projectRoot);
 assert(strcmp(gate.status, 'PASS'), 'Custom library policy is not ready: %s', gate.reason);
 model = 'SkySurfer_Core';
 assert(~bdIsLoaded(model), 'Close the previous SkySurfer_Core copy before rebuilding.');
-cacheRoot = fullfile(getenv('HOME'), 'Library', 'Caches', 'Codex', 'SkySurferPhaseB', ...
-    ['core_' char(datetime('now', 'Format', 'yyyyMMdd_HHmmss_SSS'))]);
+cacheRoot = fullfile(core_cache_base(), ['core_' char(datetime('now', 'Format', 'yyyyMMdd_HHmmss_SSS'))]);
 mkdir(fullfile(cacheRoot, 'models')); mkdir(fullfile(cacheRoot, 'results'));
 fid = fopen(fullfile(cacheRoot, 'results', 'reuse_policy.json'), 'w');
 fprintf(fid, '%s', jsonencode(gate, 'PrettyPrint', true)); fclose(fid);
 previousFolder = pwd; previousFileGen = Simulink.fileGenControl('getConfig');
 restore = onCleanup(@() core_restore(previousFolder, previousFileGen, model));
-cd(projectRoot);
+cd(modelDir);
 copyfile(sourceFile, fullfile(cacheRoot, 'models', [model '.slx']));
 evalin('base', "run('PX4_HIL_preload.m'); lastRunModel='FW_SkySurfer_HIL'; run('FW_SkySurfer_InitialFunction.m');");
 load_system(fullfile(cacheRoot, 'models', [model '.slx']));
@@ -89,7 +94,7 @@ for k = 1:numel(icNames)
     newLine = add_line(parent, get_param(from, 'PortHandles').Outport(1), dst);
     set_param(newLine, 'Name', signalName);
 end
-set_param(model, 'SystemTargetFile', 'ert.tlc', 'ProdHWDeviceType', 'Apple->ARM64', 'TargetLang', 'C', ...
+set_param(model, 'SystemTargetFile', 'ert.tlc', 'ProdHWDeviceType', 'Intel->x86-64 (Linux 64)', 'TargetLang', 'C', ...
     'Solver', 'ode4', 'SolverType', 'Fixed-step', 'FixedStep', 'Thil', 'SupportContinuousTime', 'on', ...
     'SupportNonFinite', 'on', 'CodeInterfacePackaging', 'Reusable function', 'RootIOFormat', 'Structure reference', ...
     'GenerateAllocFcn', 'off', 'MultiInstanceErrorCode', 'Error', 'IncludeMdlTerminateFcn', 'on', ...
@@ -99,8 +104,9 @@ save_system(model, fullfile(cacheRoot, 'models', [model '.slx']));
 core_references(cacheRoot, sourceFile, model, baseline);
 Simulink.fileGenControl('set', 'CacheFolder', fullfile(cacheRoot, 'cache'), ...
     'CodeGenFolder', fullfile(cacheRoot, 'codegen'), 'createDir', true);
-baseline.source_slx_sha256 = core_sha256(sourceFile);
 baseline.matlab = version;
+baseline.mass_kg = evalin('base', 'Mass0');     % carried into C Truth (plant/core/toolchain.py)
+baseline.gravity_m_s2 = evalin('base', 'g');
 baseline.dt = evalin('base', 'Thil');
 fid = fopen(fullfile(cacheRoot, 'results', 'core_build.json'), 'w');
 fprintf(fid, '%s', jsonencode(baseline, 'PrettyPrint', true)); fclose(fid);
@@ -160,10 +166,19 @@ assert(size(d, 2) == 72, 'CoreSnapshot width changed');
 rows = [v.Time, double(d)];
 end
 
-function digest = core_sha256(file)
-fid = fopen(file, 'r'); bytes = fread(fid, inf, '*uint8'); fclose(fid);
-md = java.security.MessageDigest.getInstance('SHA-256');
-digest = sprintf('%02x', typecast(md.digest(bytes), 'uint8'));
+function base = core_cache_base()
+% Same rule as plant/core/toolchain.py cache_root().
+base = getenv('SKYSURFER_CACHE');
+if ~isempty(base), return, end
+if ismac
+    base = fullfile(getenv('HOME'), 'Library', 'Caches', 'SkySurfer');
+elseif ispc
+    base = fullfile(getenv('LOCALAPPDATA'), 'SkySurfer');
+else
+    xdg = getenv('XDG_CACHE_HOME');
+    if isempty(xdg), xdg = fullfile(getenv('HOME'), '.cache'); end
+    base = fullfile(xdg, 'SkySurfer');
+end
 end
 
 function core_restore(folder, fileGen, model)

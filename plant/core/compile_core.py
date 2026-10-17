@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Compile the generated plant core into libskysurfer_core.dylib and, with C Truth and C sensors,
-into libskysurfer_plant.dylib.
+"""Compile the generated plant core into libskysurfer_core and, with C Truth and C sensors, into
+libskysurfer_plant (shared libraries; compiler, MATLAB headers and suffix from toolchain.py).
 
-  python3 plant/core/compile_core.py --cache ~/Library/Caches/Codex/SkySurferPhaseB/core_<timestamp>
+  python3 plant/core/compile_core.py --cache <build cache>
 
-The cache comes from plant/core/build_core.m. Output: <cache>/native/libskysurfer_core.dylib,
-<cache>/native/libskysurfer_plant.dylib and <cache>/results/core_compile.json (sources, SHA-256,
-compiler commands). Generated C is never edited.
+The cache holds the generated code (hitl/update.py lays it out from model/generated). Output:
+<cache>/native/libskysurfer_core.*, <cache>/native/libskysurfer_plant.* and
+<cache>/results/core_compile.json (sources, SHA-256, compiler commands). Generated C is never edited.
 """
 import argparse
 import hashlib
@@ -15,9 +15,10 @@ import re
 import subprocess
 from pathlib import Path
 
+import toolchain
+
 CORE = Path(__file__).resolve().parent
 PLANT = CORE.parent
-MATLAB = Path('/Applications/MATLAB_R2026b.app')
 
 
 def sha256(path):
@@ -40,20 +41,21 @@ def main():
         raise RuntimeError('Generated core is not reusable (MULTI_INSTANCE_CODE != 1)')
     generated = [gen / name for name in ('SkySurfer_Core.c', 'SkySurfer_Core_data.c', 'rtGetInf.c', 'rtGetNaN.c', 'rt_nonfinite.c')]
     sources = generated + [CORE / 'sks_core.c']
-    library = out / 'libskysurfer_core.dylib'
-    cmd = ['xcrun', 'clang', '-std=c11', '-O2', '-fno-fast-math', '-ffp-contract=off', '-arch', 'arm64', '-dynamiclib']
+    library = out / toolchain.lib('skysurfer_core')
+    MATLAB = toolchain.matlab_root()
+    cmd = toolchain.cc() + ['-std=c11', '-O2', '-fno-fast-math', '-ffp-contract=off'] + toolchain.shared_flags()
     for inc in (PLANT / 'include', gen, MATLAB / 'extern/include', MATLAB / 'simulink/include', MATLAB / 'rtw/c/src', MATLAB / 'rtw/c/ert'):
         cmd += ['-I', str(inc)]
-    base = list(cmd) + ['-I', str(PLANT / 'sensors')] + defines
+    base = list(cmd) + ['-I', str(PLANT / 'sensors')] + defines + toolchain.model_defines(args.cache)
     cmd = base + [str(p) for p in sources] + ['-o', str(library)]
     subprocess.run(cmd, check=True)
     # Hand-written C is held to warnings-as-errors; generated C is compiled as generated.
     handwritten = [CORE / 'sks_core.c', PLANT / 'truth' / 'sks_plant.c', PLANT / 'sensors' / 'sks_sensors.c',
                    PLANT / 'sensors' / 'sks_wmm.c', PLANT / 'sensors' / 'sks_wmm_coeffs.c']
     for source in handwritten:
-        check = [x for x in base if x != '-dynamiclib']
+        check = [x for x in base if x not in toolchain.shared_flags()]
         subprocess.run(check + ['-Wall', '-Wextra', '-Werror', '-fsyntax-only', str(source)], check=True)
-    plant_library = out / 'libskysurfer_plant.dylib'
+    plant_library = out / toolchain.lib('skysurfer_plant')
     plant_sources = sources + handwritten[1:]
     plant_cmd = base + [str(p) for p in plant_sources] + ['-o', str(plant_library)]
     subprocess.run(plant_cmd, check=True)
@@ -66,7 +68,7 @@ def main():
         'plant_library_sha256': sha256(plant_library),
         'sources': {str(p): sha256(p) for p in plant_sources},
         'headers': {str(p): sha256(p) for p in headers},
-        'compiler': subprocess.check_output(['xcrun', 'clang', '--version'], text=True),
+        'compiler': toolchain.compiler_version(),
         'command': cmd,
         'plant_command': plant_cmd,
     }

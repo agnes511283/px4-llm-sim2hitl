@@ -4,7 +4,8 @@ import numpy as np
 RUNTIME=Path(__file__).resolve().parents[1];sys.path.insert(0,str(RUNTIME))
 from host.abi import Model,Worker,Input,Output,Info,Initial,header
 from host.packets import Encoder
-PLANT=RUNTIME.parent/'plant'
+PLANT=RUNTIME.parent/'plant';sys.path.insert(0,str(PLANT/'core'))
+from toolchain import lib as libname
 G0=9.80665;SEED=1 # adapter.c HIL_DEFAULT_SEED (seed_policy 0, ROADMAP decision 16)
 LAT,LON=22.910275834988674,120.31096929726908
 def plant_module():
@@ -27,10 +28,10 @@ def ratio(a,b,tol=1e-12):a=np.asarray(a,float);b=np.asarray(b,float);return floa
 def abi_initial(height,u,euler,geoid):
  x=header(Initial);x.height_m=height;x.body_velocity_m_s[0]=u;x.euler_deg[:]=euler;x.latitude_deg=LAT;x.longitude_deg=LON;x.geoid_separation_m=geoid;return x
 def adapter_checks(cache,m):
- # The adapter against SksPlant + SksSensors run directly (libskysurfer_plant.dylib, same sources, same seed):
+ # The adapter against SksPlant + SksSensors run directly (libskysurfer_plant, same sources, same seed):
  # every raw_source field, every canonical field, P8 relations, raw/canonical decoding, time stamps, flags,
  # GPS latching and geoid. Then the raw yaw wrap at its boundaries.
- vp=plant_module();lib=vp.Lib(cache/'native/libskysurfer_plant.dylib');r=cache/'results';report={}
+ vp=plant_module();lib=vp.Lib(cache/'native'/libname('skysurfer_plant'));r=cache/'results';report={}
  fields={'raw':0.0,'canonical':0.0,'p8':0.0,'raw_canonical':0.0};timing=[];steps=0
  for case,height,u,euler,geoid in [('ground',0,0,[0,.8633,0],0.0),('air',100,20,[0,.8633,25],25.0)]:
   controls=np.loadtxt(r/f'controls_{case}.csv',delimiter=',')[:,1:];m.check(m.lib.hil_model_reset(C.byref(abi_initial(height,u,euler,geoid))))
@@ -66,7 +67,7 @@ def adapter_checks(cache,m):
 RAW_FROM_CORE=[(22,0,1),(23,1,1),(24,2,1),(6,6,1),(7,7,1),(8,8,1),(9,9,1),(28,10,1),(29,11,1),(30,12,1),(15,13,1),(16,14,1),(17,15,1),
  (5,19,1),(13,20,1),(14,21,1),(12,16,1),(11,17,1),(25,53,1),(26,54,1),(27,52,1),(36,55,1),(0,67,1),(1,66,1),(2,68,1),(3,70,1),(4,69,1),(19,2,-1),(18,15,-1)]
 def validate(cache):
- r=cache/'results';m=Model(cache/'native/libskysurfer.dylib');report={}
+ r=cache/'results';m=Model(cache/'native'/libname('skysurfer'));report={}
  ri=[a for a,b,c in RAW_FROM_CORE];ci=[b for a,b,c in RAW_FROM_CORE];sign=np.array([c for a,b,c in RAW_FROM_CORE],dtype=float)
  at=np.full(len(ri),1e-6);rt=np.full(len(ri),1e-8);at[3:7]=1e-9;at[22:27]=1e-9
  a=None;a_bytes=None
@@ -92,7 +93,7 @@ def validate(cache):
   if code:fault={'step':k,'model_time_s':k*.004,'code':code};break
  report['source_divergence_guard']={'status':'PASS' if fault and fault['code']==3 and fault['model_time_s']<7.068 else 'FAIL','fault':fault}
  report.update(adapter_checks(cache,m))
- m.reset();worker=Worker(cache/'native/libhil_worker.dylib',m);worker.start();start=time.monotonic();trace=[]
+ m.reset();worker=Worker(cache/'native'/libname('hil_worker'),m);worker.start();start=time.monotonic();trace=[]
  while time.monotonic()-start<60:
   inp=header(Input);inp.actuator_valid=1;inp.input_sequence=int((time.monotonic()-start)*1000)+1;inp.actuator_age_ns=worker.now();worker.lib.hil_worker_input(C.byref(inp));trace+=worker.drain();s=worker.snapshot()
   if s.fault:break

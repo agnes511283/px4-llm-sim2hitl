@@ -6,8 +6,9 @@ function gate = reuse_policy_gate(projectRoot)
 % libraries, so anything else (missing or unreadable file, confirmed_none not true, any library
 % listed) is refused. SATK's library.settingsLookup reports gatePass = true even when the file is
 % missing or confirmed_none is false, so it cannot serve as the gate; its result is only recorded.
+% The policy file's SHA-256 is recorded by hitl/update.py (no Java needed here).
 policyFile = fullfile(projectRoot, '.satk', 'reuse-libraries.json');
-gate = struct('policy_file', policyFile, 'policy_sha256', '', 'confirmed_none', false, ...
+gate = struct('policy_file', policyFile, 'confirmed_none', false, ...
     'libraries', 0, 'satk_gate_pass', [], 'status', 'FAIL', 'reason', '');
 if ~isfile(policyFile)
     gate.reason = 'Reuse-library policy file is missing.';
@@ -19,9 +20,6 @@ catch err
     gate.reason = ['Reuse-library policy is not valid JSON: ' err.message];
     return
 end
-fid = fopen(policyFile, 'r'); bytes = fread(fid, inf, '*uint8'); fclose(fid);
-md = java.security.MessageDigest.getInstance('SHA-256');
-gate.policy_sha256 = sprintf('%02x', typecast(md.digest(bytes), 'uint8'));
 if isfield(policy, 'confirmed_none') && islogical(policy.confirmed_none) && isscalar(policy.confirmed_none)
     gate.confirmed_none = policy.confirmed_none;
 end

@@ -7,10 +7,12 @@
 #include <stddef.h>
 #include <string.h>
 
-/* Aircraft and environment constants of the source model (FW_SkySurfer_InitialFunction.m). The
- * core does not output them; plant/core/validate_plant.py checks |F_gravity| = mass * g every
- * step, so a change in the initialisation script cannot silently disagree with these. */
-#define SKS_MASS_KG 1.3
+/* Mass of the source model (Mass0 in model/FW_SkySurfer_InitialFunction.m). The core does not output
+ * it, so the build passes it in (-DSKS_MASS_KG from results/core_build.json, plant/core/toolchain.py
+ * model_defines); plant/core/validate_plant.py checks |F_gravity| = mass * g every step. */
+#ifndef SKS_MASS_KG
+#error "SKS_MASS_KG comes from the model: build through plant/core/compile_core.py or hitl/update.py"
+#endif
 #define SKS_GRAVITY_M_S2 9.80665
 
 /* Aerodynamic table breakpoints (import_aerostates_avl.m). */

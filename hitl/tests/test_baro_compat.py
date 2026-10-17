@@ -20,9 +20,10 @@ from host.release import read_release
 class BaroCompatibilityTests(unittest.TestCase):
  def setUp(self):
   if os.environ.get('FW_HIL_LIBRARY_CACHE'):
-   folder=Path(os.environ['FW_HIL_LIBRARY_CACHE'])/'native'
-  else:folder,_=read_release(ROOT)
-  self.model=Model(folder/'libskysurfer.dylib');self.worker=Worker(folder/'libhil_worker.dylib',self.model)
+   folder=Path(os.environ['FW_HIL_LIBRARY_CACHE'])/'native';sys.path.insert(0,str(ROOT.parent/'plant/core'))
+   from toolchain import lib;names={'library':lib('skysurfer'),'worker':lib('hil_worker')}
+  else:folder,names=read_release(ROOT)
+  self.model=Model(folder/names['library']);self.worker=Worker(folder/names['worker'],self.model)
  def tearDown(self):self.worker.stop();self.worker.lib.hil_io_stop();self.model.lib.hil_model_terminate()
  def encode_native(self,o):
   buffer=C.create_string_buffer(1024)

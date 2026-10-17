@@ -775,10 +775,8 @@ arguments
 end
 addpath(root);
 [~, packageName] = fileparts(root);
-% Distinguish projects with the same basename at different locations.
-digest = java.security.MessageDigest.getInstance('SHA-256');
-rootKey = sprintf('%02x',typecast(digest.digest(unicode2native(root,'UTF-8')),'uint8'));
-packageName = [packageName '-' rootKey(1:16)];
+% Distinguish projects with the same basename at different locations (the folder path itself, no Java).
+packageName = [packageName '-' regexprep(root, '[^A-Za-z0-9]', '_')];
 if ismac
     cacheBase = fullfile(getenv('HOME'), 'Library', 'Caches');
 elseif ispc

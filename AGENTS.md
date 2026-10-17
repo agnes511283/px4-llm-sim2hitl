@@ -1,0 +1,78 @@
+# SkySurfer：給 AI 的工作規則
+
+專案是什麼、流程、環境準備與指令見 [README](README.md)。本檔只寫 AI 怎麼工作。
+
+## 1. 和使用者合作
+
+- **講白話**。技術細節由 AI 自己查、自己處理；只有需要使用者做決定時才說，一次一件。講太細就失去這套專案的意義。
+- 照 README 的流程分段走。**每段結束時問「下一步 1／2／3」**，段內不逐項詢問權限。
+- 遇到 runtime 的安全檢查擋下、原因不明的 FAIL、或需要人手（重插 USB、斷電、拆槳）時，停下來說明，不自行繞過或重試。
+
+### 第 1 段「需求與規格」：最重要，先和人把整個工作流程談完
+
+AI 先查好現況、提出建議，只跟人確認**目標、選擇與成功條件**：
+
+1. **先聽**：想做什麼、要飛什麼情境、怎樣算成功。
+2. **1.1 飛機模型與配平**：是哪一架飛機、和 SkySurfer 差在哪裡（外型、重量、重心、慣量、氣動、舵面配置）。舵面配置不同時（例如飛翼、V 尾），現在固定的五路輸入（左副翼、右副翼、升降舵、方向舵、油門）要跟著改。改完：重新產碼、四道檢查、配平與放手測試（`sitl/trim.py`）。刻意改了模型後，「對錄製參考資料的比對」本來就會不同（它只報告、不擋）；確認同次 Simulink 對照通過後，再重錄參考資料。
+3. **1.2 算法、部署與驗收**：
+   - 先查鎖定版本的 PX4 原始碼現在怎麼運作，算法要接在哪裡；
+   - 預想 SITL 與 HITL 會碰到的問題：SITL 用真值、不經 EKF；HITL 編進客製韌體、用 FC 上 EKF 的估測；和現有飛行模式怎麼共存；Flash 空間（原生韌體已用約 98 %）；
+   - 談好：用哪塊飛控、HITL 是否已設好；新算法何時接手、怎麼退出、失效時怎麼回到原生；用什麼動作證明它真的有作用；
+   - **「怎麼部署」是第 3 段一條龍的前提**；
+   - 寫成模組 README 的一頁規格：目標、接法、SITL 與 HITL 各自的驗收指標。兩邊估測來源不同，比的是表現與差距，不要求逐點相同。
+
+不替使用者預先決定客製方式；把要想的問題提出來，依 PX4 原始碼給建議。
+
+## 2. 接手時先查平台
+
+- 只在 Ubuntu 24.04 x86-64 驗證過。換平台時，照 README「環境準備」逐項查官方文件，確認做法再裝。
+- 路徑與工具不寫死：MATLAB、編譯器、暫存位置見 `plant/core/toolchain.py`（可用環境變數指定），PX4 原始碼樹見 `px4/check_px4_tree.py`。
+- 檢查：`./runbridge --check-python`、`python3 px4/check_px4_tree.py`、`./runbridge preflight`。
+
+## 3. 安全底線（不可繞過）
+
+- **寫入對象與內容要確定**：寫參數、開機檔、燒錄前確認 FC 身分、未解鎖；寫入後讀回。不確定是否成功就停，不繼續到解鎖。
+- **恢復與單一 owner 不能繞過**：不刪恢復記號（`recovery.json`）、寫參數交易記號（`param_deploy.json`）、`owner.lock`、`host.json`；不用重開程式或換資料夾繞過未完成的恢復。runtime 的狀態資料夾跟著程式所在的路徑，換資料夾或換電腦前，先在原處恢復並關閉 owner。
+- **只做隔離實體動力的 HITL**：HITL 時螺旋槳已拆或電調不供電，第一次使用前請人確認。3.2 出場檢查完成前，自動流程不關 HITL（`SYS_HITL`）、不測實體致動器。
+- 不用 `rm -rf` 大量刪除。
+- 遠端操作時，現場沒人能重插 USB 或斷電：刷機或恢復卡在需要人手時就停下來等。
+
+## 4. 不變量
+
+- **唯一 plant 來源**：`model/` 的 `.slx`＋初始化＋氣動 MAT／importer＋preload。轉出的 C（`model/generated/`）是建置產物，不手改；改模型後重新產碼。
+- **單一 owner**：同時只有一個程序持有模型與序列埠；其他指令經本機 IPC 和它溝通。
+- **通道**：`controls[0..4]` = 左副翼／右副翼／升降舵／方向舵／油門。
+- **4 ms 迴圈不呼叫 Python 或 LLM**；runtime 是最終安全判斷者，不要為了讓操作成功而放寬它的前置條件。
+- **停模型 ≠ PX4 已恢復**：送過感測器資料後，待恢復狀態會持久化，要 `recover` 完成才算恢復。
+- 實體 HITL 不准在空中起始。
+- 發布模型 release 只是離線證據，不會自動開始 HIL、解鎖、切模式或重開 FC。
+
+## 5. 改了什麼，要跑什麼
+
+| 改了 | 要跑 |
+|---|---|
+| 飛機模型（`model/`） | `./runbridge update-model --generate`（MATLAB）→ `./runbridge update-model` → 配平；刻意改了模型就照第 1.1 段重錄參考資料 |
+| `plant/` 的 C、`hitl/` 的 `native/`、`interface/`、`aircraft/`、`update.py` | `./runbridge update-model`（四道檢查）→ 離線測試 |
+| `hitl/host/` 等 runtime 程式 | 離線測試；影響時序時加跑 600 s 負載 |
+| `sitl/`、`modules/` | `sitl/build_sitl.py` → `sitl/run_sitl.py` → `analysis/response.py` |
+| 韌體、參數、開機檔 | 第 3 段 |
+
+離線測試與負載（`PY` = venv 的 python，例如 `~/.local/share/SkySurfer/venv/bin/python`）：
+
+```sh
+for f in hitl/tests/test_*.py deploy/test_*.py; do echo "== $f"; "$PY" -B "$f" 2>&1 | tail -1; done
+"$PY" -B hitl/tests/run_load.py <新的空資料夾> --duration 600
+```
+
+## 6. 在哪裡
+
+| 資料夾 | 內容 |
+|---|---|
+| `model/` | 飛機模型來源；`generated/` 是轉好的 C 與 Simulink 參考結果 |
+| `plant/` | plant 核心包裝、C 真值、C 感測器、各自的檢查程式、錄製的參考資料 |
+| `sitl/` | 精簡 PX4 的 plant 模組 `sks_sim`、情境、配平、ULog 重播 |
+| `modules/` | 自己的 PX4 模組（同一份原始碼編進 SITL 與韌體；`sks_hello` 是範本） |
+| `hitl/` | runtime（owner、worker、`hitl-run`）、起飛與起飛後動作腳本、`flight_test.json`（預設飛行與判定）、模型 release |
+| `deploy/` | 部署配方：`00_native`（原生韌體＋參數，可隨時刷回） |
+| `px4/` | PX4 版本鎖、原始碼樹核對、修正 patch |
+| `analysis/` | 響應指標、ULog 讀檔與嚴格解析、重播比對 |

@@ -2151,7 +2151,7 @@ class Core(SdFiles):
         args = []
         for name, value in self.profile['automation'].items():
             args += ['--' + name.replace('_', '-'), str(value)]
-        entry = str(self.project / 'hil_bridge/autotakeoff/FW_SkySurfer_HIL_AutoTakeoff.py')
+        entry = str(self.project / 'hitl/autotakeoff/FW_SkySurfer_HIL_AutoTakeoff.py')
         base = [
             sys.executable,
             '-B',

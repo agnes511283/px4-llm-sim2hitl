@@ -113,21 +113,20 @@ def readback_values(path):
 def run_hitl(runtime, args):
     runtime = Path(runtime).resolve()
     project = runtime.parent
-    policy = json.loads((project / 'agent_policy.json').read_text())
-    fixed = policy['flight_test']
+    from .flight_config import config
+
+    fixed = config()['flight_test']
     flight = {'altitude': args.altitude, 'hold_seconds': args.hold_seconds, 'hold_timeout': args.hold_timeout,
               'flight_timeout': args.flight_timeout}
     flight = {k: (fixed[k] if v is None else v) for k, v in flight.items()}
-    if not args.fake_fc and flight != {k: fixed[k] for k in flight}:
-        # The fixed flight is what makes hitl-run tier B; any other flight is test-takeoff-hold (tier C).
-        raise ValueError('hitl-run uses only the fixed flight parameters of agent_policy.json on a real FC')
+    # Other flight values run; the flight test records them in its report (nonstandard_parameters).
     release = (Path(args.release) if args.release else project / DEFAULT_RELEASE).resolve()
     out = (Path(args.out) if args.out else DEFAULT_OUT).resolve()
     run = out / f'run_{time.strftime("%Y%m%d_%H%M%SZ", time.gmtime())}_{uuid.uuid4().hex[:8]}'
     run.mkdir(parents=True)
     started = time.monotonic()
-    pilot_files = ['hil_runtime/scenarios/ground.json', 'hil_bridge/autotakeoff/FW_SkySurfer_HIL_AutoTakeoff.py',
-                   'hil_bridge/commands/after_takeoff_loiter.py']
+    pilot_files = ['hitl/scenarios/ground.json', 'hitl/autotakeoff/FW_SkySurfer_HIL_AutoTakeoff.py',
+                   'hitl/commands/after_takeoff_loiter.py']
     manifest = {
         'schema_version': 1,
         'kind': 'hitl-run',
@@ -137,7 +136,9 @@ def run_hitl(runtime, args):
         'verdict': None,
         'reasons': [],
         'parts': {},
-        'scenario': {'name': SCENARIO, 'flight': flight, 'files': None},
+        'scenario': {'name': SCENARIO, 'flight': flight, 'files': None,
+                     'nonstandard_parameters': {k: {'requested': v, 'standard': fixed[k]} for k, v in flight.items()
+                                                if float(v) != float(fixed[k])}},
     }
     parts = manifest['parts']
 
@@ -205,7 +206,7 @@ def run_hitl(runtime, args):
         try:
             start = status()
         except Exception as exc:
-            part('identity', 'FAIL', [f'no running owner ({exc}); start ./runbridge.command gui first'])
+            part('identity', 'FAIL', [f'no running owner ({exc}); start ./runbridge bridge first'])
             return finish()
         disk_id = runtime_identity.source_id(runtime_identity.inventory(project))
         owner = start.get('runtime_identity') or {}

@@ -14,20 +14,19 @@ def main(argv=None):
             [
                 sys.executable,
                 '-B',
-                str(RUNTIME.parent / 'hil_bridge/autotakeoff/FW_SkySurfer_HIL_AutoTakeoff.py'),
+                str(RUNTIME / 'autotakeoff/FW_SkySurfer_HIL_AutoTakeoff.py'),
                 'takeoff',
                 '--help',
             ]
         )
     p = argparse.ArgumentParser(
-        description='Shared-library HIL: one model/serial owner, GUI or headless'
+        description='Shared-library HIL: one model/serial owner (bridge) and the commands that talk to it'
     )
     p.add_argument(
         'action',
         nargs='?',
-        default='gui',
+        default='bridge',
         choices=[
-            'gui',
             'bridge',
             'status',
             'model-start',
@@ -53,7 +52,6 @@ def main(argv=None):
             'hitl-run',
         ],
     )
-    p.add_argument('--headless', action='store_true')
     p.add_argument('--fake-fc', action='store_true')
     p.add_argument('--fake-state-dir', type=Path)
     p.add_argument('--fake-config', type=Path)
@@ -84,7 +82,7 @@ def main(argv=None):
         p.add_argument('--hold-timeout', type=float, default=180)
         p.add_argument('--flight-timeout', type=float, default=300)
     if arguments[:1] == ['hitl-run']:
-        # The fixed flight of agent_policy.json; other values only with --fake-fc (offline tests).
+        # Default flight of hitl/flight_test.json; other values run and are recorded in the report.
         for name in ['--altitude', '--hold-seconds', '--hold-timeout', '--flight-timeout']:
             p.add_argument(name, type=float)
     args, extra = p.parse_known_args(argv)
@@ -94,9 +92,9 @@ def main(argv=None):
         )
     if args.fake_fc and not args.fake_state_dir:
         # Without its own state directory a fake client would talk to the real owner, and a fake owner
-        # (bridge, gui) would use the real owner's state: its recovery marker and parameter deploy latch.
+        # (bridge) would use the real owner's state: its recovery marker and parameter deploy latch.
         raise ValueError('--fake-fc needs --fake-state-dir (a separate fake owner)')
-    if args.fake_config and args.action not in ['bridge', 'gui', 'test-takeoff-hold']:
+    if args.fake_config and args.action not in ['bridge', 'test-takeoff-hold']:
         raise ValueError('--fake-config is only supported when starting a fake host')
     if args.aircraft != 'skysurfer':
         raise ValueError('Aircraft recipe not available')
@@ -135,7 +133,7 @@ def main(argv=None):
         from host.hitl_run import run_hitl
 
         return run_hitl(RUNTIME, args)
-    if args.action not in ['gui', 'bridge']:
+    if args.action != 'bridge':
         result = request(
             RUNTIME,
             args.action,
@@ -186,7 +184,7 @@ def main(argv=None):
     endpoint = None
     lease = None
     try:
-        # An existing host is reused by opening its GUI client; never a second owner.
+        # Never a second owner.
         if (owner_path / 'host.json').exists():
             try:
                 existing = request(RUNTIME, 'status', fake_state_dir=args.fake_state_dir)
@@ -196,14 +194,6 @@ def main(argv=None):
                         raise RuntimeError(
                             f"Host already running with fake_fc={existing['result'].get('fake_fc')}, "
                             f'not fake_fc={args.fake_fc}'
-                        )
-                    if args.action == 'gui' and not args.headless:
-                        from host.remote import RemoteCore
-                        from gui.window import run_gui
-
-                        return run_gui(
-                            RemoteCore(RUNTIME, existing['result'], args.fake_state_dir),
-                            args.duration,
                         )
                     raise RuntimeError('Host already running; use status/model commands')
             except (OSError, ValueError):
@@ -228,10 +218,6 @@ def main(argv=None):
 
         signal.signal(signal.SIGINT, stop)
         signal.signal(signal.SIGTERM, stop)
-        if args.action == 'gui' and not args.headless:
-            from gui.window import run_gui
-
-            return run_gui(core, args.duration)
         start = time.monotonic()
         while not core.quit.is_set():
             if args.duration and time.monotonic() - start >= args.duration:

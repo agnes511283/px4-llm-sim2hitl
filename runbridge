@@ -1,22 +1,30 @@
-#!/bin/zsh
+#!/usr/bin/env bash
+# SkySurfer entry: ./runbridge <action> [options]   (./runbridge --help lists the actions)
+#   ./runbridge --setup            create the Python environment (uv, from uv.lock)
+#   ./runbridge --check-python     check that environment
+#   ./runbridge update-model ...   model release (hitl/update.py: --generate, --rollback, --fc-only)
+# The venv lives outside the project: SKYSURFER_VENV, else the platform's user data folder + SkySurfer/venv.
+# SKYSURFER_PYTHON overrides the interpreter.
 set -euo pipefail
-script_dir=${0:A:h}
-# uv-managed venv outside Dropbox (macOS, Linux); FW_HIL_PYTHON overrides the interpreter.
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ $OSTYPE == darwin* ]]; then
-  venv_default="$HOME/Library/Application Support/SkySurferHIL/venv"; uv_hint="brew install uv"
+  venv_default="$HOME/Library/Application Support/SkySurfer/venv"
 else
-  venv_default="${XDG_DATA_HOME:-$HOME/.local/share}/SkySurferHIL/venv"; uv_hint="curl -LsSf https://astral.sh/uv/install.sh | sh"
+  venv_default="${XDG_DATA_HOME:-$HOME/.local/share}/SkySurfer/venv"
 fi
-export UV_PROJECT_ENVIRONMENT=${UV_PROJECT_ENVIRONMENT:-$venv_default}
-py=${FW_HIL_PYTHON:-$UV_PROJECT_ENVIRONMENT/bin/python}
+export UV_PROJECT_ENVIRONMENT=${SKYSURFER_VENV:-$venv_default}
+py=${SKYSURFER_PYTHON:-$UV_PROJECT_ENVIRONMENT/bin/python}
 if [[ ${1:-} == --setup ]]; then
-  command -v uv >/dev/null || { print -u2 "找不到 uv。請先安裝：$uv_hint"; exit 4; }
+  command -v uv >/dev/null || { echo "uv not found: install it first (https://docs.astral.sh/uv/)" >&2; exit 4; }
   exec uv sync --frozen --project "$script_dir"
 fi
-[[ -x "$py" ]] || { print -u2 "找不到 HIL runtime Python：$py\n請先安裝 uv（$uv_hint），再執行 ./runbridge.command --setup"; exit 4; }
+[[ -x "$py" ]] || { echo "Python environment not found: $py (run ./runbridge --setup)" >&2; exit 4; }
 export PYTHONDONTWRITEBYTECODE=1
 unset PYTHONHOME PYTHONPATH
-if [[ ${1:-} == --check-python ]]; then
-  exec "$py" -B -c 'import platform,sys,serial,pymavlink,numpy,PySide6; print(platform.platform()); print("Python "+sys.version.split()[0]); print("runtime Python PASS; PySide6="+PySide6.__version__)'
-fi
-exec "$py" -B "$script_dir/hil_runtime/main.py" "$@"
+case ${1:-} in
+  --check-python)
+    exec "$py" -B -c 'import platform,sys,serial,pymavlink,numpy; print(platform.platform()); print("Python "+sys.version.split()[0]); print("runtime Python PASS")' ;;
+  update-model)
+    shift; exec "$py" -B "$script_dir/hitl/update.py" "$@" ;;
+esac
+exec "$py" -B "$script_dir/hitl/main.py" "$@"

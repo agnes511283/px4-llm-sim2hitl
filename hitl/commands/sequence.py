@@ -59,7 +59,7 @@ def validate(actions):
 
 def load_script(name):
     if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]*', name):
-        raise ValueError('--after must be a script name inside hil_bridge/commands (without .py)')
+        raise ValueError('--after must be a script name inside hitl/commands (without .py)')
     if name in ('sequence', '__init__'):
         raise ValueError('select a command script, not a helper module')
     path = Path(__file__).resolve().parent/(name + '.py')

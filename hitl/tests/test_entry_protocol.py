@@ -1,4 +1,4 @@
-"""Direct pilot/JSON/stop; native owner/IPC tested in hil_runtime/tests with a localhost fake PX4, no bridge or model.
+"""Direct pilot/JSON/stop; native owner/IPC tested in hitl/tests with a localhost fake PX4, no bridge or model.
 
 Fast telemetry transitions check orchestration only, not aircraft dynamics.
 The command fixture lives in a disposable project copy, never the real project.
@@ -34,17 +34,17 @@ class FastVehicle(FakeVehicle):
         self.gamma = 0.
 
 
-@unittest.skipUnless(sys.platform == 'darwin', 'native runbridge.command protocol check')
+@unittest.skipIf(sys.platform == 'win32', 'POSIX runbridge protocol check')
 class EntryProtocolTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='flight protocol 專案 ')
         self.addCleanup(self.temp.cleanup)
         self.project = Path(self.temp.name)/'project'
-        shutil.copytree(ROOT, self.project/'hil_bridge')
-        shutil.copy2(ROOT.parent/'runbridge.command', self.project/'runbridge.command')
-        self.entry = self.project/'hil_bridge/autotakeoff/FW_SkySurfer_HIL_AutoTakeoff.py'
+        shutil.copytree(ROOT, self.project/'hitl', ignore=shutil.ignore_patterns('releases', 'active', '__pycache__'))
+        shutil.copy2(ROOT.parent/'runbridge', self.project/'runbridge')
+        self.entry = self.project/'hitl/autotakeoff/FW_SkySurfer_HIL_AutoTakeoff.py'
         self.folder = Path(self.temp.name)/'flight logs'
-        self.env = {**os.environ, 'FW_HIL_PYTHON': sys.executable}
+        self.env = {**os.environ, 'SKYSURFER_PYTHON': sys.executable}
         self.fc = FastVehicle()
         self.fc.start()
         self.addCleanup(self.close_vehicle)
@@ -96,7 +96,7 @@ class EntryProtocolTests(unittest.TestCase):
                               capture_output=True, text=True, timeout=6)
 
     def test_after_commands_flow_through_entry_and_same_agent(self):
-        fixture = self.project/'hil_bridge/commands/protocol_fixture.py'
+        fixture = self.project/'hitl/commands/protocol_fixture.py'
         fixture.write_text("from commands.sequence import Mode, Sticks, Wait\n"
                            "ON_FINISH='release'\n"
                            "def build_sequence(): return [Mode(7), Sticks(-.05,.1,.4,.4), Wait(.1)]\n")
@@ -108,7 +108,7 @@ class EntryProtocolTests(unittest.TestCase):
         self.assertEqual(len({c[0] for c in self.fc.commands}), 2)  # mode/arm only
 
     def test_json_duplicate_takeoff_and_stop_during_command_sequence(self):
-        fixture = self.project/'hil_bridge/commands/protocol_fixture.py'
+        fixture = self.project/'hitl/commands/protocol_fixture.py'
         fixture.write_text("from commands.sequence import Wait\nON_FINISH='hold'\n"
                            "def build_sequence(): return [Wait(10)]\n")
         self.launch('protocol_fixture')

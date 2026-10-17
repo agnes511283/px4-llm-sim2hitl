@@ -176,7 +176,7 @@ class SceneTests(unittest.TestCase):
   release,manifest=read_release(RUNTIME)
   with tempfile.TemporaryDirectory() as tmp:
    import shutil
-   root=Path(tmp);shutil.copytree(release,root/'releases/test');(root/'active').mkdir();(root/'active/macos-arm64.json').write_text(json.dumps({'build_id':manifest['build_id'],'release':'releases/test','manifest_sha256':__import__('hashlib').sha256((root/'releases/test/manifest.json').read_bytes()).hexdigest()}));read_release(root);(root/'releases/test/profile.json').write_text('corrupt')
+   root=Path(tmp);shutil.copytree(release,root/'releases/test');(root/'active').mkdir();(root/'active'/(__import__('host.release',fromlist=['platform_id']).platform_id()+'.json')).write_text(json.dumps({'build_id':manifest['build_id'],'release':'releases/test','manifest_sha256':__import__('hashlib').sha256((root/'releases/test/manifest.json').read_bytes()).hexdigest()}));read_release(root);(root/'releases/test/profile.json').write_text('corrupt')
    with self.assertRaises(ValueError):read_release(root)
  @needs_model
  def test_native_snapshot_does_not_lose_short_new_flag(self):

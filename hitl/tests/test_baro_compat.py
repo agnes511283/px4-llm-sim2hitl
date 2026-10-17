@@ -19,8 +19,8 @@ from host.release import read_release
 @needs_model
 class BaroCompatibilityTests(unittest.TestCase):
  def setUp(self):
-  if os.environ.get('FW_HIL_LIBRARY_CACHE'):
-   folder=Path(os.environ['FW_HIL_LIBRARY_CACHE'])/'native';sys.path.insert(0,str(ROOT.parent/'plant/core'))
+  if os.environ.get('SKYSURFER_LIBRARY_CACHE'):
+   folder=Path(os.environ['SKYSURFER_LIBRARY_CACHE'])/'native';sys.path.insert(0,str(ROOT.parent/'plant/core'))
    from toolchain import lib;names={'library':lib('skysurfer'),'worker':lib('hil_worker')}
   else:folder,names=read_release(ROOT)
   self.model=Model(folder/names['library']);self.worker=Worker(folder/names['worker'],self.model)

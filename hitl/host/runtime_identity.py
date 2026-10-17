@@ -9,23 +9,21 @@ from pathlib import Path
 def source_files(project):
     project = Path(project)
     fixed = [
-        'runbridge.command',
-        'runbridge.cmd',
-        'hil_runtime/main.py',
+        'runbridge',
+        'hitl/main.py',
+        'hitl/flight_test.json',
         'pyproject.toml',
         'uv.lock',
         '.python-version',
-        'agent_policy.json',
-        'hil_runtime/scenarios/ground.json',
-        'hil_runtime/aircraft/skysurfer/profile.json',
-        'hil_runtime/aircraft/skysurfer/scenario.py',
+        'hitl/scenarios/ground.json',
+        'hitl/aircraft/skysurfer/profile.json',
+        'hitl/aircraft/skysurfer/scenario.py',
     ]
     paths = {project / name for name in fixed if (project / name).is_file()}
     for folder, suffixes in [
-        ('hil_runtime/host', {'.py'}),
-        ('hil_runtime/gui', {'.py', '.qss'}),
-        ('hil_bridge/autotakeoff', {'.py'}),
-        ('hil_bridge/commands', {'.py'}),
+        ('hitl/host', {'.py'}),
+        ('hitl/autotakeoff', {'.py'}),
+        ('hitl/commands', {'.py'}),
     ]:
         paths.update(
             p

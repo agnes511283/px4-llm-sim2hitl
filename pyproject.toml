@@ -1,14 +1,10 @@
-# Python environment for the SkySurfer HIL runtime, managed by uv.
-# The venv lives outside Dropbox; always create it through the entry scripts:
-#   ./runbridge.command --setup      (macOS)
-#   runbridge.cmd --setup            (Windows)
-# Running a bare `uv sync` here would create .venv inside Dropbox.
+# Python environment of SkySurfer (runtime, tests, SITL and analysis tools), managed by uv.
+# Create it through the entry script: ./runbridge --setup  (the venv lives outside the project folder).
 [project]
-name = "skysurfer-hil-runtime"
+name = "skysurfer"
 version = "0.1.0"
 requires-python = "==3.12.*"
 dependencies = [
-    "PySide6==6.8.3",
     "pyserial==3.5",
     "pymavlink==2.4.49",
     "numpy==2.0.2",

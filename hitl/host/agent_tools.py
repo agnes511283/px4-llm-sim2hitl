@@ -11,7 +11,7 @@ import platform
 import subprocess
 from pathlib import Path
 
-from .policy import policy
+from .flight_config import config as policy
 from .ipc import request, state_path
 
 
@@ -85,7 +85,7 @@ def preflight(runtime, port='auto', fake_state_dir=None):
 
 
 def flight_summary(directory):
-    """Judge a finished test-takeoff-hold directory against agent_policy.json."""
+    """Judge a finished test-takeoff-hold directory against hitl/flight_test.json."""
     directory = Path(directory)
     config = policy()
     criteria, baseline = config['pass_criteria'], config['baseline']

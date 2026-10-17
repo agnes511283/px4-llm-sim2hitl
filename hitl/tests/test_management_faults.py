@@ -85,20 +85,20 @@ class ManagementFaultTests(unittest.TestCase):
         # 2026-10-16: with the model stopped, macOS throttled the idle owner's serial reads to ~27 ms apart and a
         # 11 MB log came at 32 instead of 740 kB/s. fetch-log and param-readback hold their own guard, nested
         # transfers share it, and it is released afterwards, also after a failure.
-        seen=[]
+        seen=[];on=self.core.transfer_activity.supported  # App Nap exists on macOS only; elsewhere nothing is held
         def probe(*args,**kwargs):
             seen.append(self.core.transfer_activity.diagnostics()['active'])
             if kwargs.get('fail') or (len(args)>2 and args[2]=='fail'):raise RuntimeError('made to fail')
             return {'ok':True}
         with patch.object(self.core,'_fetch_log',side_effect=probe):
             r=self.core.fetch_log(Path(self.temp.name)/'fc')
-            self.assertEqual((seen,r['app_nap_guard']),([True],True))
+            self.assertEqual((seen,r['app_nap_guard']),([on],True))
             self.core._transfer(lambda:self.core.fetch_log(Path(self.temp.name)/'fc'))  # nested: still held inside
-            self.assertEqual(seen,[True,True])
+            self.assertEqual(seen,[on,on])
             with self.assertRaisesRegex(RuntimeError,'made to fail'):self.core.fetch_log(Path(self.temp.name)/'fc',None,'fail')
         self.assertFalse(self.core.transfer_activity.diagnostics()['active']);self.assertEqual(self.core.transfer_depth,0)
         with patch.object(self.core,'_param_readback',side_effect=probe):self.core.param_readback(Path(self.temp.name)/'p')
-        self.assertEqual(seen[-1],True);self.assertFalse(self.core.transfer_activity.diagnostics()['active'])
+        self.assertEqual(seen[-1],on);self.assertFalse(self.core.transfer_activity.diagnostics()['active'])
         self.assertIn('transfer_activity',self.core.status()['scheduler'])
     def test_param_value_bits_come_from_the_wire(self):
         # An Int32 whose bits look like a signalling NaN: a float round trip would turn 0x7f800001 into 0x7fc00001.

@@ -4,7 +4,7 @@
 No bridge, serial port, model or flight controller is used: this process plays
 the bridge agent port. It checks the script's sequence and hand-overs, not the
 aircraft dynamics. Real time, about 90 s.
-  /usr/bin/python3 -B hil_bridge/tests/autotakeoff_fake_vehicle.py
+  /usr/bin/python3 -B hitl/tests/autotakeoff_fake_vehicle.py
 """
 import json
 import math

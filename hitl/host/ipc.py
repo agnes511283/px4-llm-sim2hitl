@@ -41,10 +41,11 @@ def read_reply(stream):
 
 
 def cache_root():
-    """Per-user cache for owner state and run evidence (macOS and Windows unchanged; Linux follows XDG)."""
-    if sys.platform.startswith('linux'):
-        return Path(os.environ.get('XDG_CACHE_HOME') or Path.home() / '.cache') / 'SkySurferPhaseB'
-    return Path.home() / 'Library/Caches/Codex/SkySurferPhaseB'
+    """Per-user cache for owner state and run evidence: one rule for the whole project (plant/core/toolchain.py)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'plant' / 'core'))
+    import toolchain
+
+    return toolchain.cache_root()
 
 
 def state_path(runtime, fake_state_dir=None):

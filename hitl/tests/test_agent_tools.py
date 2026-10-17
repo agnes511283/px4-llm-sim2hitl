@@ -1,4 +1,4 @@
-"""Agent policy, flight-test overrides, preflight and flight-summary; no FC or serial."""
+"""Flight-test defaults and overrides, preflight and flight-summary; no FC or serial."""
 import json
 import subprocess
 import sys
@@ -10,56 +10,29 @@ from types import SimpleNamespace
 RUNTIME = Path(__file__).resolve().parents[1]
 PROJECT = RUNTIME.parent
 sys.path.insert(0, str(RUNTIME))
-from host import policy as agent_policy, agent_tools
+from host import flight_config, agent_tools
 
 
 def flight_args(**overrides):
-    values = dict(agent_policy.policy()['flight_test'], fake_fc=False, fake_state_dir=None, log_dir=None)
+    values = dict(flight_config.config()['flight_test'], fake_fc=False, fake_state_dir=None, log_dir=None)
     values.update(overrides)
     return SimpleNamespace(**values)
 
 
-class PolicyTests(unittest.TestCase):
-    def test_policy_shape(self):
-        policy = agent_policy.policy()
-        self.assertEqual(set(policy['tiers']), {'A', 'B', 'C', 'deny'})
-        # No in-app confirmation (user 2026-10-17): consent is given in the conversation.
-        self.assertNotIn('human_confirmation', policy)
-        self.assertEqual(
-            {' '.join(e['prefix']) for e in policy['tiers']['C']['commands']},
-            {'./runbridge.command param-deploy', './runbridge.command sd-put'},
-        )
+class FlightConfigTests(unittest.TestCase):
+    def test_config_shape(self):
+        config = flight_config.config()
         for key in ['altitude', 'hold_seconds', 'hold_timeout', 'flight_timeout']:
-            self.assertGreater(policy['flight_test'][key], 0)
-
-    def test_generated_configs_current(self):
-        result = subprocess.run(
-            [sys.executable, str(PROJECT / 'tools/gen_agent_config.py'), '--check'],
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def test_generated_permissions_never_prompt(self):
-        settings = json.loads((PROJECT / '.claude/settings.json').read_text())['permissions']
-        self.assertNotIn('ask', settings)
-        self.assertIn('Bash(./runbridge.command param-deploy:*)', settings['allow'])
-        self.assertIn('Bash(rm -rf:*)', settings['deny'])
-        rules = (PROJECT / '.codex/rules/skysurfer.rules').read_text()
-        self.assertNotIn('"prompt"', rules)
-        self.assertIn('"forbidden"', rules)
-
-    def test_runtime_has_no_confirmation_dialog(self):
-        self.assertFalse((RUNTIME / 'host/approval.py').exists())
-        self.assertNotIn('host.approval', (RUNTIME / 'update_model.command').read_text())
+            self.assertGreater(config['flight_test'][key], 0)
+        self.assertIn('late_steps_max', config['pass_criteria'])
 
 
 class FlightOverrideTests(unittest.TestCase):
     def test_standard_flight_has_no_overrides(self):
-        self.assertEqual(agent_policy.flight_test_overrides(flight_args()), {})
+        self.assertEqual(flight_config.flight_test_overrides(flight_args()), {})
 
     def test_nonstandard_flight_lists_overrides(self):
-        overrides = agent_policy.flight_test_overrides(flight_args(altitude=300))
+        overrides = flight_config.flight_test_overrides(flight_args(altitude=300))
         self.assertEqual(overrides, {'altitude': (300, 100)})
 
     def test_fake_fc_flight_checks_its_arguments(self):

@@ -21,7 +21,7 @@ from pymavlink.dialects.v20 import common as mav
 from platform_support import needs_model
 
 PROJECT=Path(__file__).resolve().parents[2]
-ENTRY=PROJECT/'runbridge.command'
+ENTRY=PROJECT/'runbridge'
 
 @needs_model
 class RunbridgeFakeTests(unittest.TestCase):
@@ -42,9 +42,9 @@ class RunbridgeFakeTests(unittest.TestCase):
         self.config={'synthetic_flight':True,'routes':self.routes,'event_log':str(self.folder/'fc_events.jsonl')}
         self.write_config()
         self.common=['--fake-fc','--fake-state-dir',str(self.state)]
-        self.env={**os.environ,'FW_HIL_PYTHON':sys.executable,'PYTHONDONTWRITEBYTECODE':'1'}
+        self.env={**os.environ,'SKYSURFER_PYTHON':sys.executable,'PYTHONDONTWRITEBYTECODE':'1'}
         self.console=(self.folder/'host.log').open('w')
-        self.host=subprocess.Popen([str(ENTRY),'bridge','--headless',*self.common,'--fake-config',str(self.config_path),'--log-dir',str(self.folder/'logs'),'--duration','90'],cwd=self.folder,env=self.env,stdout=self.console,stderr=subprocess.STDOUT)
+        self.host=subprocess.Popen([str(ENTRY),'bridge',*self.common,'--fake-config',str(self.config_path),'--log-dir',str(self.folder/'logs'),'--duration','90'],cwd=self.folder,env=self.env,stdout=self.console,stderr=subprocess.STDOUT)
         self.wait(lambda:self.status().get('ready_to_start_model'),8)
     def tearDown(self):
         try:
@@ -174,7 +174,7 @@ class RunbridgeFakeTests(unittest.TestCase):
         self.assertEqual(s['model'],'fault');self.assertFalse(s['pilot']['running'])
         self.assertEqual(s['metrics']['shutdown_stop_failures'],1)
     def test_fetch_log_downloads_newest_and_refills_gaps(self):
-        sys.path.insert(0,str(PROJECT/'hil_runtime'))
+        sys.path.insert(0,str(PROJECT/'hitl'))
         from host.transport import FakeFC
         import hashlib
         expected=FakeFC().fake_logs()
@@ -208,7 +208,7 @@ class RunbridgeFakeTests(unittest.TestCase):
         # then. The download waits out a pause and goes on where the stream stopped; the lost pieces are asked
         # for at the end, so almost nothing is sent twice (with the old 0.5 s re-request from the first gap,
         # 53 % of the pieces were duplicates).
-        sys.path.insert(0,str(PROJECT/'hil_runtime'))
+        sys.path.insert(0,str(PROJECT/'hitl'))
         from host.transport import FakeFC
         self.config.update(log_pause_s=2,log_drop_every=500,fc_logs=[4000,2_000_000]);self.write_config();time.sleep(.15)
         expected=FakeFC(config_path=self.config_path).fake_logs()[1]
@@ -285,9 +285,9 @@ class RunbridgeFakeTests(unittest.TestCase):
         s=self.status();self.assertEqual(s['model'],'fault');self.assertFalse(s['pilot']['running'])
         self.assertFalse(s['control_gate']['enabled']);self.assertTrue(s['recovery_required'])
     def test_second_host_refused_and_real_state_override_rejected(self):
-        result=subprocess.run([str(ENTRY),'bridge','--headless',*self.common],cwd=self.folder,env=self.env,capture_output=True,text=True,timeout=5)
+        result=subprocess.run([str(ENTRY),'bridge',*self.common],cwd=self.folder,env=self.env,capture_output=True,text=True,timeout=5)
         self.assertNotEqual(result.returncode,0);self.assertIn('Host already running',result.stderr)
-        result=subprocess.run([str(ENTRY),'bridge','--headless','--fake-state-dir',str(self.state)],cwd=self.folder,env=self.env,capture_output=True,text=True,timeout=5)
+        result=subprocess.run([str(ENTRY),'bridge','--fake-state-dir',str(self.state)],cwd=self.folder,env=self.env,capture_output=True,text=True,timeout=5)
         self.assertEqual(result.returncode,4);self.assertIn('requires --fake-fc',result.stderr)
 
     def test_root_takeoff_hold_workflow_and_force_recovery(self):
@@ -334,7 +334,7 @@ class RunbridgeFakeTests(unittest.TestCase):
             self.assertEqual(hashlib.sha256((run/entry['path']).read_bytes()).hexdigest(),entry['sha256'],entry['path'])
         return manifest,run
     def test_hitl_run_judges_every_part(self):
-        sys.path.insert(0,str(PROJECT/'hil_runtime'))
+        sys.path.insert(0,str(PROJECT/'hitl'))
         # The test's short Hold fails flight-summary (60 s minimum), and QGC changes a parameter during the flight
         # (forwarded to the FC): the flight and parameter parts are FAIL, every other part PASS.
         qgc=lambda:self.send('qgc',mav.MAVLink_param_set_message(1,1,b'FW_R_TC',0.9,9))
@@ -368,7 +368,7 @@ class RunbridgeFakeTests(unittest.TestCase):
     def test_hitl_run_flight_pass_does_not_hide_missing_evidence(self):
         # A full 60 s Hold passes flight-summary, but this flight's FC log cannot be listed: INCOMPLETE, not PASS.
         self.cli('shutdown','--force-exit');self.host.wait(timeout=10)
-        self.host=subprocess.Popen([str(ENTRY),'bridge','--headless',*self.common,'--fake-config',str(self.config_path),'--log-dir',
+        self.host=subprocess.Popen([str(ENTRY),'bridge',*self.common,'--fake-config',str(self.config_path),'--log-dir',
                                     str(self.folder/'logs2'),'--duration','240'],cwd=self.folder,env=self.env,stdout=self.console,stderr=subprocess.STDOUT)
         self.wait(lambda:self.status().get('ready_to_start_model'),8)
         self.config['log_list_drop_newest']=True;self.write_config();time.sleep(.15)
@@ -380,40 +380,39 @@ class RunbridgeFakeTests(unittest.TestCase):
     def test_fake_flag_never_reaches_another_owner(self):
         # Review 11 F4: --fake-fc without its own state directory would talk to the real owner (and skip the flight
         # dialogs): refused. And the owner says what it drives: a client that disagrees is refused before flying.
-        # Review 12 N2: also a fake owner (bridge, gui) needs its own state directory: the real one holds the real
+        # Review 12 N2: also a fake owner (bridge) needs its own state directory: the real one holds the real
         # owner's recovery marker and deploy latch.
         for argv in [['hitl-run','--fake-fc','--altitude','50'],['test-takeoff-hold','--fake-fc','--altitude','50'],
-                     ['status','--fake-fc'],['gui','--fake-fc'],['bridge','--headless','--fake-fc']]:
+                     ['status','--fake-fc'],['bridge','--fake-fc']]:
             result=subprocess.run([str(ENTRY),*argv],cwd=self.folder,env=self.env,capture_output=True,text=True,timeout=45)
             self.assertEqual(result.returncode,4,argv);self.assertIn('needs --fake-state-dir',result.stderr)
         # Attaching to a running owner compares what the owner drives, never the client's own flag.
-        sys.path.insert(0,str(PROJECT/'hil_runtime'))
+        sys.path.insert(0,str(PROJECT/'hitl'))
         import main as entry
         from unittest.mock import patch as mock_patch
-        with mock_patch.object(entry,'request',return_value={'status':'complete','result':{'fake_fc':False}}),\
-             mock_patch('host.remote.RemoteCore',side_effect=AssertionError('attached to an owner of the other kind')):
+        with mock_patch.object(entry,'request',return_value={'status':'complete','result':{'fake_fc':False}}):
             with self.assertRaisesRegex(RuntimeError,'fake_fc=False'):
-                entry.main(['gui','--fake-fc','--fake-state-dir',str(self.state)])
-        sys.path.insert(0,str(PROJECT/'hil_runtime'))
+                entry.main(['bridge','--fake-fc','--fake-state-dir',str(self.state)])
+        sys.path.insert(0,str(PROJECT/'hitl'))
         from types import SimpleNamespace
         from host.hitl_run import run_hitl
         from host.flight_test import run_test
         args=SimpleNamespace(fake_fc=False,fake_state_dir=self.state,fake_config=None,port='auto',release=None,
                              out=self.folder/'mismatch',altitude=None,hold_seconds=None,hold_timeout=None,flight_timeout=None)
         import contextlib,io
-        with contextlib.redirect_stdout(io.StringIO()):self.assertEqual(run_hitl(PROJECT/'hil_runtime',args),2)
+        with contextlib.redirect_stdout(io.StringIO()):self.assertEqual(run_hitl(PROJECT/'hitl',args),2)
         manifest=json.loads(next((self.folder/'mismatch').glob('run_*/manifest.json')).read_text())
         self.assertEqual(manifest['verdict'],'NOT_RUN');self.assertIn('fake_fc',' '.join(manifest['parts']['identity']['reasons']))
         flight=SimpleNamespace(fake_fc=False,fake_state_dir=self.state,fake_config=None,port='auto',log_dir=self.folder/'mismatch_flight',
                                altitude=100.,hold_seconds=60.,hold_timeout=180.,flight_timeout=300.)
-        with contextlib.redirect_stdout(io.StringIO()):self.assertEqual(run_test(PROJECT/'hil_runtime',flight),3)
+        with contextlib.redirect_stdout(io.StringIO()):self.assertEqual(run_test(PROJECT/'hitl',flight),3)
         report=json.loads((self.folder/'mismatch_flight/result.json').read_text())
         self.assertIn('owner fake_fc=True',report['error'])
         self.assertNotIn(176,self.command_ids())  # no mode change, no takeoff
     def test_hitl_run_keeps_a_manifest_when_a_check_breaks(self):
         # Review 11 F6: an unexpected failure after the flight (here an IPC timeout of the readback) still ends
         # with a manifest: that part INCOMPLETE, the others checked.
-        sys.path.insert(0,str(PROJECT/'hil_runtime'))
+        sys.path.insert(0,str(PROJECT/'hitl'))
         from types import SimpleNamespace
         import contextlib,io
         import host.hitl_run as hr
@@ -426,7 +425,7 @@ class RunbridgeFakeTests(unittest.TestCase):
                              out=self.folder/'broken',altitude=None,hold_seconds=1.,hold_timeout=25.,flight_timeout=35.)
         from unittest.mock import patch
         with patch.object(hr,'request',side_effect=timeout_after_flight),contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(hr.run_hitl(PROJECT/'hil_runtime',args),3)  # the 1 s Hold makes the flight FAIL
+            self.assertEqual(hr.run_hitl(PROJECT/'hitl',args),3)  # the 1 s Hold makes the flight FAIL
         manifest=json.loads(next((self.folder/'broken').glob('run_*/manifest.json')).read_text())
         part=manifest['parts']['params_after'];self.assertEqual(part['verdict'],'INCOMPLETE')
         self.assertIn('TimeoutError',part['reasons'][0])
@@ -440,7 +439,7 @@ class RunbridgeFakeTests(unittest.TestCase):
             (Path(args.log_dir)/'result.json').write_text(json.dumps(report));return 3
         return run_test
     def run_hitl_with(self,out,**patches):
-        sys.path.insert(0,str(PROJECT/'hil_runtime'))
+        sys.path.insert(0,str(PROJECT/'hitl'))
         from types import SimpleNamespace
         import contextlib,io
         import host.hitl_run as hr,host.flight_test as ft
@@ -450,7 +449,7 @@ class RunbridgeFakeTests(unittest.TestCase):
         with contextlib.ExitStack() as stack:
             for name,value in patches.items():stack.enter_context(mock_patch.object(ft,name,value))
             stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
-            code=hr.run_hitl(PROJECT/'hil_runtime',args)
+            code=hr.run_hitl(PROJECT/'hitl',args)
         return code,json.loads(next((self.folder/out).glob('run_*/manifest.json')).read_text())
     def test_hitl_run_known_failure_stays_fail(self):
         # Review 12 N4: the flight test recorded FAIL; its timing evidence is missing (flight-summary cannot read
@@ -494,7 +493,7 @@ class RunbridgeFakeTests(unittest.TestCase):
                             'wire_start':len(earlier),'wire_end':len(earlier)+len(this)},
                 'initial_recovery':{'metrics':{'tx_HIL_SENSOR':0},'fc':{'connection_generation':2}},
                 'after_model_stop':{'metrics':{'tx_HIL_SENSOR':10},'fc':{'connection_generation':2},'produced_steps':10}}
-        sys.path.insert(0,str(PROJECT/'hil_runtime'))
+        sys.path.insert(0,str(PROJECT/'hitl'))
         import host.hitl_run as hr
         from unittest.mock import patch as mock_patch
         real=hr.sha256
@@ -525,7 +524,7 @@ class RunbridgeFakeTests(unittest.TestCase):
     def test_hitl_run_twice_on_one_owner(self):
         # Review 13 R13-3: two runs on the same owner: each keeps only its own records of the owner's wire.bin.
         self.cli('shutdown','--force-exit');self.host.wait(timeout=10)
-        self.host=subprocess.Popen([str(ENTRY),'bridge','--headless',*self.common,'--fake-config',str(self.config_path),'--log-dir',
+        self.host=subprocess.Popen([str(ENTRY),'bridge',*self.common,'--fake-config',str(self.config_path),'--log-dir',
                                     str(self.folder/'logs2'),'--duration','240'],cwd=self.folder,env=self.env,stdout=self.console,stderr=subprocess.STDOUT)
         self.wait(lambda:self.status().get('ready_to_start_model'),8)
         short=['--hold-seconds','1','--hold-timeout','25','--flight-timeout','35']
@@ -537,7 +536,7 @@ class RunbridgeFakeTests(unittest.TestCase):
 
 class HitlRunUnitTests(unittest.TestCase):
     def test_verdict_order_and_real_fc_fixed_flight(self):
-        sys.path.insert(0,str(PROJECT/'hil_runtime'))
+        sys.path.insert(0,str(PROJECT/'hitl'))
         from types import SimpleNamespace
         from host.hitl_run import combine,run_hitl
         self.assertEqual(combine(['PASS','INCOMPLETE','PASS']),'INCOMPLETE')
@@ -586,17 +585,19 @@ class HitlRunUnitTests(unittest.TestCase):
             args=SimpleNamespace(fake_fc=True,fake_state_dir=Path(folder)/'no_owner',fake_config=None,port='auto',
                                  release=None,out=folder,altitude=None,hold_seconds=None,hold_timeout=None,flight_timeout=None)
             with mock_patch.object(hr,'sha256',side_effect=missing),contextlib.redirect_stdout(io.StringIO()):
-                self.assertEqual(run_hitl(PROJECT/'hil_runtime',args),2)
+                self.assertEqual(run_hitl(PROJECT/'hitl',args),2)
             run=next(Path(folder).glob('run_*'))
             manifest=json.loads((run/'manifest.json').read_text())
             self.assertEqual((manifest['verdict'],manifest['parts']['identity']['verdict']),('NOT_RUN','FAIL'))
             self.assertIn('FileNotFoundError',manifest['parts']['identity']['reasons'][0])
             self.assertFalse((run/'operations.jsonl').exists())  # no owner call
-        # On a real FC only the fixed flight of agent_policy.json: refused before any owner call or folder.
+        # On a real FC other flight values run too (user 2026-10-18) and are recorded; here no owner runs: NOT_RUN.
         with tempfile.TemporaryDirectory() as folder:
             args=SimpleNamespace(fake_fc=False,fake_state_dir=None,fake_config=None,port='auto',release=None,out=folder,
                                  altitude=50.0,hold_seconds=None,hold_timeout=None,flight_timeout=None)
-            with self.assertRaisesRegex(ValueError,'fixed flight'):run_hitl(PROJECT/'hil_runtime',args)
-            self.assertEqual(list(Path(folder).iterdir()),[])
+            with mock_patch.object(hr,'request',side_effect=OSError('no owner')),contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(run_hitl(PROJECT/'hitl',args),2)
+            manifest=json.loads((next(Path(folder).glob('run_*'))/'manifest.json').read_text())
+            self.assertEqual(manifest['scenario']['nonstandard_parameters'],{'altitude':{'requested':50.0,'standard':100}})
 
 if __name__=='__main__':unittest.main(verbosity=2)

@@ -1,0 +1,27 @@
+{
+  "description": "Default flight of test-takeoff-hold / hitl-run and the flight-summary judgement. Other flight values run and are recorded in the report (nonstandard_parameters).",
+  "flight_test": {
+    "altitude": 100,
+    "hold_seconds": 60,
+    "hold_timeout": 180,
+    "flight_timeout": 300
+  },
+  "pass_criteria": {
+    "hold_seconds_min": 60,
+    "turns_min": 1,
+    "late_steps_max": 0,
+    "serial_errors_max": 0,
+    "log_drops_max": 0
+  },
+  "baseline": {
+    "date": "2026-10-15",
+    "platform": "macos-arm64 (FW_SkySurfer); replace with the first Ubuntu run",
+    "hold_seconds": 60.13,
+    "turns": 2.74,
+    "radius_m": 78.3,
+    "height_min_m": 101.4,
+    "height_max_m": 114.5,
+    "lateness_max_us": 62,
+    "serial_max_write_ms": 5.2
+  }
+}

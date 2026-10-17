@@ -3,27 +3,19 @@ from pathlib import Path
 import serial
 from pymavlink.dialects.v20 import common as mav
 from .param_wire import param_bits, with_bits, encode, decode
-from . import mavftp
+from . import mavftp, serial_helpers
 
 
-def legacy_core(project):
-    # The macOS bridge helpers are POSIX and also serve Linux.
-    platform = 'windows' if sys.platform == 'win32' else 'macos'
-    folder = Path(project) / 'hil_bridge' / platform / 'bridge'
-    sys.path.insert(0, str(folder))
-    name = 'fw_hil_' + platform + '_bridge'
-    spec = importlib.util.spec_from_file_location(name, folder / (name + '.py'))
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    spec.loader.exec_module(module)
-    return module
+def load_helpers(project):
+    """Serial-device and frame helpers (host/serial_helpers.py); a function so tests can replace them."""
+    return serial_helpers
 
 
 class SerialTransport:
     fake = False
 
     def __init__(self, project, port='auto'):
-        self.helpers = legacy_core(project)
+        self.helpers = load_helpers(project)
         self.requested = port
         self.port = None
         self.path = None
@@ -149,7 +141,7 @@ class FakeFC:
         self.last_tick = time.monotonic()
         self.next_telemetry = 0
         self.last_config = 0
-        self.helpers = legacy_core(project) if project else None
+        self.helpers = load_helpers(project) if project else None
         self._config()
 
     def _config(self):
@@ -763,7 +755,7 @@ class FakePTY:
         self.diagnostic_path = Path(diagnostic_path) if diagnostic_path else None
         if self.mode == 'process' and self.diagnostic_path is None:
             raise ValueError('Process peer requires a diagnostic output path')
-        self.helpers = legacy_core(project)
+        self.helpers = load_helpers(project)
         self.port = None
         self.master = self.slave = None
         self.path = 'fake://pty'

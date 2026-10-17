@@ -21,7 +21,7 @@ class TransportTests(unittest.TestCase):
   self.helpers=Mock();self.app=SimpleNamespace(path='/fake/usb',identity='usb:app',label='PX4 FMU v6C.x');self.boot=SimpleNamespace(path='/fake/usb',identity='usb:boot',label='PX4 BL FMU v6C.x')
   self.helpers.devices.return_value=[self.boot]
   self.helpers.choose_device.side_effect=lambda found,preferred,requested:next((x for x in found if preferred is None or x.identity==preferred.identity),None)
-  with patch('host.transport.legacy_core',return_value=self.helpers):self.transport=SerialTransport(RUNTIME.parent,'/fake/usb')
+  with patch('host.transport.load_helpers',return_value=self.helpers):self.transport=SerialTransport(RUNTIME.parent,'/fake/usb')
   self.helpers.serial_owner.return_value=False
  def test_bootloader_never_opened_or_written(self):
   with patch('host.transport.serial.Serial') as opener:

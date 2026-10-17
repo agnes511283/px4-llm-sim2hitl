@@ -52,7 +52,7 @@ def run_test(runtime, args):
             raise ValueError(name + ' must be finite and positive')
     if not 20 <= args.altitude <= 500 or args.hold_timeout < args.hold_seconds:
         raise ValueError('Altitude must be 20..500 m; hold-timeout must cover hold-seconds')
-    from .policy import flight_test_overrides
+    from .flight_config import flight_test_overrides
 
     # Non-standard values run (consent is given in the conversation) and are recorded in the report.
     overrides = flight_test_overrides(args)
@@ -129,7 +129,6 @@ def run_test(runtime, args):
                 '-B',
                 str(runtime / 'main.py'),
                 'bridge',
-                '--headless',
                 '--port',
                 args.port,
                 '--log-dir',

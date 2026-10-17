@@ -2,7 +2,7 @@
 
 A mixin of Core (core.py): it uses Core's link, gate (_param_txn_gate), FC identity (_fc_version,
 _param_txn_identify), reboot (recover) and App Nap guard (_transfer).
-Contract: hil_bridge/docs/BEHAVIOR_CONTRACT.md 7f.
+Contract: docs/ARCHITECTURE.md (FC operations).
 
 PX4 runs /fs/microsd/etc/extras.txt at the end of its boot (ROMFS init.d/rcS, FEXTRAS): that is how a custom
 module outside the PX4 tree starts without changing the tree. sd-put / sd-rm change only the boot files named in

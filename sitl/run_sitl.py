@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Run the SkySurfer SITL: minimal PX4 with the sks_sim plant module (docs/ROADMAP.md decision 8).
 
-  "$HOME/Library/Application Support/SkySurferHIL/venv/bin/python" sitl/run_sitl.py \
-      --out ~/Library/Caches/Codex/SkySurferPhaseB/sitl_<timestamp> [--scenario sitl/scenarios/stabilized_steps.json] \
+  <SkySurfer venv python> -B sitl/run_sitl.py \
+      --out <new folder> [--scenario sitl/scenarios/stabilized_steps.json] \
       [--duration S] [--instances N]
 
 The scenario JSON (sitl/scenarios/) gives the mode, the air-start state, a settling time and the stick steps
@@ -10,7 +10,7 @@ The scenario JSON (sitl/scenarios/) gives the mode, the air-start state, a settl
 the start is the plant's level-flight trim at the given airspeed (sitl/trim.py): pitch = angle of attack,
 throttle stick from the trim throttle, and in Stabilized a base pitch stick that holds the trim pitch.
 "base_sticks" (absolute) replaces those base sticks; "base" adds offsets to them.
---ulog also starts PX4's logger with the HITL logging profile (SDLOG_PROFILE from deploy/00_native/
+--ulog (default; --no-ulog skips it) starts PX4's logger with the HITL logging profile (SDLOG_PROFILE from deploy/00_native/
 hitl_overrides.params): <instance>/log/<date>/*.ulg, the input of sitl/replay.py's self-test.
 --logger-topics FILE (with --ulog) replaces that profile by PX4's custom topic list (lines "topic interval_ms
 instance", copied to <instance>/etc/logging/logger_topics.txt), e.g. every input at full rate.
@@ -44,7 +44,8 @@ sys.dont_write_bytecode = True  # imports trim, replay, analysis modules: no __p
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'sitl'))
 NATIVE = ROOT / 'deploy' / '00_native'
-PX4_ROOT_CONFIG = Path.home() / 'Library' / 'Application Support' / 'SkySurferHIL' / 'px4_root'
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'px4'))
+from check_px4_tree import px4_root  # noqa: E402
 # Parameters that belong to the physical FC or to modules this SITL does not run.
 EXCLUDED_PREFIXES = ('CAL_', 'UAVCAN_', 'RC', 'MAV_', 'SER_', 'BAT', 'EKF2_', 'SDLOG_', 'DSHOT_', 'UXRCE_',
                      'HIL_ACT_', 'PWM_', 'SYS_HITL', 'SYS_AUTOSTART', 'SYS_AUTOCONFIG', 'SYS_USB_AUTO')
@@ -167,7 +168,8 @@ def main():
     parser.add_argument('--stagger', type=float, default=1.0, help='seconds between instance launches')
     parser.add_argument('--retries', type=int, default=2)
     parser.add_argument('--startup-timeout', type=float, default=60.0)
-    parser.add_argument('--ulog', action='store_true', help="also record a ULog with the HITL logging profile")
+    parser.add_argument('--ulog', action=argparse.BooleanOptionalAction, default=True,
+                        help="record a ULog with the HITL logging profile (default; --no-ulog to skip)")
     parser.add_argument('--logger-topics', type=Path, help='custom logger topic list instead of the profile')
     parser.add_argument('--start', action='append', default=[], metavar='CMD',
                         help='one more PX4 command before sks_sim, e.g. "sks_hello start" (repeatable)')
@@ -177,7 +179,7 @@ def main():
     args = parser.parse_args()
     if args.replay:
         return replay_main(args)
-    px4_tree = Path(PX4_ROOT_CONFIG.read_text().strip())
+    px4_tree = px4_root()
     px4 = px4_tree / 'build' / 'px4_sitl_default_skysurfer' / 'bin' / 'px4'
     params = sitl_params()
     if args.ulog:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Trim of the SkySurfer plant (steady level flight or steady coordinated turn) and the open-loop drop test.
 
-  "$HOME/Library/Application Support/SkySurferHIL/venv/bin/python" sitl/trim.py
+  <SkySurfer venv python> -B sitl/trim.py
       [--airspeed 15 20 25] [--height 100] [--bank 0] [--drop 20] [--plant-lib PATH] [--json]
 
 Default: level flight at 15, 20 and 25 m/s, 100 m, each followed by a 20 s drop test. Output: a table in
@@ -24,8 +24,8 @@ Drop test: start the plant at the trim state (rate limiters settled), hold the t
 --drop seconds and report the drift. A correct trim drifts only through the slow modes (spiral, phugoid).
 
 Commands are normalised like the HIL ABI controls[0..4]: elevator + = nose up, + on either aileron
-channel rolls left. The plant library defaults to the one the SITL PX4 build links (SKS_PLANT_LIB in its
-CMakeCache.txt); it must have core API 1.1 (sks_core_eval).
+channel rolls left. The plant library defaults to the one of the active model release (no PX4 or SITL build
+needed); it must have core API 1.1 (sks_core_eval).
 """
 import argparse
 import ctypes as C
@@ -35,7 +35,6 @@ from pathlib import Path
 
 import numpy as np
 
-PX4_ROOT_CONFIG = Path.home() / 'Library' / 'Application Support' / 'SkySurferHIL' / 'px4_root'
 G0 = 9.80665
 DT = 0.004
 NX = 21
@@ -46,11 +45,14 @@ S_POS, S_VNED, S_EULER, S_AIRSPEED, S_SURF = 0, 13, 16, 52, 66
 
 
 def default_plant_lib():
-    cache = Path(PX4_ROOT_CONFIG.read_text().strip()) / 'build' / 'px4_sitl_default_skysurfer' / 'CMakeCache.txt'
-    for line in cache.read_text().splitlines():
-        if line.startswith('SKS_PLANT_LIB:'):
-            return Path(line.split('=', 1)[1])
-    raise RuntimeError('SKS_PLANT_LIB not found in ' + str(cache))
+    """The plant library of the active model release (no PX4 or SITL build needed)."""
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'hitl'))
+    from host.release import read_release
+
+    release, manifest = read_release(Path(__file__).resolve().parents[1] / 'hitl')
+    return release / manifest['plant_library']
 
 
 class _Initial(C.Structure):

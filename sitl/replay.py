@@ -21,7 +21,8 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PX4_ROOT_CONFIG = Path.home() / 'Library' / 'Application Support' / 'SkySurferHIL' / 'px4_root'
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'px4'))
+from check_px4_tree import px4_root  # noqa: E402
 # Upstream topics the three controllers subscribe to (ORB_IDs in their sources), minus their own outputs.
 INPUTS = ['vehicle_attitude', 'vehicle_angular_velocity', 'manual_control_setpoint', 'vehicle_control_mode',
           'vehicle_status', 'vehicle_land_detected', 'airspeed_validated', 'vehicle_local_position',
@@ -53,7 +54,7 @@ def run(ulog, out, speed=5.0, timeout_margin=120.0):
     log = ulog_reader.read(ulog)
     stamps = [int(a['timestamp'][-1]) for a in log.topics.values() if len(a)]
     span_s = (max(stamps) - log.start_us) * 1e-6
-    tree = Path(PX4_ROOT_CONFIG.read_text().strip())
+    tree = px4_root()
     bindir = tree / 'build' / 'px4_sitl_replay' / 'bin'
     if not (bindir / 'px4').is_file():
         raise SystemExit('px4_sitl_replay not built: python3 sitl/build_sitl.py --replay')

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Check that this machine's PX4 source tree matches px4/px4_lock.json.
 
-The PX4 tree is kept outside Dropbox. Its location is per machine and is found in this order:
+The PX4 tree is kept outside the project. Its location is per machine and is found in this order:
   --path PATH, then $SKYSURFER_PX4_ROOT, then the local config file
-  (macOS: ~/Library/Application Support/SkySurferHIL/px4_root,
-   Linux: ~/.config/SkySurferHIL/px4_root,
-   Windows: %LOCALAPPDATA%\\SkySurferHIL\\px4_root).
-If none of them is set, ask the user where the tree is. Do not guess a path or clone on your own.
+  (macOS: ~/Library/Application Support/SkySurfer/px4_root,
+   Linux: ~/.config/SkySurfer/px4_root,
+   Windows: %LOCALAPPDATA%\\SkySurfer\\px4_root).
+If none of them is set: use the user's tree if they have one, otherwise download the locked tag outside the
+project (git clone --branch <tag> --recurse-submodules <repository>), check it with --path and --remember.
+Other scripts get the location from px4_root().
 
   python3 px4/check_px4_tree.py                      check and print a JSON report
   python3 px4/check_px4_tree.py --path P --remember  check P and save it as this machine's location
@@ -32,7 +34,7 @@ def config_file():
         base = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config')
     else:
         base = Path.home() / 'Library' / 'Application Support'
-    return base / 'SkySurferHIL' / 'px4_root'
+    return base / 'SkySurfer' / 'px4_root'
 
 
 def locate(explicit):
@@ -47,6 +49,14 @@ def locate(explicit):
         if text:
             return Path(text).expanduser(), str(cfg)
     return None, None
+
+
+def px4_root():
+    """The PX4 tree of this machine (SKYSURFER_PX4_ROOT or the local config file)."""
+    root, _ = locate(None)
+    if root is None:
+        raise SystemExit('PX4 tree location not set: run px4/check_px4_tree.py --path <tree> --remember')
+    return root
 
 
 def git(root, *args):

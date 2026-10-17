@@ -10,7 +10,7 @@ for the ULog replay (ROADMAP batch 4h). It has no sks_sim and needs no plant lib
 
 1. Locates the PX4 source tree and checks it against px4/px4_lock.json (px4/check_px4_tree.py must PASS).
 2. Picks the plant library: --plant-lib, or the cache of the active model release (its build.json records
-   the cache the release was compiled from; <cache>/native/libskysurfer_plant.dylib). A development build
+   its plant library, published in the release next to the HIL library). A development build
    may point --plant-lib at a trial cache without publishing a release.
 3. Runs `make px4_sitl_default EXTERNAL_MODULES_LOCATION=sitl/px4_external BUILD_DIR_SUFFIX=_skysurfer`
    in the PX4 tree (incremental; output in <PX4 tree>/build/px4_sitl_default_skysurfer, git-ignored).
@@ -27,17 +27,21 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PX4_ROOT_CONFIG = Path.home() / 'Library' / 'Application Support' / 'SkySurferHIL' / 'px4_root'
-LOGS = Path.home() / 'Library' / 'Caches' / 'Codex' / 'SkySurferPhaseB'
+sys.path.insert(0, str(ROOT / 'px4'))
+sys.path.insert(0, str(ROOT / 'plant' / 'core'))
+sys.path.insert(0, str(ROOT / 'hitl'))
+from check_px4_tree import px4_root  # noqa: E402
+import toolchain  # noqa: E402
+
+LOGS = toolchain.cache_root()
 
 
 def active_plant_lib():
-    active = json.loads((ROOT / 'hil_runtime' / 'active' / 'macos-arm64.json').read_text())
-    build = json.loads((ROOT / 'hil_runtime' / active['release'] / 'build.json').read_text())
-    for item in build['command']:
-        if item.endswith('/codegen/SkySurfer_Core_ert_rtw'):
-            return Path(item).parents[1] / 'native' / 'libskysurfer_plant.dylib'
-    raise RuntimeError('active release build.json does not name its cache')
+    """The plant library of the active model release (published next to the HIL library)."""
+    from host.release import read_release
+
+    release, manifest = read_release(ROOT / 'hitl')
+    return release / manifest['plant_library']
 
 
 def main():
@@ -49,7 +53,8 @@ def main():
     if check.returncode != 0:
         print(check.stdout + check.stderr)
         raise SystemExit('PX4 tree check did not PASS; see px4/README.md')
-    tree = Path(PX4_ROOT_CONFIG.read_text().strip())
+    tree = px4_root()
+    LOGS.mkdir(parents=True, exist_ok=True)
     if args.replay:
         log = LOGS / f'sitl_replay_build_{time.strftime("%Y%m%d_%H%M%S")}.log'
         with open(log, 'w') as out:

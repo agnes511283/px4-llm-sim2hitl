@@ -1,11 +1,11 @@
 # sks_sim: the SkySurfer plant (core + C Truth + C sensors) as an in-process PX4 simulator module.
-# The plant is the validated libskysurfer_plant.dylib of a model build cache (plant/core/compile_core.py),
-# passed as -DSKS_PLANT_LIB=<cache>/native/libskysurfer_plant.dylib; it is linked, not recompiled with PX4 flags.
+# The plant is the validated libskysurfer_plant shared library of the active model release (or of a build
+# cache), passed as -DSKS_PLANT_LIB=<path>; it is linked, not recompiled with PX4 flags.
 if(NOT SKS_PLANT_LIB)
 	set(SKS_PLANT_LIB $ENV{SKS_PLANT_LIB})
 endif()
 if(NOT EXISTS "${SKS_PLANT_LIB}")
-	message(FATAL_ERROR "sks_sim: set SKS_PLANT_LIB to <cache>/native/libskysurfer_plant.dylib")
+	message(FATAL_ERROR "sks_sim: set SKS_PLANT_LIB to the libskysurfer_plant shared library")
 endif()
 get_filename_component(SKS_PROJECT_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../.." ABSOLUTE)
 

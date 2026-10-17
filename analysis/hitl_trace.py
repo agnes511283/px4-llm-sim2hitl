@@ -1,7 +1,7 @@
 """HITL wire.bin -> trace.csv in the SITL column layout (ROADMAP batch 4i); used by response.py --hitl-log.
 
 The runtime logs no plant truth, so the trace comes from the MAVLink traffic in <log>/host/wire.bin
-(hil_bridge/docs/BEHAVIOR_CONTRACT.md section 11; all channel stamps are native ns):
+(docs/ARCHITECTURE.md, HITL logs; all channel stamps are native ns):
   channel 1 (FC RX): ATTITUDE (EKF2 attitude, filtered body rates; 100 Hz), LOCAL_POSITION_NED (height = -z),
                      VFR_HUD (calibrated airspeed), HIL_ACTUATOR_CONTROLS (controls[0..4]).
   channel 4 (written to the FC): MANUAL_CONTROL, the sticks actually sent.

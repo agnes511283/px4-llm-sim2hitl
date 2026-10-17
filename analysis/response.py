@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Step-response metrics of a stick-step scenario (ROADMAP batch 4g), shared by SITL and HITL.
 
-  "$HOME/Library/Application Support/SkySurferHIL/venv/bin/python" analysis/response.py \
+  <SkySurfer venv python> -B analysis/response.py \
       --trace <run>/instance_0/trace.csv --scenario sitl/scenarios/stabilized_steps.json [--out metrics.json]
 
 trace.csv columns (sitl/px4_external/src/sks_sim): t_s counted from the first plant step, attitude and body

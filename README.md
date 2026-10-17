@@ -46,6 +46,6 @@
 | 離線測試 | 15 個檔、184 項 OK |
 | 600 s 負載（不開視窗） | PASS；有即時權限時最慢晚到 0.47 ms |
 | SITL | 編譯 PASS；參考情境 `stabilized_steps` 的指標和 macOS 紀錄相同 |
-| HITL（實體 FC） | 尚未在新資料夾跑 |
+| HITL（實體 FC） | 00_native 基準 `hitl-run` PASS（2026-10-17 UTC）：盤旋 60 s、2.78 圈；23,039 步 0 次晚到、最慢 0.79 ms；USB 寫入最慢 0.26 ms；FC 量到感測器 250.009 Hz |
 | 第 3 段一條龍（編韌體、燒錄） | 尚未寫 |
 | 收尾 | 把討論定案的計畫（`~/Documents/Codex/2026-10-18/skysurfer_architecture_v3/PLAN.md`）的核心精神放進專案；乾淨目錄試跑；上 GitHub |

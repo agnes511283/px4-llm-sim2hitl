@@ -14,14 +14,15 @@
     "log_drops_max": 0
   },
   "baseline": {
-    "date": "2026-10-15",
-    "platform": "macos-arm64 (FW_SkySurfer); replace with the first Ubuntu run",
-    "hold_seconds": 60.13,
-    "turns": 2.74,
-    "radius_m": 78.3,
-    "height_min_m": 101.4,
-    "height_max_m": 114.5,
-    "lateness_max_us": 62,
-    "serial_max_write_ms": 5.2
+    "date": "2026-10-17",
+    "platform": "linux-x64 (Ubuntu 24.04), release skysurfer-f53eee94, deploy/00_native",
+    "evidence": "~/.cache/SkySurfer/hitl_runs/run_20261017_190655Z_003cf1fb",
+    "hold_seconds": 60.06,
+    "turns": 2.78,
+    "radius_m": 82.3,
+    "height_min_m": 100.0,
+    "height_max_m": 113.2,
+    "lateness_max_us": 787,
+    "serial_max_write_ms": 0.26
   }
 }

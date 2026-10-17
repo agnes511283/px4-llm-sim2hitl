@@ -48,3 +48,4 @@
 | SITL | 編譯 PASS；參考情境 `stabilized_steps` 的指標和 macOS 紀錄相同 |
 | HITL（實體 FC） | 尚未在新資料夾跑 |
 | 第 3 段一條龍（編韌體、燒錄） | 尚未寫 |
+| 收尾 | 把討論定案的計畫（`~/Documents/Codex/2026-10-18/skysurfer_architecture_v3/PLAN.md`）的核心精神放進專案；乾淨目錄試跑；上 GitHub |

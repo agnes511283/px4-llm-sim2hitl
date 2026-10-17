@@ -1,0 +1,116 @@
+# SITL：精簡 PX4＋plant 模組
+
+這是 SkySurfer 的 SITL 做法（[ROADMAP](../docs/ROADMAP.md) 決定 8、17）。**不跑完整 PX4 SITL、不走 MAVLink、不啟動 EKF2**：用鎖定版本的 PX4 posix build，只啟動情境需要的 PX4 模組，把 plant 寫成 PX4 模組放在同一個程序裡 lockstep 執行，估測值直接用 plant 的真值。PX4 模組的程式原封不動；不要自己重寫 PX4 模組的接線。
+
+## 架構
+
+```
+sks_sim（本資料夾的 PX4 out-of-tree 模組）
+  ├─ 擁有 PX4 時鐘：每步 +4 ms，等所有 PX4 work queue 做完（lockstep）
+  ├─ plant：libskysurfer_plant.dylib（核心＋C Truth＋C sensors，與 HIL release 同一份驗收過的程式）
+  ├─ IMU：C sensors 的 accel／gyro → PX4Accelerometer／PX4Gyroscope → PX4 sensors（保留陀螺儀濾波）
+  ├─ 取代 EKF：vehicle_attitude、vehicle_local_position、vehicle_global_position、airspeed_validated、
+  │            vehicle_air_data、vehicle_land_detected 由 Truth 直接發布
+  ├─ stub：vehicle_status、vehicle_control_mode、actuator_armed、manual_control_setpoint（情境的搖桿）
+  └─ 讀 actuator_outputs_sim（pwm_out_sim，PWM_MAIN_FUNC1..5 = HIL ABI 的 controls[0..4]）送回 plant
+PX4 模組（Stabilized）：sensors、pwm_out_sim、control_allocator、fw_rate_control、fw_att_control
+```
+
+各模式要多啟動的模組見決定 8。目前實作 Stabilized 與 Acro（`run_sitl.py` 的 `MODULES`、`sks_sim` 的模式旗標照 PX4 `commander/ModeUtil/control_mode.cpp`）；其他模式要加模組清單與對應的 stub。Acro 只保持「角速度為零」、不保持姿態，FC 的 `TRIM_PITCH=0` 下沒有人操控會一路低頭，所以沒有放無人操控的 Acro 參考情境。
+
+## 檔案
+
+| 檔案 | 用途 |
+|---|---|
+| [run_sitl.py](run_sitl.py) | 讀情境、算配平、產生參數與啟動腳本、啟動一或多個 PX4 instance、收集結果 |
+| [trim.py](trim.py) | 配平（平飛、協調轉彎）與丟出去測試；常態工具，問配平就跑它 |
+| [replay.py](replay.py) | ULog 重播（批次 4h）：PX4 `replay` 只發布控制器輸入，原生控制器重算輸出；由 `run_sitl.py --replay` 呼叫 |
+| [scenarios/](scenarios/) | 情境檔；`stabilized_steps.json` 是參考情境（決定 17）；`stabilized_steps_hitl.json` 是它的 HITL 版（批次 4i，HITL 序列與 SITL 預演共用） |
+| [px4_external/src/CMakeLists.txt](px4_external/src/CMakeLists.txt) | PX4 `EXTERNAL_MODULES_LOCATION` 的模組清單 |
+| [px4_external/src/sks_sim/](px4_external/src/sks_sim/) | `sks_sim` 模組（`SksSim.cpp`、`SksSim.hpp`、`CMakeLists.txt`） |
+
+## 建置（開發迴圈，A 級）
+
+```sh
+python3 sitl/build_sitl.py                      # plant library = active release 的 cache
+python3 sitl/build_sitl.py --plant-lib <cache>/native/libskysurfer_plant.dylib   # 例如試建 cache
+python3 sitl/build_sitl.py --replay              # ULog 重播用的 px4_sitl_replay
+```
+
+- 先跑 `px4/check_px4_tree.py`（PASS 才編），再在 PX4 原始碼樹執行 `make px4_sitl_default EXTERNAL_MODULES_LOCATION=<專案>/sitl/px4_external BUILD_DIR_SUFFIX=_skysurfer CMAKE_ARGS=-DSKS_PLANT_LIB=<plant library>`。增量編譯，log 在 `本機 ~/Library/Caches/Codex/SkySurferPhaseB/sitl_build_*.log`。
+- 輸出在 `<PX4 原始碼樹>/build/px4_sitl_default_skysurfer/`（git 忽略的 build 目錄，`check_px4_tree.py` 仍 PASS）。不改 PX4 原始碼，不覆蓋 `build/px4_sitl_default`。
+- PX4 執行檔以絕對路徑連結 plant library；換 release 或刪 cache 後重跑本指令。
+- `--replay`：`make px4_sitl_replay`，輸出在 `<PX4 原始碼樹>/build/px4_sitl_replay/`。這是 PX4 自己的 board（預設 SITL＋uORB 發布規則 `ORB_USE_PUBLISHER_RULES`），不含 `sks_sim`、不需要 plant library；第一次約幾分鐘。
+- 外部模組比 PX4 的 `src/lib` 早設定，所以 `sks_sim` 的 PX4 函式庫用 `target_link_libraries` 依名稱連結，不用 `px4_add_module` 的 `DEPENDS`。
+
+## 執行（離線模擬，不碰硬體；A 級）
+
+```sh
+python3 sitl/run_sitl.py --out ~/Library/Caches/Codex/SkySurferPhaseB/sitl_$(date +%Y%m%d_%H%M%S) [--scenario sitl/scenarios/stabilized_steps.json] [--instances 1]
+```
+
+- 每個 instance 一個資料夾：`sks_rcS`（產生的啟動腳本）、`sitl_params.bson`、`px4.log`、`trace.csv`（每步：時間、姿態、角速度、空速、高度、搖桿、五路 controls）、`summary.json`（步數、模擬秒數、實際秒數、真實時間倍數）。最後印一行 JSON（各 instance 與合計）。
+- **參數**：`deploy/00_native/` 的 FC 匯出＋HITL 設定，轉成 SITL：`HIL_ACT_FUNC*`／`HIL_ACT_REV` → `PWM_MAIN_FUNC*`／`PWM_MAIN_REV`；`SYS_HITL=0`；FC 的感測器校正與硬體參數不套用，`CAL_ACC0_ID`／`CAL_GYRO0_ID` 設成模擬 IMU。參數寫成 BSON（`sitl_params.bson`），啟動腳本用一次 `param import` 載入（逐一 `param set` 有約 580 次 client 呼叫，多個 instance 同時啟動時偶爾有一次卡住不返回）；SITL build 沒有的參數會在 `px4.log` 印 `ignoring unrecognised parameter`，屬正常。
+- **起始**（`SksSim.hpp` 註解）：(1) 用真實時間跑到 `pwm_out_sim` 開始輸出（所有 work queue 都已建立；更早就 lockstep 會 deadlock）；(2) lockstep、disarmed、plant 固定在初值 100 步（輸出模組只在 disarmed 時套用 `PWM_MAIN_FUNC`）；(3) arm，收到第一筆 armed 輸出後 plant 才開始推進；「armed 輸出」是時間戳不早於 armed stub 發布時間的那一筆（更早的是 disarmed 時算的）。步數＝`duration` / 4 ms 四捨五入。
+- **情境檔**（`scenarios/*.json`）：`mode`（`stabilized`／`acro`）、`initial`（高度、空速、航向、經緯度）、`trim`、`settle_s`、`duration_s`、`steps`（`start_s`／`end_s` 從 settle 結束起算，`roll`／`pitch`／`yaw`／`throttle` 搖桿增量）、可選 `base`。`run_sitl.py` 把它轉成 `sks_sim` 讀的 `scenario.txt`（格式見 `SksSim::load_scenario`）。要用 HIL venv 的 Python（配平用 numpy）。
+- **配平**（`trim.py`，見下一節）：空中起始用平飛配平的攻角＝俯仰與油門；油門搖桿＝2×油門−1；Stabilized 另加基準俯仰搖桿，讓設定值等於配平俯仰。SITL 起始只帶入高度、速度、姿態（`SksInitialConditions` 不含角速度與致動器狀態），所以轉彎配平還不能當 SITL 起始。
+- **settle_s**：PX4 的角速度積分器從 0 開始，而配平需要升降舵 0.4（FC 的 `TRIM_PITCH=0`），所以起始後俯仰先掉到約 −6°，約 40 s 回到配平（俯仰差 < 0.25°）；收斂後的升降舵 0.396 與離線配平一致。參考情境先 settle 40 s 再做階躍。
+- **參考情境 `stabilized_steps`**：settle 40 s 後，3–6 s roll 搖桿 0.5、9–11 s pitch 0.3、14–16 s yaw 0.5。指標用 [analysis/response.py](../analysis/response.py) 算；數值見 VALIDATION。
+- **`base_sticks`**：絕對的基準桿量（`manual_control_setpoint` 值），取代配平算出的基準；這時 `trim` 只決定空中起始狀態。`base` 是疊加的偏移。
+- **HITL 版 `stabilized_steps_hitl`**：同一組階躍與基準桿量（15 m/s 平飛配平，取到 MANUAL_CONTROL 的 1/1000：pitch −0.125、油門 −0.77），但 HITL 是從起飛後的巡航（約 25 m/s）進入，所以 settle 60 s。在 SITL 跑就是那趟 HITL 的預演（25 m/s 平飛配平起始）：約 50 s 回到 15 m/s，高度掉約 16 m，階躍指標和參考情境差 ≤ 0.02°／0.02 s。HITL 由 `hil_bridge/commands/stabilized_steps.py` 飛。
+- **多個 instance**：`--instances N` 平行跑，啟動間隔 `--stagger`（預設 1 s）。PX4 的 server 執行緒在多個同時啟動時可能還沒準備好，所以啟動腳本第一行先等 `px4-ver` 有回應；另外某個 instance 在 `--startup-timeout`（預設 60 s）內沒有建立 `trace.csv`（代表 `sks_sim` 沒起來），或結束時沒有 `summary.json`，runner 會重啟它（`--retries`，結果的 `retries` 欄）。`px4.log` 是區塊緩衝寫入，PX4 結束前讀不到完整內容，不能用來即時判斷。
+- **速度欄位**：每個 instance 的 `realtime_factor` 是它自己的「模擬秒數／實際秒數」；`throughput_realtime_factor` 是所有 instance 的模擬秒數合計，除以第一個開始推進到最後一個結束的實際時間，只有在各 instance 確實同時在跑時才代表平行吞吐量（要用夠長的 `--duration`）。
+
+## 配平與丟出去（常態工具）
+
+使用者問「配平多少」時直接跑，不用窮舉：
+
+```sh
+python3 sitl/trim.py                 # 預設 15、20、25 m/s，100 m 平飛
+python3 sitl/trim.py --airspeed 18 --bank 20 --height 150
+```
+
+- **解法**：plant 核心的平衡點（`sks_core_eval` = f(x, u)，與模擬同一段程式，[plant README](../plant/README.md)）。給空速、高度、坡度（0 = 平飛；非 0 = 協調轉彎，轉彎角速度 g·tanφ/V），解攻角、側滑、俯仰、副翼（兩路同一命令，同 HITL）、升降舵、方向舵、油門與 5 個致動器狀態，使機體加速度、角加速度、致動器導數與垂直速度為 0。協調轉彎只要求轉彎角速度與這些平衡條件，**沒有另外要求側滑為 0**（15 m/s、20° 時側滑 −0.60°）。阻尼 Newton，三個空速約 0.3 s。
+- **舵面後有 rate limiter**（記住前一次輸出的離散狀態），所以每次求值把同一狀態寫入並步進 40 次，讓 limiter 到達平衡偏角，再取導數。
+- **丟出去**（`--drop`，預設 20 s；0 = 不做）：從配平狀態（limiter 已到位）開始，舵面與油門固定在配平值、沒有任何控制，回報 20 s 後的空速、高度、俯仰、滾轉變化與轉彎角速度。配平正確時漂移只來自很慢的模態；配歪會明顯漂移。
+- **輸出**：表格，SI 為主並附 kts／ft；`--json` 輸出全部欄位（含舵面偏角、狀態向量、轉彎半徑、負載因數）。
+- **plant library**：預設是 SITL build 連結的那份（需核心 API 1.1）。
+- **目前的配平**（release `e8edd934…`，100 m／328 ft，無風；命令為正規化值，升降舵 + = 抬頭）：
+
+  | 空速 | 坡度 | 攻角 | 俯仰 | 側滑 | 升降舵 | 副翼 | 方向舵 | 油門 | 轉彎角速度 |
+  |---|---|---|---|---|---|---|---|---|---|
+  | 15 m/s（29.2 kts） | 0° | 3.76° | 3.76° | 0.19° | 0.3975 | −0.0005 | −0.0074 | 0.1147 | — |
+  | 20 m/s（38.9 kts） | 0° | 1.27° | 1.27° | 0.08° | 0.1540 | −0.0001 | −0.0020 | 0.1910 | — |
+  | 25 m/s（48.6 kts） | 0° | 0.12° | 0.12° | 0.03° | 0.0770 | 0.0000 | 0.0001 | 0.2874 | — |
+  | 15 m/s | 20° | 4.09° | 3.64° | −0.60° | 0.5011 | 0.0153 | 0.0757 | 0.1153 | 13.6 °/s |
+  | 20 m/s | 20° | 1.46° | 1.45° | 0.25° | 0.1745 | 0.0037 | 0.0057 | 0.1920 | 10.2 °/s |
+  | 25 m/s | 20° | 0.24° | 0.30° | 0.22° | 0.0902 | 0.0015 | −0.0002 | 0.2885 | 8.2 °/s |
+
+  模型或氣動表改了之後重跑，數值以重跑結果為準。
+- **待補**：飛行品質（線性化後的短週期、長週期、荷蘭滾、螺旋、滾轉模態）。`sks_core_eval` 已可做數值線性化。
+
+## ULog 重播（批次 4h，A 級）
+
+證明 SITL 裡的 PX4 控制器和 FC 上的算出一樣的輸出：把 ULog 記下的**輸入**原樣餵給同一版本的 `fw_att_control`、`fw_rate_control`、`control_allocator`，重算**輸出**，逐筆和 ULog 記下的輸出比。不跑 sensors、EKF2、commander、plant，只驗控制器。
+
+```sh
+python3 sitl/build_sitl.py --replay                                    # 第一次
+python3 sitl/run_sitl.py --replay <flight.ulg> --out <目錄> [--speed 5] [--tolerance 1e-3]
+python3 sitl/run_sitl.py --out <目錄> --ulog [--logger-topics <清單>]    # SITL 也記一份 ULog（自我驗收用）
+```
+
+- **做法**（`replay.py`）：PX4 的一般 `replay` 模組照 log 時間發布、設定 lockstep 時鐘；`<out>/orb_publisher.rules` 限定它只發布 `replay.INPUTS`（控制器訂閱的上游主題），所以 log 裡的輸出不會被重發。規則檔在 PX4 啟動時就讀，所以先寫好再啟動。參數用 log 裡的（`replay tryapplyparams`）。重算的輸出由 logger 記到 `<out>/log/`，比對結果在 `<out>/replay_report.json`（[analysis/replay_compare.py](../analysis/replay_compare.py)）。
+- **配對**：有 `timestamp_sample` 的主題（力矩、推力、舵面）依它配對；沒有的（姿態與角速度設定值）用 `timestamp` 減重播偏移量後找 1 ms 內最近的一筆（FC 的 log 和重播的時間戳不會完全相同）。**結果依 log 的 PX4 模式分段**（報告的 `modes`：各段時間、缺的輸入、`covered`）：`covered` 要同時滿足 (1) 模式是 manual、acro、stabilized（`COVERED_MODES`；AUTO 模式的姿態設定值來自沒跑的位置控制器）且 (2) 那段裡 `REQUIRED_INPUTS`（姿態、角速度、搖桿、空速）都有樣本、`vehicle_control_mode`／`vehicle_status` 在段落開始前已有。每個輸出另報 `paired_fraction`（有配到的比例；沒配到的不比）。兩邊都整欄 NaN 才算沒用到的欄位；一邊 NaN、另一邊 Inf 算不一致。JSON 裡非有限值寫成字串 `"Infinity"`。報告每個欄位的完全相同比例、中位數、p99、最大差，以及超過 `--tolerance` 的樣本與時間。**不判 PASS／FAIL**，容差另外和使用者約定。
+- **`--start CMD`**（可重複）：在該模式的 PX4 模組之後、`sks_sim` 之前多啟動一個指令，例如 `--start "sks_hello start"`（`modules/` 的客製模組；SITL 由 `px4_external/src/sks_hello/` 的包裝編進來）。A/B 的基準是同一個執行檔、不加 `--start`。
+- **`--ulog`**：SITL 開 logger（`SDLOG_PROFILE` 取 HITL 的 17），在 `sks_sim` 之後啟動（logger 只收啟動時已存在的 optional 主題，例如 `airspeed_validated`），`-p vehicle_angular_velocity` 讓每個角速度樣本寫一次。開 logger 時 SITL 約 110 倍真實時間。`--logger-topics` 用 PX4 的自訂清單（每行「主題 間隔ms instance」）取代 profile。
+- **自我驗收**（SITL 記的 ULog 重播回去，參考情境 60 s；證據見 VALIDATION）：
+  - 輸入全速記錄（自訂清單，含空速）：力矩差中位數 1.4e-5、p99 3.8e-4；超過 1e-3 的只有 7 筆，都在搖桿階躍的邊緣（同一時間戳的搖桿與姿態，重播時發布順序和原本不同，差一個樣本）。
+  - **`SDLOG_PROFILE=17`（空速只記 5 Hz）**：中位數 6.0e-4、p99 5.5e-3，約 21 % 的樣本超過 1e-3。這是 `FW_ARSP_SCALE_EN=1`（增益隨空速縮放）時空速在兩筆之間被保持造成的。要把 FC 重播的差壓到 1e-4 等級，FC 的 SD 卡要放自訂清單（`etc/logging/logger_topics.txt`）讓空速全速記錄。
+  - 速度：5 倍和 1 倍結果相同（60 s log 約 28 s）；10 倍中位數略大（7.7e-5）。預設 5 倍。
+
+## 已知限制與判讀
+
+- **不是逐位元可重現**：PX4 模組分在幾個 work queue 執行緒，同一步內的先後不固定。同設定重跑 4 次，roll 最大差 0.001 rad；比對 SITL 結果要用容差，不要求 trace 相同。
+- **右副翼反向是推得的**：HITL 的 wire log 顯示 controls[0] 與 controls[1] 在飛行中完全相同，而 plant 兩個副翼通道都是「正值 → 左滾」，所以 FC 必定反向了一路；`deploy/00_native/hitl_overrides.params` 用 `HIL_ACT_REV=2`（右副翼）表示；2026-10-16 由 FC 的 ULog 參數讀回確認（VALIDATION「FC 基準」）。
+- **速度**（Apple M5，[VALIDATION](../docs/VALIDATION.md)）：單一 instance 約 170–178 倍真實時間；合計吞吐量在 2 個 instance 時就到頂，約 250 倍，再多 instance 不會更快。原因是每個 instance 一半的 CPU 時間花在 PX4 執行緒每步交接的系統呼叫。要更快，用決定 8 的「PX4 模組原始碼＋最小外殼」（單執行緒、不經 work queue）。
+- 6 個以上同時跑時，有的 instance 啟動會超過 60 s 而被重啟（結果仍完成）；大量窮舉建議 2–4 個 instance。

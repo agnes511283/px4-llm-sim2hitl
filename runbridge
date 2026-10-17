@@ -1,0 +1,22 @@
+#!/bin/zsh
+set -euo pipefail
+script_dir=${0:A:h}
+# uv-managed venv outside Dropbox (macOS, Linux); FW_HIL_PYTHON overrides the interpreter.
+if [[ $OSTYPE == darwin* ]]; then
+  venv_default="$HOME/Library/Application Support/SkySurferHIL/venv"; uv_hint="brew install uv"
+else
+  venv_default="${XDG_DATA_HOME:-$HOME/.local/share}/SkySurferHIL/venv"; uv_hint="curl -LsSf https://astral.sh/uv/install.sh | sh"
+fi
+export UV_PROJECT_ENVIRONMENT=${UV_PROJECT_ENVIRONMENT:-$venv_default}
+py=${FW_HIL_PYTHON:-$UV_PROJECT_ENVIRONMENT/bin/python}
+if [[ ${1:-} == --setup ]]; then
+  command -v uv >/dev/null || { print -u2 "找不到 uv。請先安裝：$uv_hint"; exit 4; }
+  exec uv sync --frozen --project "$script_dir"
+fi
+[[ -x "$py" ]] || { print -u2 "找不到 HIL runtime Python：$py\n請先安裝 uv（$uv_hint），再執行 ./runbridge.command --setup"; exit 4; }
+export PYTHONDONTWRITEBYTECODE=1
+unset PYTHONHOME PYTHONPATH
+if [[ ${1:-} == --check-python ]]; then
+  exec "$py" -B -c 'import platform,sys,serial,pymavlink,numpy,PySide6; print(platform.platform()); print("Python "+sys.version.split()[0]); print("runtime Python PASS; PySide6="+PySide6.__version__)'
+fi
+exec "$py" -B "$script_dir/hil_runtime/main.py" "$@"

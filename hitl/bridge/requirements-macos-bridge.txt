@@ -1,0 +1,4 @@
+pyserial==3.5
+pymavlink==2.4.49
+fastcrc==0.5.0
+lxml==6.1.3

@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.venv/
+# Built locally from the sources (model releases and their active pointers)
+hitl/releases/
+hitl/active/

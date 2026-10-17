@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "repository": "https://github.com/PX4/PX4-Autopilot.git",
+  "tag": "v1.17.0",
+  "commit": "d6f12ad1c4f70ad3230afd7d86e971421e02fef4",
+  "submodules": "recursive, pinned by the tag commit",
+  "hitl_firmware": {
+    "board": "Pixhawk 6C (px4_fmu-v6c)",
+    "version": "v1.17.0",
+    "note": "Version only; the flashed firmware build is not yet traced to this tree. The project build of this tree is deploy/00_native/firmware/firmware.json (not flashed yet)."
+  },
+  "local_path": {
+    "env": "SKYSURFER_PX4_ROOT",
+    "macos_config": "~/Library/Application Support/SkySurferHIL/px4_root",
+    "linux_config": "~/.config/SkySurferHIL/px4_root",
+    "windows_config": "%LOCALAPPDATA%\\SkySurferHIL\\px4_root"
+  }
+}

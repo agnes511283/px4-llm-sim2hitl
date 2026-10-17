@@ -1,0 +1,32 @@
+{
+  "name": "stabilized_steps",
+  "description": "Stabilized roll, pitch and yaw stick steps from trimmed level flight (ROADMAP decision 17, the reference scenario). PX4's rate-controller integrators start at zero, so the first settle_s seconds let the closed loop return to the trim before the steps.",
+  "mode": "stabilized",
+  "settle_s": 40.0,
+  "duration_s": 20.0,
+  "initial": {
+    "height_agl_m": 100.0,
+    "airspeed_m_s": 15.0,
+    "heading_deg": 0.0,
+    "latitude_deg": 22.910275834988674,
+    "longitude_deg": 120.31096929726908
+  },
+  "trim": true,
+  "steps": [
+    {
+      "start_s": 3.0,
+      "end_s": 6.0,
+      "roll": 0.5
+    },
+    {
+      "start_s": 9.0,
+      "end_s": 11.0,
+      "pitch": 0.3
+    },
+    {
+      "start_s": 14.0,
+      "end_s": 16.0,
+      "yaw": 0.5
+    }
+  ]
+}

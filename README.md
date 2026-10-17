@@ -36,6 +36,9 @@
 ./runbridge update-model              # 第二段：編譯、四道檢查、發布模型 release（不需要 MATLAB 連線）
 ./runbridge bridge                    # 開 owner（持有模型與序列埠）；QGC 用 UDP 連
 ./runbridge status                    # owner 狀態
+./runbridge deploy-test --release deploy/<配方>           # 第 3 段：只看計畫（FC 上現在是什麼、會做什麼）
+./runbridge deploy-test --release deploy/<配方> --flash   # 必要時編韌體 → 燒錄 → 參數 → 開機檔 → hitl-run
+./runbridge deploy-test --release deploy/<配方> --reuse   # FC 已經是這個配方的韌體：參數 → 開機檔 → hitl-run
 ```
 
 ## 搬家狀態（2026-10-18，Ubuntu 24.04）
@@ -43,9 +46,10 @@
 | 項目 | 結果 |
 |---|---|
 | 模型 release `skysurfer-f53eee94…` | 四道檢查 PASS；對 macOS 錄的參考資料，除了靜止時沒有定義的攻角／側滑角，差 ≤ 6.2e-15 |
-| 離線測試 | 15 個檔、184 項 OK |
+| 離線測試 | 15 個檔、185 項 OK（2026-10-18，第 3 段程式加入後） |
 | 600 s 負載（不開視窗） | PASS；有即時權限時最慢晚到 0.47 ms |
 | SITL | 編譯 PASS；參考情境 `stabilized_steps` 的指標和 macOS 紀錄相同 |
 | HITL（實體 FC） | 00_native 基準 `hitl-run` PASS（2026-10-17 UTC）：盤旋 60 s、2.78 圈；23,039 步 0 次晚到、最慢 0.79 ms；USB 寫入最慢 0.26 ms；FC 量到感測器 250.009 Hz |
-| 第 3 段一條龍（編韌體、燒錄） | 尚未寫 |
-| 收尾 | 把討論定案的計畫（`~/Documents/Codex/2026-10-18/skysurfer_architecture_v3/PLAN.md`）的核心精神放進專案；乾淨目錄試跑；上 GitHub |
+| 第 3 段一條龍 | `./runbridge deploy-test` 寫好：編韌體（`deploy/01_sdfix` 編譯 PASS、NuttX commit 可重現）、燒錄、身分核對、寫參數、開機檔、`hitl-run`（飛控記錄下載兩次比對＋嚴格解析）。在真 FC 上只跑過「只看計畫」（唯讀）；**燒錄 `01_sdfix` 還沒做** |
+| 乾淨目錄試跑 | 從 git 拉到新資料夾、不連 MATLAB、不靠舊 cache：`update-model` 建出**相同的 build-id**、四道檢查 PASS、配平相同 |
+| 收尾 | 把討論定案的計畫（`~/Documents/Codex/2026-10-18/skysurfer_architecture_v3/PLAN.md`）的核心精神放進專案；整套跑通後再做一次乾淨目錄試跑；上 GitHub |

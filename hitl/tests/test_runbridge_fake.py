@@ -15,6 +15,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from pymavlink.dialects.v20 import common as mav
@@ -138,13 +139,18 @@ class RunbridgeFakeTests(unittest.TestCase):
         self.cli('model-start')
         with (self.folder/'recover.log').open('w') as console:
             process=subprocess.Popen([str(ENTRY),'recover',*self.common],cwd=self.folder,env=self.env,stdout=console,stderr=subprocess.STDOUT)
-            try:
-                self.wait(lambda:self.status().get('recovery') in ['rebooting','waiting_link'])
-                for _ in range(5):
+            # QGC traffic for the whole recover, not only after a status poll saw 'rebooting': the fake FC's reboot
+            # quiet window is 2.3 s, shorter than one status poll on a busy machine.
+            stop=threading.Event()
+            def qgc_traffic():
+                while not stop.is_set():
                     self.send('qgc',mav.MAVLink_param_request_read_message(1,1,b'SYS_HITL',-1),mav.MAVLink_param_set_message(1,1,b'SDLOG_PROFILE',17,6))
-                    time.sleep(.02)
-                self.assertEqual(process.wait(timeout=15),0,(self.folder/'recover.log').read_text())
+                    time.sleep(.05)
+            sender=threading.Thread(target=qgc_traffic,daemon=True);sender.start()
+            try:
+                self.assertEqual(process.wait(timeout=30),0,(self.folder/'recover.log').read_text())
             finally:
+                stop.set();sender.join(timeout=2)
                 if process.poll() is None:process.kill();process.wait(timeout=3)
         self.assertEqual(self.command_ids(),[400,246]);self.assertTrue(self.status()['ready_after_recovery'])
         self.assertEqual(self.status()['metrics'].get('blocked_external_control',0),0)

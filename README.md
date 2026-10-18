@@ -63,12 +63,12 @@
 - **3.2 出場檢查還沒做**：`deploy/00_native` 的基準參數沒有指定實體舵機輸出（`PWM_MAIN_FUNC*`、`PWM_AUX_FUNC*` 全為 0）、`GPS_1_CONFIG=0`、空速計驅動未開；關掉 HITL 不會有任何輸出。需要實機的接線與參數。
 - **一般使用者的即時權限**：見「環境準備」的即時排程權限；沒有時能跑，但時間餘裕小。
 
-## 搬家狀態（2026-10-18，Ubuntu 24.04）
+## 驗證紀錄（2026-10-18，Ubuntu 24.04）
 
 | 項目 | 結果 |
 |---|---|
 | 模型 release `skysurfer-6d1cf7a3…`（改名後；改名前 `f53eee94…`） | 四道檢查 PASS；核心與 C 真值對參考資料的誤差和改名前一位不差；對 macOS 錄的參考資料，除了靜止時沒有定義的攻角／側滑角，差 ≤ 6.2e-15 |
-| 離線測試 | 14 個檔全部 OK（2026-10-18，改名後） |
+| 離線測試 | 14 個檔全部 OK（2026-10-18，改名後）。`test_runbridge_fake` 的恢復測試原本在機器很忙時會誤判（等狀態的輪詢趕不上假飛控 2.3 s 的重開），改成整個恢復期間都送 QGC 流量後，28 核全滿也 PASS |
 | 600 s 負載（不開視窗） | PASS；有即時權限時最慢晚到 0.47 ms |
 | SITL | 編譯 PASS；參考情境 `stabilized_steps` 的指標和 macOS 紀錄相同；速度：1000 次（每次模擬 60 s）實測 140.8 s，加大批次約 55 s；範本 `guidance_template` PASS |
 | ULog 與 MATLAB | SITL 與 HITL 的 ULog 都能用 MATLAB `ulogreader` 畫（`analysis/matlab/ulog_overview_plot.m`，不需要 Java），也能轉 CSV（`analysis/ulog_export.py`） |
@@ -78,5 +78,5 @@
 | 3.1 手動 HITL（2026-10-18，FC 是 `02_template`） | QGC 只連 UDP；QGC 的模式選單切不到固定翼的 Offboard，改用 `./runbridge takeoff --altitude 100 --after template_offboard`。結果和自動測試幾乎相同：航向 +29.0°（15.4 s 安定）、最大傾角 14.2°、高度衝過頭 31% → 範本判定 FAIL（同上，模型與參數不吻合）；0 次晚到；停模型、`recover` 後未解鎖、`SYS_HITL=1`、無待恢復 |
 | 交接時的 FC | 2026-10-18 07:22 UTC 用 `deploy-test --flash` 從 `02_template` 刷回 `01_sdfix`：全 PASS（盤旋 60.0 s、2.79 圈、0 次晚到），開機檔已移除；紀錄見 [deploy/01_sdfix](deploy/01_sdfix/README.md) |
 | 改名 `px4-llm-sim2hitl`（2026-10-18） | 套件不再借用飛機名：資料夾全名、環境變數 `SIM2HITL_*`、PX4 模組 `plant_sim`／`guidance_template`、plant 函式字頭 `plant_`；紀錄不寫本機路徑。MATLAB 重新產碼只差時間戳記與暫存路徑；新模型版本四道檢查 PASS；離線測試全過；SITL 兩個情境和改名前相同（範本 PASS）；`02_template` 重編後 NuttX `8d3ed2a2…` 不變；FC（01）`hitl-run` 七部分全 PASS：盤旋 60.07 s、2.77 圈、0 次晚到、最慢 0.20 ms，記錄下載兩次相同、嚴格解析 PASS |
-| 乾淨目錄試跑 | 從 git 拉到新資料夾、不連 MATLAB、不靠舊 cache：`update-model` 建出**相同的 build-id**、四道檢查 PASS、配平相同 |
-| 收尾 | 把討論定案的計畫（`~/Documents/Codex/2026-10-18/skysurfer_architecture_v3/PLAN.md`）的核心精神放進專案；整套跑通後再做一次乾淨目錄試跑；上 GitHub |
+| 乾淨目錄試跑 | 2026-10-18（改名後）：從 git 拉到新資料夾、獨立快取、不連 MATLAB：`update-model` 建出**相同的 build-id** `skysurfer-6d1cf7a3…`、四道檢查 PASS；離線測試全過；**從零重編 `01_sdfix`**：PX4 `d6f12ad1…`、NuttX `8d3ed2a2…`、韌體大小都和 FC 上的相同（`.px4` 含建置時間，所以檔案 SHA 不同）；紀錄裡沒有本機路徑 |
+| 收尾 | 核心精神已寫進本 README（「這套專案的精神」）；乾淨目錄試跑完成；上 GitHub：https://github.com/rhyne1012/px4-llm-sim2hitl（2026-10-18） |

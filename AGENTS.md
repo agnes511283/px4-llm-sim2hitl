@@ -70,6 +70,7 @@ AI 先查好現況、提出建議，只跟人確認**目標、選擇與成功條
 | `hitl/host/` 等 runtime 程式 | 離線測試；影響時序時加跑 600 s 負載 |
 | `sitl/`、`modules/` | `sitl/build_sitl.py` → `sitl/run_sitl.py` → `analysis/response.py` |
 | 韌體、參數、開機檔（`deploy/<配方>/`、`modules/`、`px4/patches/`） | 第 3 段：`./runbridge deploy-test --release deploy/<配方>` 先看計畫（只讀），再由人選 `--flash`（必要時先編韌體、燒錄）或 `--reuse`（沿用 FC 上的韌體）；只編韌體：`./runbridge build-firmware --release deploy/<配方>` |
+| `README.md`（中文，權威） | 同一次 commit 更新英文翻譯 `README.en.md`，並把它開頭記的 README.md SHA-256 換成新的（`sha256sum README.md`）；來不及翻譯時，在 `README.en.md` 開頭標明落後。英文只是翻譯，兩者不一致時以中文為準；其他文件只有中文 |
 
 離線測試與負載（`PY` = venv 的 python，例如 `~/.local/share/px4-llm-sim2hitl/venv/bin/python`）：
 

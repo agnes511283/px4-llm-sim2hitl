@@ -23,7 +23,7 @@
 | `host/` | owner（`core.py`）、本機 IPC（`ipc.py`）、`hitl-run`、`deploy-test`、參數與記憶卡傳輸 |
 | `native/posix/` | 4 ms worker（`worker.c`）與序列埠寫入、wire 編碼（`io.c`） |
 | `aircraft/skysurfer/` | 模型 ABI 實作 `adapter.c`、`profile.json`、場景檢查 `scenario.py` |
-| `autotakeoff/` | 自動飛手（起飛、爬升、平飛） |
+| `autotakeoff/` | 自動飛手（起飛、爬升、平飛），見 [autotakeoff README](autotakeoff/README.md)；數字在 `aircraft/<飛機>/profile.json` 的 `automation` |
 | `commands/` | 起飛後動作腳本，見 [commands README](commands/README.md) |
 | `scenarios/ground.json` | 預設場景（地面靜止） |
 | `flight_test.json` | `test-takeoff-hold`／`hitl-run` 的預設飛行與判定 |

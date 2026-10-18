@@ -95,6 +95,22 @@ addpath('plant/core'); cache = build_core();
 
 IMU 的 noise density 換成每筆標準差：σ = density·√(1/(2·dt))。沒有 bias、比例誤差與延遲。亂數是每架各自的 PCG32，種子由 `plant_sensors_init()` 給；同種子同輸入必得同輸出。`noise_enabled = 0` 只供測試：PX4 會把完全不變的感測器判為卡住。
 
+## 地面
+
+模型的地面是很簡化的一塊（`UAV/UAV/Ground Model`，參數在 `model/FW_SkySurfer_InitialFunction.m` 的 `uavData.contact`）。看起飛、落地的結果或換飛機前要知道：
+
+- **只有一個接觸點，就在重心**：沒有輪子、起落架、機腹的位置。地面是一整片平地，就在模型位置的高度 0（場景的離地高度 `height_agl_m` 從這裡量），沒有地形。
+- **往上推的力**：重心低於地面時才有，像很硬的彈簧加阻尼（自然頻率 20 Hz、臨界阻尼），只推不拉。靜止時約陷下 0.6 mm。
+- **摩擦**：係數 0.2，各方向都一樣（沒有「輪子往前好滾、側向難滑」的分別），北、東兩個方向各自算，速度很小時用 tanh 平滑（`vd` = 0.02 m/s）。像一個在地上滑的雪橇：推力要大過約 0.2 × 重量才會開始動（SkySurfer 1.3 kg，約 2.6 N）。
+- **地面不產生力矩**：力作用在重心，所以地面不會把飛機扶正，也不會擋住機頭或機尾。地上的姿態只會被氣動力矩改變，而氣動的力與力矩在空速 5 m/s 以下都是 0。結果是：
+  - 靜止時姿態就是場景給的值（`hitl/scenarios/ground.json` 的 pitch 0.8633°）；
+  - 起飛時一拉升降舵機頭就能抬，不會擦到機尾；
+  - 地上遇到側風會側傾甚至翻倒（10 m/s 約側傾 68°，見下一節），滑跑方向也沒有鼻輪或尾輪控制。
+- **落地或撞地沒有另外處理**：只是被彈簧擋住；模型和 runtime 都不判定墜毀，要看記錄自己判斷。
+- SITL 的情境從空中開始，用不到地面；HITL 一律從地面靜止開始，所以地面主要影響 HITL 的起飛（[autotakeoff README](../hitl/autotakeoff/README.md)）。
+- 換飛機時：接觸點、彈簧、摩擦都是照 SkySurfer 這種小飛機定的。有起落架、要看機尾擦地或地面滑行轉向時，這個地面不夠，要改模型（第 1.1 段）。
+- 原始模型裡被註解掉的 `6DoF/Ground` 是 Simulink 的「Ground」方塊（只給一個 0 訊號），和這個地面無關。
+
 ## 風
 
 **模型裡的風**（`model/FW_SkySurfer_HIL.slx` 的 `UAV/UAV/Environment/Wind`，Aerospace Blockset 方塊）有兩種模式，二選一，不疊加：

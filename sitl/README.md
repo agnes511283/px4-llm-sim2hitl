@@ -59,6 +59,7 @@ python3 sitl/run_sitl.py --out ~/Library/Caches/Codex/SkySurferPhaseB/sitl_$(dat
 - **`base_sticks`**：絕對的基準桿量（`manual_control_setpoint` 值），取代配平算出的基準；這時 `trim` 只決定空中起始狀態。`base` 是疊加的偏移。
 - **HITL 版 `stabilized_steps_hitl`**：同一組階躍與基準桿量（15 m/s 平飛配平，取到 MANUAL_CONTROL 的 1/1000：pitch −0.125、油門 −0.77），但 HITL 是從起飛後的巡航（約 25 m/s）進入，所以 settle 60 s。在 SITL 跑就是那趟 HITL 的預演（25 m/s 平飛配平起始）：約 50 s 回到 15 m/s，高度掉約 16 m，階躍指標和參考情境差 ≤ 0.02°／0.02 s。HITL 由 `hil_bridge/commands/stabilized_steps.py` 飛。
 - **多個 instance**：`--instances N` 平行跑，啟動間隔 `--stagger`（預設 1 s）。PX4 的 server 執行緒在多個同時啟動時可能還沒準備好，所以啟動腳本第一行先等 `px4-ver` 有回應；另外某個 instance 在 `--startup-timeout`（預設 60 s）內沒有建立 `trace.csv`（代表 `sks_sim` 沒起來），或結束時沒有 `summary.json`，runner 會重啟它（`--retries`，結果的 `retries` 欄）。`px4.log` 是區塊緩衝寫入，PX4 結束前讀不到完整內容，不能用來即時判斷。
+- **實測速度（Ubuntu 24.04、i7-14700 28 執行緒，2026-10-18，`template_offboard` 情境模擬 60 s、`--no-ulog`）**：一次完整跑完（含 PX4 啟動與關閉）約 1.3 s；`--instances 25 --stagger 0.1` 跑 1000 次共 140.8 s、全部成功、0 次重試（其中 100 s 是啟動間隔）；`--instances 100 --stagger 0.02` 一批 5.5 s，換算 1000 次約 55 s（約 1,100 倍真實時間）。大量批次用 `--no-ulog`、較短的 `--stagger`；換電腦先量一批確認沒有重試。
 - **速度欄位**：每個 instance 的 `realtime_factor` 是它自己的「模擬秒數／實際秒數」；`throughput_realtime_factor` 是所有 instance 的模擬秒數合計，除以第一個開始推進到最後一個結束的實際時間，只有在各 instance 確實同時在跑時才代表平行吞吐量（要用夠長的 `--duration`）。
 
 ## 配平與丟出去（常態工具）

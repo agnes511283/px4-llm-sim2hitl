@@ -28,3 +28,26 @@ python3 analysis/response.py \
   - 會在 `--out` 旁邊寫 `hitl_trace.csv`、`hitl_scenario.json`（實測的階躍時間），再算指標；輸出另含 `hitl_conversion`（各階躍與名目時間的差、樣本數、序列期間各來源的最大間隔）。
   - 來源：FC 回傳的 `ATTITUDE`（100 Hz，**EKF2 姿態與濾波後角速度**；SITL 是 plant 真值）、`LOCAL_POSITION_NED`（高度 = −z，EKF2 原點以上）、`VFR_HUD`（**CAS**，100 m 時比 TAS 低約 0.5 %）、`HIL_ACTUATOR_CONTROLS`（controls[0..4]）；搖桿用實際寫給 FC 的 `MANUAL_CONTROL`。每個封包都驗 CRC，跨 record 的封包會接起來。
   - 階躍時間用量的：飛手序列以 50 Hz tick 推進，每個動作最多晚一個 tick。序列起點是第一個等於情境基準桿量的 MANUAL_CONTROL；送出的桿量必須和情境一致到 1/1000，不一致就報錯，不會默默對錯時間。
+
+## ULog 工具包（SITL、HITL、實機共用）
+
+SITL 預設會記 ULog（`sitl/run_sitl.py`，`--no-ulog` 可關），HITL 由 `hitl-run` 從 FC 下載，實機飛行的 SD 卡上也是同一種檔案。
+
+| 工具 | 用途 |
+|---|---|
+| [ulog.py](ulog.py) | Python 讀檔（只用 numpy）：各主題的 structured array、參數、log 訊息、dropout |
+| [ulog_strict.py](ulog_strict.py) | 嚴格解析整份檔案（每則訊息格式正確、剛好結束在檔尾），抓下載損壞 |
+| [ulog_export.py](ulog_export.py) | 轉成 CSV（每個主題一個檔＋參數＋訊息），給沒有 UAV Toolbox 的 MATLAB（`readtable`）、試算表或其他工具；`--list` 先看有哪些主題 |
+| [matlab/sks_ulog_plot.m](matlab/sks_ulog_plot.m) | MATLAB（UAV Toolbox 的 `ulogreader`，不需要 Java）的總覽圖範例：航向、高度與 TECS 目標、傾角與側向加速度目標、空速與 TECS 空速目標，OFFBOARD 期間灰底。複製後畫自己模組需要的主題 |
+| [template_check.py](template_check.py) | `sks_template` 範例的自動判定（讀 ULog）；新模組照它寫自己的 |
+
+常用主題：`vehicle_local_position`（位置、速度、`ref_alt`）、`vehicle_attitude`（`q`）、`airspeed_validated`、`vehicle_status`（`nav_state`，14 = OFFBOARD）、`tecs_status`（高度與空速的目標和內部狀態）、`fixed_wing_lateral_setpoint`／`fixed_wing_longitudinal_setpoint`、`actuator_servos`／`actuator_motors`、`log_message`（模組的 `PX4_INFO`）。SITL 的狀態是真值，HITL 與實機是 FC 上 EKF 的估測。
+
+**建議使用者這樣用（AI 要主動說明好處，由使用者決定）**：
+
+- **同一種格式**：SITL、HITL、實機都是 ULog，同一支程式就能把三者疊在一起比。
+- **看得到 PX4 內部**：除了飛機怎麼動，還有每一層的目標與控制器狀態，找原因快。例：一張總覽圖就看出 TECS 空速目標 15 m/s、實際 25–30 m/s（`FW_THR_TRIM` 與模型不吻合），SITL 與 HITL 都一樣。
+- **分工**：AI 用 Python 自動判定（`*_check.py`），人用 MATLAB 的圖直覺檢查、做報告。
+- **大量模擬**：SITL 很快（下面的數字），可以掃參數、跑蒙地卡羅，再統計。
+- **通用**：PX4 生態的 Flight Review、PlotJuggler、pyulog 都讀得到，方便和別人分享。
+- **代價**：預設記錄設定下，一次 60 s 的 SITL ULog 約 14 MB。大量批次建議 `--no-ulog`（只留 `trace.csv`），只替挑出來的幾次記 ULog，或用 `--logger-topics` 只記需要的主題。

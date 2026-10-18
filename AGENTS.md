@@ -25,6 +25,8 @@ AI 先查好現況、提出建議，只跟人確認**目標、選擇與成功條
 
 **建議先做「最小打通」**：開發位置確定後（例如只做導引），先不寫正式算法，而是架好開發框架，用一個極簡的版本（例如把 PX4 原本的導引換成一個很簡單的測試）走完 SITL → 編韌體 → 燒錄 → HITL 一次，並記錄下來。之後每次修改都交給自動化（第 2 段的指令與第 3 段的 `deploy-test`），不必每次重新摸索接法，可以省下很多 token。把這個建議告訴使用者，由使用者決定要不要做。
 
+**建議人隨著開發慢慢建立自己的自動化**：同一件事手動做了兩三次（例如一段飛行動作、一種判定、一串檢查），就建議把它變成專案裡的指令或腳本，放在現有的位置（起飛後動作放 `hitl/commands/`、判定放 `analysis/`、配方的 `hitl.json` 指定要跑哪些），之後一個指令跑完、AI 只讀結果。越用越省 token，也越不容易出錯。只在真的重複時才建議，不預先做；由人決定要不要做。
+
 **建議使用者用 ULog 看結果**：SITL、HITL、實機都產生 ULog，AI 用 Python 自動判定，人用 MATLAB 畫圖檢查；好處與工具見 [analysis README](analysis/README.md) 的「ULog 工具包」，向使用者說明後由他決定。
 
 **PX4 v1.17.0 的記憶卡讀取問題（要告訴使用者）**：在 Pixhawk 6C（STM32H7）上，v1.17.0 用的 NuttX 在 SD 卡 DMA 讀取完成後沒有清除快取，曾讓自建韌體下載的飛控記錄出現 32 bytes 一段的錯誤（MAVLink 檢查碼正確，看起來像好的）。NuttX 官方修正 82d1285 不在 v1.17.0 裡，專案保存在 `px4/patches/`。自建韌體的配方都要套它（`deploy/01_sdfix` 是範例）；`hitl-run` 會把同一份記錄下載兩次比對、再做嚴格解析，用來抓這類錯誤。原生 `00_native` 至今沒有出現過，但沒有證明不受影響。升級 PX4 版本時，先查新版是否已經包含這個修正。
@@ -34,6 +36,10 @@ AI 先查好現況、提出建議，只跟人確認**目標、選擇與成功條
 - 只在 Ubuntu 24.04 x86-64 驗證過。換平台時，照 README「環境準備」逐項查官方文件，確認做法再裝。
 - 路徑與工具不寫死：MATLAB、編譯器、暫存位置見 `plant/core/toolchain.py`（可用環境變數指定），PX4 原始碼樹見 `px4/check_px4_tree.py`。
 - 檢查：`./runbridge --check-python`、`python3 px4/check_px4_tree.py`、`./runbridge preflight`。
+- **第一次在這台機器用 AI：把權限一次設好，之後人只要口頭同意**（不要每次刷機都請人做技術步驟）：
+  - 即時排程權限：照 README「環境準備」的長期設定，重開機（或完全登出）一次才生效。生效前只能臨時給：請人執行 `sudo prlimit --pid <AI 程序的 PID> --rtprio=10:10`，再用 `ulimit -r` 確認。
+  - AI 工具的允許清單：碰飛控的 `runbridge takeoff`（解鎖起飛）與 `runbridge deploy-test`（刷機、參數、開機檔、HITL）會被 AI 工具的自動權限檢查擋下；AI 不能自己改權限設定（也會被擋），請人加一次。Claude Code 是在 `~/.claude/settings.json` 的 `permissions.allow` 加 `Bash(<專案絕對路徑>/runbridge takeoff *)` 與 `Bash(<專案絕對路徑>/runbridge deploy-test *)`；AI 執行時也用同樣的絕對路徑開頭，不包在 `cd … &&` 或 `timeout` 裡，規則才對得上。
+  - 設好之後，人說「刷」「飛」就好；AI 每次寫入 FC 前仍先說一聲，第 3 節的安全檢查照舊。
 
 ## 3. 安全底線（不可繞過）
 

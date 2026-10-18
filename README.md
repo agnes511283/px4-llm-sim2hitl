@@ -11,6 +11,7 @@
 - **AI 講白話**：技術細節由 AI 查、AI 處理；只有目標、選擇與成功條件問人。
 - **第 1 段最重要**：AI 先讀鎖定版本的 PX4 原始碼，把可行的接法用白話攤開和人討論，由人選；再建議先做「最小打通」，讓整條路先通、記錄下來，之後的修改交給自動化。
 - **第 3 段一條龍**：編譯 → 燒錄 → 身分核對 → 參數 → 開機檔 → HITL → 飛控記錄，一個指令跑完；開始前先告訴人 FC 上現在是什麼，由人選刷新或沿用。
+- **自動化跟著開發慢慢長出來**：同一件事做了兩三次，AI 就建議把它變成專案裡的指令或腳本，由人決定；越用越省 token。
 - **環境不寫死、驗收標準寫死**：路徑、編譯器、MATLAB、PX4 原始碼樹自動找、可指定，換平台時請 AI 查官方文件；量尺（版本鎖、檢查容差、4 ms、負載門檻）不隨環境改。
 - **不分權限等級**：每段結束時問「下一步 1／2／3」，段內不逐項詢問；但 runtime 的安全檢查（FC 身分、未解鎖、讀回、恢復）不可繞過，見 AGENTS 第 3 節。
 - **提醒，不擋**：非預設的飛行參數照跑並記錄；看起來不對的地方告訴人，由人決定。
@@ -48,6 +49,7 @@
 ./runbridge update-model              # 第二段：編譯、四道檢查、發布模型 release（不需要 MATLAB 連線）
 ./runbridge bridge                    # 開 owner（持有模型與序列埠）；QGC 用 UDP 連
 ./runbridge status                    # owner 狀態
+./runbridge takeoff --altitude 100 --after template_offboard   # 3.1：模型在地面運行時自動起飛 → Hold → OFFBOARD（範本，FC 要是 02_template）→ Hold（QGC 的選單切不到固定翼的 Offboard）
 ./runbridge deploy-test --release deploy/<配方>           # 第 3 段：只看計畫（FC 上現在是什麼、會做什麼）
 ./runbridge deploy-test --release deploy/<配方> --flash   # 必要時編韌體 → 燒錄 → 參數 → 開機檔 → hitl-run
 ./runbridge deploy-test --release deploy/<配方> --reuse   # FC 已經是這個配方的韌體：參數 → 開機檔 → hitl-run
@@ -71,5 +73,7 @@
 | HITL（實體 FC） | 00_native 基準 `hitl-run` PASS（2026-10-17 UTC）：盤旋 60 s、2.78 圈；23,039 步 0 次晚到、最慢 0.79 ms；USB 寫入最慢 0.26 ms；FC 量到感測器 250.009 Hz |
 | 第 3 段一條龍 | `deploy/01_sdfix`（原生＋記憶卡修正）用 `deploy-test` 燒錄並跑完：FC 回報 NuttX `8d3ed2a2…`（可預期的那個）；寫參數 0 個；`hitl-run` 七部分全 PASS，盤旋 60.13 s、2.78 圈，23,104 步 0 次晚到、最慢 0.19 ms；飛控記錄（10.9 MB）下載兩次相同、嚴格解析 PASS |
 | 範本 `02_template`（HITL，2026-10-18） | 一條龍全 PASS（重編、燒錄、身分、參數、開機檔）；**FC 接受模組在韌體內自己發的 OFFBOARD 訊號**。動作改成進 OFFBOARD 15 s 後轉 30°、35 s 後爬 10 m、共 60 s，盤旋高度判定改以開始盤旋的高度 ±15 m 之後：飛行 PASS；航向 +29.1°（不超越、15.2 s 安定）、最大傾角 14°；**高度衝過頭 33%**（SITL 0%）、OFFBOARD 結束前未回到 ±0.5 m，判定 FAIL。同時空速從 21 衝到 28 m/s：TECS 加能量時油門過多（`FW_THR_TRIM=0.6` 對模型的約 0.115），屬於模型與 PX4 參數不吻合，待查 |
+| 3.1 手動 HITL（2026-10-18，FC 是 `02_template`） | QGC 只連 UDP；QGC 的模式選單切不到固定翼的 Offboard，改用 `./runbridge takeoff --altitude 100 --after template_offboard`。結果和自動測試幾乎相同：航向 +29.0°（15.4 s 安定）、最大傾角 14.2°、高度衝過頭 31% → 範本判定 FAIL（同上，模型與參數不吻合）；0 次晚到；停模型、`recover` 後未解鎖、`SYS_HITL=1`、無待恢復 |
+| 交接時的 FC | 2026-10-18 07:22 UTC 用 `deploy-test --flash` 從 `02_template` 刷回 `01_sdfix`：全 PASS（盤旋 60.0 s、2.79 圈、0 次晚到），開機檔已移除；紀錄見 [deploy/01_sdfix](deploy/01_sdfix/README.md) |
 | 乾淨目錄試跑 | 從 git 拉到新資料夾、不連 MATLAB、不靠舊 cache：`update-model` 建出**相同的 build-id**、四道檢查 PASS、配平相同 |
 | 收尾 | 把討論定案的計畫（`~/Documents/Codex/2026-10-18/skysurfer_architecture_v3/PLAN.md`）的核心精神放進專案；整套跑通後再做一次乾淨目錄試跑；上 GitHub |

@@ -64,16 +64,16 @@
   },
   "flashed": {
     "status": "PASS",
-    "at_utc": "2026-10-18T02:28Z",
+    "at_utc": "2026-10-18T07:22:01Z",
     "port": "/dev/ttyACM0",
-    "tool": "<PX4 tree>/Tools/px_uploader.py via ./runbridge deploy-test --flash",
-    "note": "the uploader output was lost (deploy.py did not create its folder, fixed afterwards); identity confirmed by the FC afterwards",
+    "tool": "/home/iec/px4/PX4-Autopilot/Tools/px_uploader.py --port /dev/ttyACM0 px4_fmu-v6c_default.px4",
+    "attempts": 1,
     "after": {
+      "flight_sw_version": 17891583,
       "git_hash_prefix": "d6f12ad1c4",
       "os_hash_prefix": "8d3ed2a2177267cb",
-      "flight_sw_version": 17891583,
       "board_version": 56
     },
-    "evidence": "~/.cache/SkySurfer/deploy_runs/run_20261018_022809Z_88290c85 (flash), run_20261018_022926Z_1485847d (reuse: params, hitl-run)"
+    "evidence": "/home/iec/.cache/SkySurfer/deploy_runs/run_20261018_072113Z_0fe09c8e/flash"
   }
 }

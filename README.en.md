@@ -2,7 +2,7 @@
 
 [繁體中文](README.md) | **English**
 
-> **This is a translation.** The authoritative README is [README.md](README.md) (Traditional Chinese); where the two differ, follow README.md. Translated from README.md with SHA-256 `ef1b378fd43042d0e0585a2b7bb066117bb32228e8550dfc1226abd160060e5a`: if `sha256sum README.md` prints something else, this translation is behind. The AI rules ([AGENTS.md](AGENTS.md)) and the folder READMEs are in Traditional Chinese only; an AI agent reads them without trouble.
+> **This is a translation.** The authoritative README is [README.md](README.md) (Traditional Chinese); where the two differ, follow README.md. Translated from README.md with SHA-256 `ff8e828f40c9e769abf020cbc9c5dda1a6ec4b76145057108c5384946d672439`: if `sha256sum README.md` prints something else, this translation is behind. The AI rules ([AGENTS.md](AGENTS.md)) and the folder READMEs are in Traditional Chinese only; an AI agent reads them without trouble.
 
 Flight-control development kit: MATLAB/Simulink aircraft model → C → SITL (minimal PX4) → custom PX4 firmware → HITL on a real flight controller (Pixhawk). When you develop with an AI, its working rules are in [AGENTS.md](AGENTS.md).
 
@@ -14,12 +14,16 @@ Flight-control development kit: MATLAB/Simulink aircraft model → C → SITL (m
 
 ## The spirit of this project
 
+**The point is not a set of automation tools; it is that your AI understands this project from the start.** How the path goes from the aircraft model, the PX4 source, SITL, building and flashing to the real flight controller, where the traps are, what has already been verified and what counts as right are all written down in the docs (this README, [AGENTS.md](AGENTS.md), the folder READMEs) and in the existing checks. Once your AI has read them it can pick up where things stand without working out the whole pipeline from scratch each time, and spend its time and tokens on the real work: debugging and developing with you.
+
+- **Understanding first, tools second**: commands and scripts only fix steps that are already understood. The docs say why things are done this way and where the traps are, for example the SD-card read error, the ground model that never turns the aircraft, and when the wind starts. That way the AI knows where to look when something goes wrong, and does not force things through by bypassing a safety check.
+- **Any session, any AI can pick it up**: the docs are the handover. New traps found during development, rules agreed with the human, and the numbers of your own aircraft are written back into the docs, so the next AI does not have to learn them again.
 - **Purpose**: hand this package to someone else so that they and their AI can go from changing the aircraft model and developing flight control all the way to building, flashing and HITL.
 - **Simple, light, one source**: everything lives in one place; reuse existing programs and checks; add nothing for cases that may never come.
 - **The AI speaks plainly**: the AI looks up and handles the technical details; it asks the human only about goals, choices and success criteria.
 - **Stage 1 matters most**: the AI first reads the PX4 source of the locked version, lays out the feasible ways to plug in in plain words, and the human chooses; then it suggests a "minimal end-to-end run" first, so the whole path works and is recorded, and later changes go through the automation.
 - **Stage 3 in one go**: build → flash → identity check → parameters → boot file → HITL → flight log, in one command; before starting, tell the human what is on the FC now, then always flash again (when only an external module changed, the version hashes the FC reports may stay the same, so old and new cannot be told apart).
-- **Automation grows with the development**: when the same thing has been done two or three times, the AI suggests turning it into a command or script in the project, and the human decides; fewer tokens the more it is used.
+- **Automation grows with the development**: tools are a by-product of understanding. When the same thing has been done two or three times, the AI suggests turning it into a command or script in the project, and the human decides; fewer tokens the more it is used.
 - **Environment not hard-coded, pass criteria hard-coded**: paths, compiler, MATLAB and the PX4 source tree are found automatically and can be set; when changing platform, ask the AI to check the official docs. The yardsticks (version lock, check tolerances, 4 ms, load thresholds) do not change with the environment.
 - **No permission levels**: at the end of each stage ask "next step 1/2/3"; no item-by-item questions within a stage. The runtime safety checks (FC identity, disarmed, read-back, recovery) cannot be bypassed; see AGENTS section 3.
 - **Remind, don't block**: non-default flight parameters run and are recorded; whatever looks wrong is told to the human, who decides.

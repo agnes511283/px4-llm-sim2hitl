@@ -27,7 +27,7 @@
 | `set` | 專案要寫的 11 個：HITL 8 個（`SYS_HITL`、`HIL_ACT_FUNC1..5`、`HIL_ACT_REV`、`SDLOG_PROFILE`）＋`MAV_1_CONFIG`、`MAV_1_FLOW_CTRL`、`SENS_EN_THERMAL`（FC 上原有、沒有開機腳本設、來源不明，照 FC 現值保留） | **只寫這些** |
 | `fc_owned` | 每台 FC 自己與其安裝的參數（校正、空速管型號、操作者遙控器的 RC 校正與通道對應、板子安裝、電源模組、裝置 ID、計數器、學到的磁偏角）：11 條規則，解析出的 499 個名字存在檔內 | 值不寫不比，但一定要讀到 |
 
-- 其他參數一律應等於 `firmware/parameters.json.xz` 的預設值。FC 上不要手動改參數：改了，核對會在 `not_default` 列出並判 FAIL；要改就改 `params.json` 再部署。`not_default` 只是報告，不是寫入清單。
+- 其他參數一律應等於 `firmware/parameters.json.xz` 的預設值。FC 上不要手動改參數：改了，核對會在 `not_default` 列出並判 FAIL；要改就改 `params.json` 再部署。**這只影響 FC**：SITL（`sitl/run_sitl.py`）讀的是本資料夾的 `fc_params_20261013.params` 與 `hitl_overrides.params`，分析（`analysis/response.py`）預設也讀前者，不會跟著改；SITL 與 HITL 比較前，先核對兩邊實際用的相關參數，分析的 `--params` 也要對應那次測試。`not_default` 只是報告，不是寫入清單。
 - **讀回**（要先開 owner：`./runbridge bridge`）：`./runbridge param-readback --release deploy/<配方> --out DIR`。PX4 的參數清單只送「有在用」的參數，沒在用的仍可用名字讀寫；完整讀回 = 清單＋依韌體的參數名單用名字補讀（程式：`hitl/host/core.py` 的 `param_readback`）。
 - **核對**：`python3 deploy/check_params.py --readback <param-readback 寫出的 params_*.json> [--release deploy/<配方>]`。結果 PASS（exit 0）、FAIL（3）、INCOMPLETE（5）。也核對身分：board 56、PX4 git hash 前 10 碼、NuttX hash 前 16 碼（配方有記時）、讀回用的參數名單與本機韌體檔的 SHA-256。
 - **寫到 FC**：`./runbridge param-plan --release deploy/<配方> --out DIR` 先看要寫什麼（只讀）；`./runbridge param-deploy --release deploy/<配方> --out DIR` 只寫 `set` 裡和 FC 不同的值，有寫入就等 PX4 存檔、重開 FC、再讀回核對；失敗時只改回這次自己寫的值（程式：`hitl/host/core.py` 的 `param_deploy`）。`--release` 不加時是 `deploy/00_native`；要用 FC 上現在那個韌體的配方，身分不符會被擋下。一般用 `deploy-test` 一條龍，它會自己做這一步。

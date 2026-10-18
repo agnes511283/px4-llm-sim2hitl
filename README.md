@@ -74,15 +74,18 @@
 ./runbridge update-model              # 第二段：編譯、四道檢查、發布模型 release（不需要 MATLAB 連線）
 ./runbridge bridge                    # 開 owner（持有模型與序列埠）；QGC 用 UDP 連
 ./runbridge status                    # owner 狀態
+./runbridge model-start              # 3.1：模型在地面開始運行（要先確認沒有待恢復、status 的 missing_conditions 是空的）；--scenario <場景> 換場景
 ./runbridge takeoff --altitude 100 --after template_offboard   # 3.1：模型在地面運行時自動起飛 → Hold → OFFBOARD（範本，FC 要是 02_template）→ Hold（QGC 的選單切不到固定翼的 Offboard）
 ./runbridge deploy-test --release deploy/<配方>           # 第 3 段：只看計畫（FC 上現在是什麼、會做什麼）
 ./runbridge deploy-test --release deploy/<配方> --flash   # 平常用這個：必要時編韌體 → 燒錄 → 參數 → 開機檔 → hitl-run
 ./runbridge deploy-test --release deploy/<配方> --reuse   # 只在人明確要求時：沿用 FC 上的韌體，參數 → 開機檔 → hitl-run
 ```
 
+手動 HITL（3.1）的順序：`bridge` 開 owner → `status` 確認恢復完成、啟動條件齊全 → `model-start` → 確認模型在地面運行 → `takeoff`。結束後 `model-stop`，再照 [hitl README](hitl/README.md) 的恢復規則 `recover`（在空中結束的要加 `--hil-force-disarm`），最後 `shutdown` 關 owner。
+
 ## 已知問題
 
-- **模型與 PX4 參數不吻合（空速偏高）**：PX4 的 `FW_THR_TRIM=0.6`，這個飛機模型在 15 m/s 平飛只需要約 0.115 的油門。結果是原生盤旋與 SITL 的空速都在 20–30 m/s（目標 15 m/s），HITL 中 TECS 要爬高時空速衝高、高度衝過頭（範本的高度判定因此 FAIL）。照 [AGENTS](AGENTS.md) 的原則先查模型（推力、阻力、重量），再決定模型要修，還是這架飛機的 PX4 參數本來就要配合實機。
+- **模型與 PX4 參數不吻合（空速偏高）**：PX4 的 `FW_THR_TRIM=0.6`，這個飛機模型在 15 m/s 平飛只需要約 0.115 的油門。已經觀察到：原生盤旋與 SITL 的空速都在 20–30 m/s（目標 15 m/s）；HITL 中 TECS 要爬高時空速衝高、高度衝過頭，範本的高度判定因此 FAIL。油門配平的差距是可能的原因之一，但兩者的因果與影響多大還沒確認。照 [AGENTS](AGENTS.md) 的原則先查模型（推力、阻力、重量），再決定模型要修，還是這架飛機的 PX4 參數本來就要配合實機。
 - **3.2 出場檢查還沒做**：`deploy/00_native` 的基準參數沒有指定實體舵機輸出（`PWM_MAIN_FUNC*`、`PWM_AUX_FUNC*` 全為 0）、`GPS_1_CONFIG=0`、空速計驅動未開；關掉 HITL 不會有任何輸出。需要實機的接線與參數。
 - **一般使用者的即時權限**：見「環境準備」的即時排程權限；沒有時能跑，但時間餘裕小。
 
@@ -97,8 +100,8 @@
 | ULog 與 MATLAB | SITL 與 HITL 的 ULog 都能用 MATLAB `ulogreader` 畫（`analysis/matlab/ulog_overview_plot.m`，不需要 Java），也能轉 CSV（`analysis/ulog_export.py`） |
 | HITL（實體 FC） | 00_native 基準 `hitl-run` PASS（2026-10-17 UTC）：盤旋 60 s、2.78 圈；23,039 步 0 次晚到、最慢 0.79 ms；USB 寫入最慢 0.26 ms；FC 量到感測器 250.009 Hz |
 | 第 3 段一條龍 | `deploy/01_sdfix`（原生＋記憶卡修正）用 `deploy-test` 燒錄並跑完：FC 回報 NuttX `8d3ed2a2…`（可預期的那個）；寫參數 0 個；`hitl-run` 七部分全 PASS，盤旋 60.13 s、2.78 圈，23,104 步 0 次晚到、最慢 0.19 ms；飛控記錄（10.9 MB）下載兩次相同、嚴格解析 PASS |
-| 範本 `02_template`（HITL，2026-10-18） | 一條龍全 PASS（重編、燒錄、身分、參數、開機檔）；**FC 接受模組在韌體內自己發的 OFFBOARD 訊號**。動作改成進 OFFBOARD 15 s 後轉 30°、35 s 後爬 10 m、共 60 s，盤旋高度判定改以開始盤旋的高度 ±15 m 之後：飛行 PASS；航向 +29.1°（不超越、15.2 s 安定）、最大傾角 14°；**高度衝過頭 33%**（SITL 0%）、OFFBOARD 結束前未回到 ±0.5 m，判定 FAIL。同時空速從 21 衝到 28 m/s：TECS 加能量時油門過多（`FW_THR_TRIM=0.6` 對模型的約 0.115），屬於模型與 PX4 參數不吻合，待查 |
-| 3.1 手動 HITL（2026-10-18，FC 是 `02_template`） | QGC 只連 UDP；QGC 的模式選單切不到固定翼的 Offboard，改用 `./runbridge takeoff --altitude 100 --after template_offboard`。結果和自動測試幾乎相同：航向 +29.0°（15.4 s 安定）、最大傾角 14.2°、高度衝過頭 31% → 範本判定 FAIL（同上，模型與參數不吻合）；0 次晚到；停模型、`recover` 後未解鎖、`SYS_HITL=1`、無待恢復 |
+| 範本 `02_template`（HITL，2026-10-18） | 一條龍全 PASS（重編、燒錄、身分、參數、開機檔）；**FC 接受模組在韌體內自己發的 OFFBOARD 訊號**。動作改成進 OFFBOARD 15 s 後轉 30°、35 s 後爬 10 m、共 60 s，盤旋高度判定改以開始盤旋的高度 ±15 m 之後：飛行 PASS；航跡角 +29.1°（不超越、15.2 s 安定）、最大傾角 14°；**高度衝過頭 33%**（SITL 0%）、OFFBOARD 結束前未回到 ±0.5 m，判定 FAIL。同時空速從 21 衝到 28 m/s：TECS 加能量時油門過多（`FW_THR_TRIM=0.6` 對模型的約 0.115），屬於模型與 PX4 參數不吻合，待查 |
+| 3.1 手動 HITL（2026-10-18，FC 是 `02_template`） | QGC 只連 UDP；QGC 的模式選單切不到固定翼的 Offboard，改用 `./runbridge takeoff --altitude 100 --after template_offboard`。結果和自動測試幾乎相同：航跡角 +29.0°（15.4 s 安定）、最大傾角 14.2°、高度衝過頭 31% → 範本判定 FAIL（同上，模型與參數不吻合）；0 次晚到；停模型、`recover` 後未解鎖、`SYS_HITL=1`、無待恢復 |
 | 交接時的 FC | 2026-10-18 07:22 UTC 用 `deploy-test --flash` 從 `02_template` 刷回 `01_sdfix`：全 PASS（盤旋 60.0 s、2.79 圈、0 次晚到），開機檔已移除；紀錄見 [deploy/01_sdfix](deploy/01_sdfix/README.md) |
 | 改名 `px4-llm-sim2hitl`（2026-10-18） | 套件不再借用飛機名：資料夾全名、環境變數 `SIM2HITL_*`、PX4 模組 `plant_sim`／`guidance_template`、plant 函式字頭 `plant_`；紀錄不寫本機路徑。MATLAB 重新產碼只差時間戳記與暫存路徑；新模型版本四道檢查 PASS；離線測試全過；SITL 兩個情境和改名前相同（範本 PASS）；`02_template` 重編後 NuttX `8d3ed2a2…` 不變；FC（01）`hitl-run` 七部分全 PASS：盤旋 60.07 s、2.77 圈、0 次晚到、最慢 0.20 ms，記錄下載兩次相同、嚴格解析 PASS |
 | 風（2026-10-19） | 模型的風開成外部接口（定常風，或風切＋陣風＋亂流；預設離地後才吹），SITL 與 HITL 同一個 `wind` 格式（`plant/wind.py`），說明在 [plant README](plant/README.md)「風」、AI 對使用者的說明清單在 AGENTS。原始 slx：Dryden 亂流取消註解（原本因地面空速 0 除以零而關掉）、空速輸入加 5 m/s 下限、雜訊間隔 0.1 s → 4 ms。無風時結果和之前逐位元相同；三組 Simulink 對照（含全部風都開）原始模型與核心副本逐位元相同；四道檢查 PASS（`skysurfer-1c2b65fe…`，HIL 函式庫的 wind case 和 Simulink 一致）；離線測試全過；SITL 參考情境與範本和之前相同，`wind_steady`、`wind_low_altitude` 照預期 |

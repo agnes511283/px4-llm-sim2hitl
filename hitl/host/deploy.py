@@ -177,6 +177,7 @@ def flash_firmware(owner, project, release, out, report):
     from check_px4_tree import px4_root
     from . import serial_helpers
 
+    out.mkdir(parents=True, exist_ok=True)
     info_path = release / 'firmware' / 'firmware.json'
     info = json.loads(info_path.read_text())
     image = release / 'firmware' / info['outputs']['firmware']['file']

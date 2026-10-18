@@ -1,0 +1,31 @@
+# autotakeoff：HITL 自動起飛
+
+`autotakeoff.py` 模仿人用 QGC 搖桿起飛：讓 PX4 在 Stabilized 模式，送 MANUAL_CONTROL 桿量，PX4 負責穩住姿態，腳本只給俯仰和油門。`./runbridge takeoff`、`test-takeoff-hold`、`hitl-run`、`deploy-test` 都用它。它的數字由 owner 從 `hitl/aircraft/<飛機>/profile.json` 的 `automation` 傳進來；腳本裡的預設值是同一組 SkySurfer 數字。不寫 PX4 參數。
+
+## 流程
+
+| 階段 | 做什麼 | 換下一段的條件 | 放棄 |
+|---|---|---|---|
+| 檢查 | 讀回 `SYS_HITL=1` 與 `FW_MAN_P_MAX`（俯仰桿換算成角度）；確認是固定翼、未解鎖、在地上（空速 ≤ 5 m/s、高度在 ±5 m 內） | 全部通過 | 任一不符就不起飛 |
+| 模式 | 切 Stabilized，桿量先送 1 s | 進入 Stabilized | 8 s 沒進 |
+| 解鎖 | 送解鎖 | 已解鎖 | 10 s 沒解鎖 |
+| 滑跑 | 油門以每秒 1 的速度加到 `takeoff_throttle`（0.45） | 空速 ≥ `rotate_cas`（12 m/s） | 40 s 還沒到 |
+| 爬升 | 俯仰加到 `climb_pitch`（12°），油門不變 | 高度到目標 −2 m | 180 s 還沒到就直接平飛，記為逾時 |
+| 平飛 | 油門 `cruise_throttle`（0.35）；俯仰 = `altitude_gain`（0.5°/m）× 高度差 − `climb_damping`（1°/(m/s)）× 爬升率，限 ±8° | 穩定 3 s 後跑起飛後動作（`--after`，例如 `after_takeoff_loiter` 切 Hold，見 [commands README](../commands/README.md)） | — |
+
+- 滾轉桿和方向舵桿一直是 0，翅膀水平靠 PX4 的 Stabilized。
+- 高度是 EKF 原點以上的高度。
+- 停止：QGC 的桿動超過 150/1000、`stop`、或遙測中斷，就把控制交還；還在地上時改成放棄（桿歸零、上鎖）。PX4 被上鎖、或離開 Stabilized（OFFBOARD 與起飛後動作執行中除外）也會停。
+
+## 換飛機時（AI 要提醒使用者）
+
+這些數字是照 SkySurfer（1.3 kg）和模型的簡易地面（[plant README「地面」](../../plant/README.md)）調的，換飛機很可能要改。改在 `hitl/aircraft/<飛機>/profile.json` 的 `automation`；它會打包進模型 release，改完要 `./runbridge update-model`（AGENTS 第 5 段）。
+
+- `takeoff_throttle`：要能在模型的地面上滑起來（推力大過約 0.2 × 重量），並在 40 s 內到抬頭空速。
+- `rotate_cas`：抬頭空速，要高於失速速度並留餘裕。
+- `climb_pitch`：爬升角，太大會失速，太小爬不上去。
+- `cruise_throttle`：平飛油門。
+- `altitude_gain`、`climb_damping`：平飛定高的手感，通常不用動。
+- PX4 參數也有關：`FW_MAN_P_MAX`（俯仰桿滿桿對應的角度），以及 Stabilized 的姿態控制。
+- 起飛方式：這支腳本只會「地面滑跑起飛」，非固定翼會拒絕。實體 FC 的 HITL 只能從地面靜止開始，所以手擲、彈射、垂直起降的飛機也要用滑跑，或另寫一支起飛腳本。
+- SITL 不跑起飛（情境從空中開始），新飛機第一次起飛只能在 HITL 試。失敗時腳本在地上放棄並上鎖，之後照標準 `recover`。

@@ -94,6 +94,7 @@ AI 先查好現況、提出建議，只跟人確認**目標、選擇與成功條
 | `hitl/host/` 等 runtime 程式 | 離線測試；影響時序時加跑 300 s 負載（背景跑，不接飛控）：先查 `ulimit -r`，有權限就直接跑並告訴人，沒有就給人第 2 節的指令；結果有疑慮再跑 600 s。報告寫實際跑了幾秒 |
 | `sitl/`、`modules/` | `sitl/build_sitl.py` → `sitl/run_sitl.py` → `analysis/response.py` |
 | 韌體、參數、開機檔（`deploy/<配方>/`、`modules/`、`px4/patches/`） | 第 3 段：**一律重新燒錄** `./runbridge deploy-test --release deploy/<配方> --flash`（必要時先編韌體 → 燒錄 → 身分核對 → 參數 → 開機檔 → hitl-run）；燒錄前告訴人 FC 上現在是什麼（不加旗標就是只看計畫）。只改外部模組時 FC 回報的版本編號可能不變、分不出新舊，所以不沿用 FC 上的韌體；`--reuse` 只在人明確要求時用。只編韌體：`./runbridge build-firmware --release deploy/<配方>` |
+| `images/overview.svg`（README 最上面的流程總覽圖） | 圖上的字以中文為準（中文大字、英文小字），中英文 README 共用這一張；README 的流程或分工改了，圖也跟著改。改字後跑 `python3 images/embed_fonts.py images/overview.svg` 重新嵌入思源黑體子集（需要 fontTools、brotli 與系統的 Noto Sans CJK），同樣的字跑出同樣的檔案。視覺規則：墨灰＋一個跳色（朱紅）；實心色塊＝人決定、空心框＝自動化／AI；實線＝流程、虛線＝回頭修改 |
 | `README.md`（中文，權威） | 同一次 commit 更新英文翻譯 `README.en.md`，並把它開頭記的 README.md SHA-256 換成新的（`sha256sum README.md`）；來不及翻譯時，在 `README.en.md` 開頭標明落後。英文只是翻譯，兩者不一致時以中文為準；其他文件只有中文 |
 
 離線測試與負載（`PY` = venv 的 python，例如 `~/.local/share/px4-llm-sim2hitl/venv/bin/python`）：
@@ -108,6 +109,7 @@ for f in hitl/tests/test_*.py deploy/test_*.py; do echo "== $f"; "$PY" -B "$f" 2
 | 資料夾 | 內容 |
 |---|---|
 | `model/` | 飛機模型來源；`generated/` 是轉好的 C 與 Simulink 參考結果 |
+| `images/` | README 用的圖（`overview.svg`）與嵌字工具 `embed_fonts.py` |
 | `aircraft/` | 飛機的氣動來源：`avl/` 是產生氣動表的 AVL 幾何、質量檔與轉表程式（不在 `model/` 裡，改它不影響模型版本） |
 | `plant/` | plant 核心包裝、C 真值、C 感測器、各自的檢查程式、錄製的參考資料 |
 | `sitl/` | 精簡 PX4 的 plant 模組 `plant_sim`、情境、配平、ULog 重播 |

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Validate libskysurfer_plant (shared library): C Truth (SksPlant) and C sensors (SksSensors).
 
-  "$HOME/Library/Application Support/SkySurferHIL/venv/bin/python" plant/core/validate_plant.py \
-      --cache ~/Library/Caches/Codex/SkySurferPhaseB/core_<timestamp>
+  ~/.local/share/SkySurfer/venv/bin/python -B plant/core/validate_plant.py \
+      --cache ~/.cache/SkySurfer/build_<timestamp>
+
+The build cache is the one ./runbridge update-model lays out (hitl/update.py), which also runs this check.
 
 Checks (results in <cache>/results/plant_validation.json; exit code 0 only when all PASS):
   self_test    the comparison helpers turn NaN / Inf into FAIL

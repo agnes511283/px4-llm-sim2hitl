@@ -1,40 +1,75 @@
-# PX4 版本鎖定與原始碼樹位置
+# PX4：版本鎖、原始碼樹、韌體建置
 
-本資料夾記錄專案使用的 PX4 版本，以及找到本機 PX4 原始碼樹的方法。**PX4 原始碼樹本身不放在專案裡**：它約 1.8 GB、4.7 萬個檔案，放進 Dropbox 會拖慢同步，git 也容易因衝突副本損壞。
+PX4 原始碼樹很大，**不放在專案裡**，放在專案外。本資料夾記錄用哪個版本、怎麼找到這台機器的原始碼樹、怎麼編 FC 韌體。
 
 | 檔案 | 內容 |
 |---|---|
-| [px4_lock.json](px4_lock.json) | 版本權威：repository、tag、commit、HITL 韌體版本、本機路徑設定位置 |
-| [check_px4_tree.py](check_px4_tree.py) | 核對本機原始碼樹是否等於 lock（commit、乾淨、submodule） |
+| [px4_lock.json](px4_lock.json) | 版本鎖：repository、tag、commit、FC 韌體說明、本機位置設定檔在哪 |
+| [check_px4_tree.py](check_px4_tree.py) | 核對這台機器的原始碼樹是否等於版本鎖（commit、沒有修改、submodule）；其他程式也用它找原始碼樹 |
+| [build_firmware.py](build_firmware.py) | 編部署配方的 FC 韌體（`./runbridge build-firmware --release deploy/<配方>` 呼叫它） |
+| [patches/](patches/) | 套在 PX4 上的修正；目前只有 NuttX 的記憶卡讀取修正（原因見 [AGENTS](../AGENTS.md) 第 1 段） |
 
-目前鎖定 **v1.17.0**（commit `d6f12ad1c4f70ad3230afd7d86e971421e02fef4`），與 HITL 飛控（Pixhawk 6C，`px4_fmu-v6c`）上的韌體同版本。SITL、客製韌體與 HITL 必須使用同一個鎖定版本；要換版本時照 [PX4 版本更新 runbook](../docs/runbooks/px4_upgrade.md) 走，不要只改其中一處。
+目前鎖定 **v1.17.0**（commit `d6f12ad1c4f70ad3230afd7d86e971421e02fef4`）。SITL、FC 韌體與 HITL 都用這一個版本。
 
-## 本機原始碼樹在哪裡
+## 取得原始碼樹（第一次）
 
-位置因機器而異，依序從這三處取得：
+- 使用者已經有這個版本的樹：直接用，照下一節設定位置。
+- 沒有：下載**鎖定的 tag** 到**專案外**。放哪裡不清楚就問使用者。不要用 main 或其他版本。
 
-1. 指令參數 `--path`
+```bash
+git clone --branch v1.17.0 --recurse-submodules https://github.com/PX4/PX4-Autopilot.git <專案外的路徑>
+python3 px4/check_px4_tree.py --path <專案外的路徑> --remember
+```
+
+- 工具鏈用 PX4 官方腳本：`bash <樹>/Tools/setup/ubuntu.sh --no-sim-tools`（見 README「環境準備」）。
+
+## 這台機器的原始碼樹在哪裡
+
+依序從這三處取得：
+
+1. 指令參數 `--path`（只有 `check_px4_tree.py` 有）
 2. 環境變數 `SKYSURFER_PX4_ROOT`
-3. 本機設定檔：macOS `~/Library/Application Support/SkySurferHIL/px4_root`，Windows `%LOCALAPPDATA%\SkySurferHIL\px4_root`（只有一行路徑，不隨 Dropbox 同步）
+3. 本機設定檔（只有一行路徑）：Linux 是 `~/.config/SkySurfer/px4_root`（有設 `XDG_CONFIG_HOME` 時是 `$XDG_CONFIG_HOME/SkySurfer/px4_root`）。程式裡另有 macOS `~/Library/Application Support/SkySurfer/px4_root`、Windows `%LOCALAPPDATA%\SkySurfer\px4_root`，沒有驗證過。
 
 ```bash
 python3 px4/check_px4_tree.py
 ```
 
-| 結果 | 意思 | LLM 該做什麼 |
+| 結果 | 意思 | AI 該做什麼 |
 |---|---|---|
-| `PASS`（exit 0） | 原始碼樹等於 lock | 可以使用 |
-| `FAIL`（exit 1） | commit 不同、有未提交修改或 submodule 不符 | 停下回報，不要自行 checkout、reset 或清理 |
-| `UNKNOWN_LOCATION`（exit 2） | 這台機器還沒設定位置，或路徑不存在（外接碟未掛載） | **問使用者 PX4 原始碼樹在哪裡**；取得路徑後執行下一個指令 |
+| `PASS`（exit 0） | 原始碼樹等於版本鎖 | 可以用 |
+| `FAIL`（exit 1） | commit 不同、有未提交的修改或多出的檔案、或 submodule 不符 | 停下回報，不要自行 checkout、reset 或清理 |
+| `UNKNOWN_LOCATION`（exit 2） | 這台機器還沒設定位置、路徑不存在（外接碟沒掛上），或那裡不是 git 樹 | 問使用者原始碼樹在哪裡（沒有就照上一節下載），再執行下一個指令 |
 
 ```bash
-python3 px4/check_px4_tree.py --path <使用者給的路徑> --remember
+python3 px4/check_px4_tree.py --path <路徑> --remember
 ```
 
 `--remember` 只在核對 PASS 後寫入本機設定檔。
 
 ## 規則
 
-- 換到新電腦時，先問使用者 PX4 原始碼樹放在哪裡。不要猜路徑，不要自行 clone 或下載；使用者要求下載時，下載到使用者指定的 Dropbox 外位置，並用上面的指令核對。
-- 不直接修改 PX4 原始碼樹。客製程式以 out-of-tree 模組（PX4 的 `EXTERNAL_MODULES_LOCATION`）放在專案裡；必須改 PX4 原有檔案時，以 patch 檔保存在專案，套用前後都要能用 `check_px4_tree.py` 說明原始碼樹狀態。
-- 原始碼樹裡的 `build/` 是 git 忽略的產物，不影響核對結果。它的來源身分另外看執行檔內嵌的版本：`strings build/px4_sitl_default/bin/px4` 要有 lock 的 commit 與 `v1.17.0`，且沒有 `-dirty`；對不上才重編（C 級）。
+- 不直接改使用者的 PX4 原始碼樹。自己的模組放 `modules/src/`（SITL 的包裝在 `sitl/px4_external/`），用 PX4 的 `EXTERNAL_MODULES_LOCATION` 編進去；必須改 PX4 原有的檔案時，做成 patch 放 `px4/patches/`，由配方的 `firmware/firmware.json` 的 `recipe.patches` 指定。
+- 樹裡的 `build/` 是建置產物（SITL 編在 `build/px4_sitl_default_skysurfer`），git 忽略，不影響核對。
+
+## 編 FC 韌體
+
+```bash
+./runbridge build-firmware --release deploy/<配方>
+```
+
+- 讀配方 `deploy/<配方>/firmware/firmware.json` 的 `recipe`：`make_target`、`patches`、`modules`（`modules/src/` 裡的資料夾名）。沒有 `recipe` 的配方不編：`deploy/00_native` 保存的是現成的原生韌體。
+- 在原始碼樹**旁邊的建置樹**編譯：`<樹>-build`（或環境變數 `SKYSURFER_PX4_BUILD_TREE`）。第一次用 `rsync` 從原樹複製一份（不需要網路），之後每次編譯前重設到鎖定的 commit。使用者的原樹不動。
+- patch 用 `git am` commit 在建置樹對應的 repo 裡，作者與日期取自 patch 檔，committer 固定、commit 日期等於作者日期，所以同樣的 patch 永遠得到同樣的 commit。FC 回報的 NuttX hash 因此可預期，`deploy-test` 與 `deploy/check_params.py` 用它核對 FC 上是哪個配方。
+- 產物（`.px4`、`parameters.json.xz`）寫到配方的 `firmware/`（不進 git，見 `.gitignore`）；身分（`embedded`）、flash 用量與建置紀錄寫進 `firmware.json`，參數名單的 SHA-256 寫進配方的 `params.json`。建置 log 在 `~/.cache/SkySurfer/firmware/<配方>/`。
+- 通常不必單獨編：`./runbridge deploy-test --release deploy/<配方> --flash` 在沒有編好的檔、或 patch、模組改了的時候會自己編。
+
+## 換 PX4 版本
+
+SITL、韌體與 HITL 要同一個版本，所以是整套一起換。先和使用者談好再動手：
+
+1. 問使用者新樹放哪裡（專案外）；舊樹留著，回退要用。下載新的 tag。
+2. 對舊 tag 看差異：uORB 訊息（`msg/`）、固定翼模組（`src/modules/fw_*`）、專案用到的參數、開機腳本與機架（`ROMFS/`）、board（`boards/px4/fmu-v6c/`）。兩版的參數名單用 `python3 deploy/check_params.py --compare-firmware 舊.json.xz 新.json.xz` 比。
+3. 查新版是否已經包含 `px4/patches/` 的 NuttX 修正（AGENTS 第 1 段）。
+4. 改 `px4_lock.json` 的 `tag`、`commit`、`hitl_firmware.version`；`python3 px4/check_px4_tree.py --path <新樹> --remember` 要 PASS。
+5. 重編 SITL、重跑情境；每個配方重編並用 `deploy-test` 測。`deploy/00_native` 的韌體是 v1.17.0 的成品、不會自己重建，新版的原生基準怎麼取得要和使用者討論。

@@ -1,8 +1,10 @@
 # SkySurfer
 
-固定翼 SkySurfer 的飛控開發套件：MATLAB/Simulink 飛機模型 → 轉成 C → SITL（精簡 PX4）→ 客製 PX4 韌體 → 實體飛控 HITL。用 AI 開發時，AI 的工作規則在 [AGENTS.md](AGENTS.md)。
+飛控開發套件：MATLAB/Simulink 飛機模型 → 轉成 C → SITL（精簡 PX4）→ 客製 PX4 韌體 → 實體飛控（Pixhawk）HITL。用 AI 開發時，AI 的工作規則在 [AGENTS.md](AGENTS.md)。
 
-> 狀態：從舊專案 `FW_SkySurfer` 搬家中（見最後一節）。
+**SkySurfer 只是範例載體**：附的模型是一架固定翼 SkySurfer，資料夾、路徑、模組名稱裡的 `SkySurfer`／`sks_` 都只是沿用的名字。換成自己的飛機見第 1.1 段。
+
+> 狀態：從舊專案 `FW_SkySurfer` 搬到 Ubuntu 已完成，整套流程跑通（見最後一節）。
 
 ## 這套專案的精神
 

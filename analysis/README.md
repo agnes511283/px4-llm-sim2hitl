@@ -1,6 +1,6 @@
 # analysis：判定與指標
 
-SITL 與 HITL 共用的分析程式（[ROADMAP](../docs/ROADMAP.md) 批次 4g）。
+SITL 與 HITL 共用的分析程式。Python 用專案的 venv（`PY=~/.local/share/SkySurfer/venv/bin/python`，`./runbridge --setup` 建的；這些程式要 numpy）。
 
 | 檔案 | 用途 |
 |---|---|
@@ -10,7 +10,7 @@ SITL 與 HITL 共用的分析程式（[ROADMAP](../docs/ROADMAP.md) 批次 4g）
 | [replay_compare.py](replay_compare.py) | ULog 重播的輸出比對與輸入記錄品質（`sitl/run_sitl.py --replay` 呼叫；做法見 [sitl README](../sitl/README.md)） |
 
 ```sh
-python3 analysis/response.py \
+"$PY" -B analysis/response.py \
     --trace <run>/instance_0/trace.csv --scenario sitl/scenarios/stabilized_steps.json --out metrics.json
 ```
 
@@ -18,11 +18,11 @@ python3 analysis/response.py \
 - roll／pitch 階躍看姿態角；設定值由 trace 裡的搖桿算（所以 SITL 與 HITL 同一套），另讀 `FW_PSP_OFF`。yaw 搖桿在 Stabilized 是經由偏航角速度設定值驅動方向舵，看機體偏航角速度 r，主要看峰值；之後因方向穩定性衰減，沒有超越量，`settled` 也剛好在漂移門檻附近，不拿來驗收。
 - 「尾窗平均」是階躍最後 30 % 的平均，不一定是穩態；`tail_slope_per_s` 大或 `settled=false` 時，`abs_error` 只代表窗口結束時還差多少。
 - 資料品質：時間軸要有限且嚴格遞增；每個窗口（階躍前 1 s、階躍、尾窗，以及那一軸的搖桿在階躍前 1 s 到階躍結束）都要有限值、相鄰樣本間隔 ≤ `--max-gap`（預設 0.05 s）且涵蓋整個窗口；不合格的階躍 `valid=false` 並列出 `problems`，exit 2。JSON 不寫 NaN（算不出的值是 null）。
-- SITL 重跑結果不逐位元相同（PX4 work queue 先後不固定），比對兩次結果時用容差；參考情境 3 次重跑的指標差異見 VALIDATION。
-- **HITL**（批次 4i）：runtime 不記 plant 真值，所以從 `<log>/host/wire.bin` 的 MAVLink 轉 trace：
+- SITL 重跑結果不逐位元相同（PX4 work queue 先後不固定），比對兩次結果時用容差；參考情境 3 次重跑的指標差 ≤ 0.004°／0.004 s（舊機器上量的）。
+- **HITL**：runtime 不記 plant 真值，所以從飛行 log 目錄裡 `host/wire.bin`（或 `wire.bin`）的 MAVLink 轉 trace（這種飛行用 `hitl/commands/stabilized_steps.py`，Ubuntu 上還沒飛過）：
 
   ```sh
-  python3 analysis/response.py --hitl-log <飛行 log 目錄> --scenario sitl/scenarios/stabilized_steps_hitl.json --out <目錄>/metrics.json
+  "$PY" -B analysis/response.py --hitl-log <飛行 log 目錄> --scenario sitl/scenarios/stabilized_steps_hitl.json --out <目錄>/metrics.json
   ```
 
   - 會在 `--out` 旁邊寫 `hitl_trace.csv`、`hitl_scenario.json`（實測的階躍時間），再算指標；輸出另含 `hitl_conversion`（各階躍與名目時間的差、樣本數、序列期間各來源的最大間隔）。
@@ -48,6 +48,6 @@ SITL 預設會記 ULog（`sitl/run_sitl.py`，`--no-ulog` 可關），HITL 由 `
 - **同一種格式**：SITL、HITL、實機都是 ULog，同一支程式就能把三者疊在一起比。
 - **看得到 PX4 內部**：除了飛機怎麼動，還有每一層的目標與控制器狀態，找原因快。例：一張總覽圖就看出 TECS 空速目標 15 m/s、實際 25–30 m/s（`FW_THR_TRIM` 與模型不吻合），SITL 與 HITL 都一樣。
 - **分工**：AI 用 Python 自動判定（`*_check.py`），人用 MATLAB 的圖直覺檢查、做報告。
-- **大量模擬**：SITL 很快（下面的數字），可以掃參數、跑蒙地卡羅，再統計。
+- **大量模擬**：SITL 很快（數字見 [sitl README](../sitl/README.md)），可以掃參數、跑蒙地卡羅，再統計。
 - **通用**：PX4 生態的 Flight Review、PlotJuggler、pyulog 都讀得到，方便和別人分享。
 - **代價**：預設記錄設定下，一次 60 s 的 SITL ULog 約 14 MB。大量批次建議 `--no-ulog`（只留 `trace.csv`），只替挑出來的幾次記 ULog，或用 `--logger-topics` 只記需要的主題。

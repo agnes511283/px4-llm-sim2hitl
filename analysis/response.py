@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Step-response metrics of a stick-step scenario (ROADMAP batch 4g), shared by SITL and HITL.
+"""Step-response metrics of a stick-step scenario, shared by SITL and HITL.
 
   <SkySurfer venv python> -B analysis/response.py \
       --trace <run>/instance_0/trace.csv --scenario sitl/scenarios/stabilized_steps.json [--out metrics.json]
@@ -31,10 +31,10 @@ Data quality: the time axis must be finite and strictly increasing; each window 
 baseline + step) needs finite samples, no gap above --max-gap and coverage of the whole window;
 otherwise the step is valid = false with its problems listed, and the exit code is 2.
 
-HITL (batch 4i): --hitl-log <flight log dir> instead of --trace converts <log>/host/wire.bin with
+HITL: --hitl-log <flight log dir> instead of --trace converts <log>/host/wire.bin with
 analysis/hitl_trace.py (step times measured from the sent sticks) and writes hitl_trace.csv and
 hitl_scenario.json next to --out (required), then analyses those:
-  python3 analysis/response.py --hitl-log <L> --scenario sitl/scenarios/stabilized_steps_hitl.json --out <dir>/metrics.json
+  <SkySurfer venv python> -B analysis/response.py --hitl-log <L> --scenario sitl/scenarios/stabilized_steps_hitl.json --out <dir>/metrics.json
 """
 import argparse
 import csv
@@ -186,7 +186,7 @@ def main():
     if args.hitl_log:
         if not args.out:
             parser.error('--hitl-log needs --out (the converted trace is written next to it)')
-        sys.dont_write_bytecode = True  # no __pycache__ in the Dropbox project
+        sys.dont_write_bytecode = True  # no __pycache__ in the project
         import hitl_trace
         trace, scenario, conversion = hitl_trace.convert(args.hitl_log, scenario)
         args.trace = args.out.parent / 'hitl_trace.csv'

@@ -1,6 +1,6 @@
 {
   "name": "stabilized_steps_hitl",
-  "description": "HITL counterpart of stabilized_steps (ROADMAP batch 4i). The same Stabilized roll, pitch and yaw stick steps on the same base sticks (the 15 m/s level trim of stabilized_steps, rounded to the 1/1000 MAVLink MANUAL_CONTROL resolution), but entered from the HITL cruise after takeoff (about 25 m/s), so settle_s is longer. hil_bridge/commands/stabilized_steps.py flies it on HITL; run in SITL it previews that flight from a 25 m/s level trim.",
+  "description": "HITL counterpart of stabilized_steps. The same Stabilized roll, pitch and yaw stick steps on the same base sticks (the 15 m/s level trim of stabilized_steps, rounded to the 1/1000 MAVLink MANUAL_CONTROL resolution), but entered from the HITL cruise after takeoff (about 25 m/s), so settle_s is longer. hitl/commands/stabilized_steps.py flies it on HITL; run in SITL it previews that flight from a 25 m/s level trim.",
   "mode": "stabilized",
   "settle_s": 60.0,
   "duration_s": 20.0,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the SkySurfer SITL: minimal PX4 with the sks_sim plant module (docs/ROADMAP.md decision 8).
+"""Run the SkySurfer SITL: minimal PX4 with the sks_sim plant module (sitl/README.md).
 
   <SkySurfer venv python> -B sitl/run_sitl.py \
       --out <new folder> [--scenario sitl/scenarios/stabilized_steps.json] \
@@ -15,8 +15,8 @@ hitl_overrides.params): <instance>/log/<date>/*.ulg, the input of sitl/replay.py
 --logger-topics FILE (with --ulog) replaces that profile by PX4's custom topic list (lines "topic interval_ms
 instance", copied to <instance>/etc/logging/logger_topics.txt), e.g. every input at full rate.
 --start CMD (repeatable) starts one more PX4 command after the mode's modules and before sks_sim, e.g.
---start "sks_hello start" for a custom module of modules/ (ROADMAP batch 6); the A/B baseline is the same
-run without it.
+--start "sks_template start" for a module of modules/src (a scenario's "start" list adds to these; see
+sitl/scenarios/template_offboard.json); the A/B baseline is the same run without it.
 --replay ULOG instead replays a ULog through PX4's own controllers (sitl/replay.py, needs
 `python3 sitl/build_sitl.py --replay`) and compares the recomputed outputs with the logged ones
 (analysis/replay_compare.py): <out>/replay_report.json.
@@ -27,8 +27,8 @@ plus HITL overrides), translated for SITL: outputs on PWM_MAIN_FUNC instead of H
 IMU device ids, SYS_HITL=0, FC sensor calibration dropped. Prints one JSON line with every instance's
 real-time factor and the aggregate.
 
-The PX4 build is <PX4 tree>/build/px4_sitl_default_skysurfer (sitl/README.md); the tree location comes
-from px4/check_px4_tree.py's local configuration.
+The PX4 build is <PX4 tree>/build/px4_sitl_default_skysurfer (python3 sitl/build_sitl.py); the tree location
+comes from px4/check_px4_tree.py (SKYSURFER_PX4_ROOT or the local config file).
 """
 import argparse
 import json
@@ -40,7 +40,7 @@ import subprocess
 import time
 from pathlib import Path
 
-sys.dont_write_bytecode = True  # imports trim, replay, analysis modules: no __pycache__ in the Dropbox project
+sys.dont_write_bytecode = True  # imports trim, replay, analysis modules: no __pycache__ in the project
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'sitl'))
 NATIVE = ROOT / 'deploy' / '00_native'
@@ -50,7 +50,7 @@ from check_px4_tree import px4_root  # noqa: E402
 EXCLUDED_PREFIXES = ('CAL_', 'UAVCAN_', 'RC', 'MAV_', 'SER_', 'BAT', 'EKF2_', 'SDLOG_', 'DSHOT_', 'UXRCE_',
                      'HIL_ACT_', 'PWM_', 'SYS_HITL', 'SYS_AUTOSTART', 'SYS_AUTOCONFIG', 'SYS_USB_AUTO')
 SIM_IMU_ID = 1310988  # DRV_IMU_DEVTYPE_SIM, bus 1, address 1 (sks_sim's PX4Accelerometer / PX4Gyroscope)
-# PX4 modules per mode, started before sks_sim (decision 8).
+# PX4 modules per mode, started before sks_sim: only what the mode needs, no EKF2 (sitl/README.md).
 COMMON = ['sensors start', 'pwm_out_sim start -m sim', 'control_allocator start', 'fw_rate_control start']
 MODULES = {'acro': COMMON, 'stabilized': COMMON + ['fw_att_control start'],
            # OFFBOARD (velocity): PX4's own altitude/speed control under a guidance module started by "start"
@@ -174,7 +174,7 @@ def main():
                         help="record a ULog with the HITL logging profile (default; --no-ulog to skip)")
     parser.add_argument('--logger-topics', type=Path, help='custom logger topic list instead of the profile')
     parser.add_argument('--start', action='append', default=[], metavar='CMD',
-                        help='one more PX4 command before sks_sim, e.g. "sks_hello start" (repeatable)')
+                        help='one more PX4 command before sks_sim, e.g. "sks_template start" (repeatable)')
     parser.add_argument('--replay', type=Path, metavar='ULOG', help='replay this ULog through the PX4 controllers')
     parser.add_argument('--speed', type=float, default=5.0, help='--replay speed factor (self-test: 5 = 1, 10 slightly worse)')
     parser.add_argument('--tolerance', type=float, default=1e-3, help='--replay: report differences above this')

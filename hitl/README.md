@@ -1,65 +1,72 @@
-# Shared-library HIL runtime
+# hitl：HITL runtime
 
-載入已驗證的模型 library，以 4 ms 步進執行，並透過 USB MAVLink 與 PX4 做 HIL。本文是環境、能力限制與測試入口；CLI 語意見[操作說明](../hil_bridge/docs/HIL_操作說明.md)，wire 與恢復契約見 [BEHAVIOR_CONTRACT](../hil_bridge/docs/BEHAVIOR_CONTRACT.md)，建置見 [BUILD_AND_RELEASE](../docs/BUILD_AND_RELEASE.md)。
+載入驗收過的模型 library，以 4 ms 步進執行，經 USB MAVLink 和實體 PX4 做 HITL。入口與常用指令見[根目錄 README](../README.md)（`./runbridge --help` 列出所有動作），安全規則見 [AGENTS](../AGENTS.md) 第 3、4 節。本文只寫 runtime 的位置、規則與測試。
 
 ## 環境
 
-| 項目 | macOS（本機） | Linux（Ubuntu，只連飛控） | Windows |
-|---|---|---|---|
-| 入口 | 根目錄 `runbridge.command` | 同一支 `runbridge.command`（需要 zsh：`sudo apt install zsh`） | 根目錄 `runbridge.cmd` |
-| Python | uv 管理的 CPython 3.12，venv 在 `~/Library/Application Support/SkySurferHIL/venv` | `~/.local/share/SkySurferHIL/venv` | `%LOCALAPPDATA%\SkySurferHIL\venv\Scripts\python.exe`（尚未實測） |
-| 覆寫 | `FW_HIL_PYTHON` | `FW_HIL_PYTHON` | `FW_HIL_PYTHON` |
-| 套件 | 根目錄 `pyproject.toml`／`uv.lock`：PySide6 6.8.3、pyserial 3.5、pymavlink 2.4.49、numpy 2.0.2 | 同左 | 同左 |
-| 建立環境 | `./runbridge.command --setup`（需要 `brew install uv`） | `./runbridge.command --setup`（需要 uv） | `runbridge.cmd --setup`（需要 `winget install astral-sh.uv`） |
-| native release | `releases/skysurfer/macos-arm64/` | `releases/skysurfer/linux-x64/`：**FC-only**（只有 worker、沒有模型；`update_model.command --fc-only`） | 尚未實作，updater 會拒絕 |
-| FC 序列埠 | `/dev/cu.usbmodem*` | `/dev/ttyACM*`（使用者要在 `dialout` 群組） | COM |
+只在 Ubuntu 24.04 x86-64 驗證過，其他平台沒有驗證（換平台時照根目錄 README「環境準備」查官方文件）。
 
-- `./runbridge.command --check-python` 只檢查環境，不會安裝任何東西。找不到 Python 時退出碼 4。
-- 新機器安裝步驟見 [runbook：新機器安裝](../docs/runbooks/new_machine_setup.md)。venv、建置 cache、IPC、log 都留在本機，不放 Dropbox、不在機器間複製。
-- 兩個 dylib 只依賴 macOS 系統庫；runtime 不需要 MATLAB。
-- **Linux FC-only**：模型 library 要 MATLAB 產生的程式碼，Linux 上沒有，所以 Linux release 只有 worker（`native/macos/worker.c`、`io.c` 是 POSIX 共用碼，時鐘與排程分 macOS／Linux 兩段；Linux 用 `CLOCK_MONOTONIC` 與 SCHED_FIFO，沒有權限時 status 的 `scheduler` 會顯示失敗碼）。owner 照常連 FC：`status`、`param-readback`、`param-plan`、`fetch-log`、`sd-list`、`sd-get`、`recover`；status 的 `fc_only: true`，`missing_conditions` 有「model release (FC-only on this platform)」，所以 `model-start`、`takeoff`、`test-takeoff-hold`、`hitl-run` 都會被拒絕。沒有確認視窗（2026-10-17）：`param-deploy`、`sd-put`、`sd-rm` 在 Linux 也照常執行。
-- 公開 header：`interface/hil_model_api.h`；ABI 65537，natural alignment；Initial／Input／Output／Info 為 120／176／680／280 bytes。
+| 項目 | 內容 |
+|---|---|
+| 入口 | 根目錄的 bash 腳本 `./runbridge`：`update-model` 交給 `hitl/update.py`，其他動作交給 `hitl/main.py` |
+| Python | `./runbridge --setup`（要 uv）依 `pyproject.toml`／`uv.lock` 建 venv，位置 `~/.local/share/SkySurfer/venv`；`SKYSURFER_VENV` 改位置，`SKYSURFER_PYTHON` 指定直譯器。套件：pyserial 3.5、pymavlink 2.4.49、numpy 2.0.2 |
+| 檢查 | `./runbridge --check-python` 只檢查、不安裝；找不到 Python 時退出碼 4 |
+| 模型 release | `./runbridge update-model --generate`（要 MATLAB）→ `./runbridge update-model`（編譯、四道檢查、發布）。release 在 `hitl/releases/skysurfer/linux-x64/<build-id>/`，用哪一個由 `hitl/active/linux-x64.json` 指定；兩者都在本機建、不進 git。release 含模型與 worker（`libskysurfer.so`、`libhil_worker.so`、`libskysurfer_plant.so`），只依賴系統 C 函式庫，跑 runtime 不需要 MATLAB。`./runbridge update-model --rollback` 切回前一個 |
+| FC 序列埠 | `/dev/ttyACM*`（使用者要在 `dialout` 群組）；`--port` 預設 `auto`，依 USB 廠商碼與裝置名稱挑出 FC |
+| QGC 與自動飛手 | 只走本機 UDP：owner 從 127.0.0.1:14575 送到 QGC 的 14550；自動飛手是 14576 → 14560 |
 
-本機狀態目錄：`~/Library/Caches/Codex/SkySurferPhaseB/runtime/<project-path-hash>/`（Linux：`~/.cache/SkySurferPhaseB/runtime/<project-path-hash>/`）
+- 模型 ABI：`interface/hil_model_api.h` 是權威；ABI 版本 65537（0x00010001），C 自然對齊、不 pack；Initial／Input／Output／Info 為 120／176／680／280 bytes。SkySurfer 的實作是 `aircraft/skysurfer/adapter.c`。
+- `./runbridge update-model --fc-only` 發布只有 worker、沒有模型的 release，給不能編模型的機器用：owner 照樣能連 FC（`status`、參數讀回、`fetch-log`、`sd-*`、`recover`），需要模型的動作會被拒絕（`missing_conditions` 出現 `model release (FC-only on this platform)`）。平常用不到。
+
+| 位置 | 內容 |
+|---|---|
+| `host/` | owner（`core.py`）、本機 IPC（`ipc.py`）、`hitl-run`、`deploy-test`、參數與記憶卡傳輸 |
+| `native/posix/` | 4 ms worker（`worker.c`）與序列埠寫入、wire 編碼（`io.c`） |
+| `aircraft/skysurfer/` | 模型 ABI 實作 `adapter.c`、`profile.json`、場景檢查 `scenario.py` |
+| `autotakeoff/` | 自動飛手（起飛、爬升、平飛） |
+| `commands/` | 起飛後動作腳本，見 [commands README](commands/README.md) |
+| `scenarios/ground.json` | 預設場景（地面靜止） |
+| `flight_test.json` | `test-takeoff-hold`／`hitl-run` 的預設飛行與判定 |
+| `update.py`、`matlab/mcp_build.py` | 模型 release 的兩段都由 `update.py` 做；第一段經 MATLAB MCP 產碼時用 `mcp_build.py` |
+| `poc/source_columns.json` | 模型 58 個 raw 欄位的名稱 |
+| `tests/` | 離線測試、負載測試、library 驗證 |
+
+## 狀態資料夾
+
+`~/.cache/SkySurfer/runtime/<hash>/`，`<hash>` 是 `hitl/` 資料夾絕對路徑的 SHA-256 前 12 碼（`host/ipc.py` 的 `state_path`）。所以換資料夾就是另一份狀態：換之前先在原處恢復並關 owner（AGENTS 第 3 節）。設了 `SKYSURFER_CACHE` 或 `XDG_CACHE_HOME` 時，`~/.cache/SkySurfer` 這段跟著改（`plant/core/toolchain.py`）。
 
 | 檔案 | 內容 |
 |---|---|
-| `owner.lock`、`host.json` | owner lock 與 IPC 端點／token（0600）。IPC 每個請求、回覆各一行 JSON：請求上限 64 KiB；回覆上限 4 MiB。`status` 的 `operations` 只列摘要（`operations_summarized: true`；每個操作只留純量欄位與結果的純量欄位、字串最多 2,000 字、每個最多 8 KiB——以送出的 JSON 位元組計，非 ASCII 字元會被跳脫——太大時只留識別欄位與截短的 error，`result_summarized: true`），完整的操作用 `operation` 請求（`request_id`）取得：CLI 的 `request()` 與附掛視窗在操作結束時都這樣拿完整結果。owner 保留最近 32 個已結束的操作，還沒結束的一律保留；同時最多 16 個還沒結束，再多的請求直接拒絕（「Owner busy」），不認得的動作與超過 64 字的 `request_id` 也直接拒絕，所以 status 有上限。同一個 `request_id` 只會有一個操作：查重複與登記在同一把鎖裡做，同時送來兩次只執行一次，第二次回覆第一次的操作。沒有換行就結束的回覆是錯誤（`host/ipc.py` 的 `read_reply`，CLI 與附掛視窗共用） |
-| `recovery.json` | recovery pending marker；只由 Core 寫入，不可手動刪改 |
-| `logs-<時間>/` | 每次 owner 的 log（wire、timing、io_events、clock_sync、pilot、final_status） |
+| `owner.lock` | 單一 owner 的鎖 |
+| `host.json` | owner 的本機 IPC 埠與 token（權限 0600） |
+| `recovery.json` | 待恢復記號；只由 runtime 寫，不可手動刪改 |
+| `param_deploy.json` | 寫參數的交易記號；未完成時模型不能啟動 |
+| `logs-<時間>/` | 每次 owner 的紀錄：`wire.bin`、`timing.csv`（每一步）、`io_events.jsonl`、`clock_sync.json`、`final_status.json`、`pilot/`（自動飛手） |
 
-## 能力與限制
+- IPC：127.0.0.1 的 TCP，請求與回覆各一行 JSON；請求上限 64 KiB、回覆 4 MiB。同時最多 16 個還沒結束的操作（再多回「Owner busy」），已結束的保留最近 32 個。`status` 的 `operations` 只有摘要；完整結果用 `operation` 請求帶 `request_id` 取，`host/ipc.py` 的 `request()` 在操作結束時會自動取。
+- `hitl-run` 的證據另存在 `~/.cache/SkySurfer/hitl_runs/`。
 
-- **步進**：ode4、4 ms、輸出 t_k；單實例。Mac worker 使用 QoS user-interactive 與 Mach time-constraint（4 ms／1 ms／2 ms）；實際設定結果在 status 的 `scheduler`。這是 soft real-time。
-- **時序 fault**：lateness ≥20 ms fault；最多補 4 個已逾期 step，不跳步、不大量重播 sensor。每一步都記錄在 `timing.csv`。
-- **controls**：未收到時為 0，之後 hold-last；stale >100 ms 提醒、≥2 s fault；開始後 5 s 內沒有有效 controls 也 fault。
-- **sensor 單位**：加速度 m/s²、gyro rad/s、mag µT、pressure Pa；GPS deg／MSL m、NED m/s、course deg。wire 縮放只做一次（見 BEHAVIOR_CONTRACT）。
-- **GPS 品質設定**：來源 GPS accuracy 0.3／0.5 m → eph／epv 30／50 cm，fix=3、衛星數 10。這是模擬設定，不是實際衛星觀測。
-- **場景**：支援 AGL、TAS、yaw、body velocity 或 TAS 模式、Euler、緯經度。來源固定 ground MSL=0、geoid=0、wind／rates=0、fixed seed，其他值拒絕。非零高度／速度只能離線驗證；實體 air-start 拒絕。預設場景 `scenarios/ground.json`。
-- **發散 guard**：加速度 >1000 m/s²、gyro >100 rad/s、GPS 速度 >200 m/s 或非有限值時 fault；不裁切、不歸零、不改飛機來掩蓋發散。
-- **原 SLX 的 UDP 路徑**（14580／14572／14571）不參與 runtime。
+## 執行規則
+
+- **步進**：ode4、4 ms，輸出取積分前的 t_k；單實例。worker 執行緒在 Linux 要求 SCHED_FIFO 優先權 2，要有即時權限（根目錄 README「即時排程權限」）；結果在 `./runbridge status` 的 `scheduler.time_constraint_result`（0 = 成功，否則是錯誤碼）。這是 soft real-time。
+- **時序**：落後 ≥ 20 ms 就 fault；落後較少時立刻接著跑，不跳步。每一步記在 `timing.csv`；落後 ≥ 4 ms 算一次晚到（status 的 `misses`）。
+- **controls**：只採用有限且在 [-1, 1] 的值；收到前為 0，之後保持最後一筆。超過 100 ms 沒更新時 status 的 `controls_stale` 為 true，≥ 2 s fault；模型開始後 5 s 內沒有有效 controls 也 fault。模型只用 `controls[0..4]`（左副翼、右副翼、升降舵、方向舵、油門）。
+- **啟動模型的條件**：FC heartbeat 新鮮（≤ 3 s）、讀回 `SYS_HITL=1`、確認未解鎖、沒有待恢復、沒有未完成的寫參數。缺什麼看 status 的 `missing_conditions`。
+- **恢復**：送過感測器後，停模型不等於 PX4 已恢復，要 `./runbridge recover`：停飛手與模型 → 一般 disarm → 重開 PX4 → 等同一台 FC 回來、未解鎖、重新讀回 `SYS_HITL=1`。任何一步失敗就保留待恢復。強制 disarm（`recover --hil-force-disarm`）只在一般 disarm 被明確拒絕、模型與飛手都已停止時才會用；`test-takeoff-hold` 收尾會加它，因為那時 PX4 還在空中，一般 disarm 通常被拒。
+- **送給 FC 的感測器**：HIL_SENSOR 每步（250 Hz）、HIL_GPS 10 Hz、heartbeat 1 Hz，編碼在 `native/posix/io.c`（`host/packets.py` 是同樣規則的 Python 版，測試核對兩者一致）。模型輸出的單位：加速度 m/s²、角速度 rad/s、磁場 µT、氣壓 Pa；GPS 度／MSL m、NED m/s、航跡角度。送出時只換算一次：磁場 ×0.01 → gauss、氣壓 ×0.01 → hPa、經緯度 ×1e7、高度 m → mm、速度 m/s → cm/s、航跡角 → 0.01°。氣壓高度與溫度由絕對氣壓以 ISA 推出。
+- **GPS 品質**是固定的模擬值，不是實際觀測：fix 3、衛星 10、eph／epv 30／50 cm（寫在 `native/posix/io.c` 與 `host/core.py`，`profile.json` 的 `gps_quality` 同值）。
+- **場景**（`aircraft/skysurfer/scenario.py`）：可給離地高度 0–10000 m、TAS 0–200 m/s（加攻角／側滑 ±45°）或機體速度、Euler（roll ±180°、pitch ±80°、yaw ±360°）、緯經度。地面 MSL、geoid、風、初始角速度、亂數種子只接受 0，其他值拒絕。實體 FC 只能從地面靜止開始；非零高度或速度只能用 fake FC 離線驗證。
+- **發散保護**（`adapter.c`）：加速度 > 1000 m/s²、角速度 > 100 rad/s、GPS 速度 > 200 m/s 或出現非有限值就 fault，要重設；不裁切、不歸零、不改飛機來掩蓋。
 
 ## 離線測試
 
-全部使用 fake FC、隔離狀態目錄與隨機 loopback 埠，不碰實體 serial、QGC 路由或 recovery marker。
+用 fake FC、獨立的狀態資料夾與隨機本機埠，不碰序列埠、QGC 或真的待恢復記號。`PY` 是 venv 的 python（AGENTS 第 5 節）：
 
 ```sh
-PY="$HOME/Library/Application Support/SkySurferHIL/venv/bin/python"
-"$PY" -B hil_runtime/tests/test_runtime.py
-"$PY" -B hil_runtime/tests/test_management_faults.py
-"$PY" -B hil_runtime/tests/test_stability.py
-"$PY" -B hil_runtime/tests/test_baro_compat.py
-"$PY" -B hil_runtime/tests/test_reconnect.py
-"$PY" -B hil_runtime/tests/test_runtime_identity.py
-"$PY" -B hil_runtime/tests/test_gui_contract.py
-"$PY" -B hil_runtime/tests/test_gui_session.py
-"$PY" -B hil_runtime/tests/test_gui_language.py
-"$PY" -B hil_runtime/tests/test_runbridge_fake.py
+for f in hitl/tests/test_*.py deploy/test_*.py; do "$PY" -B "$f"; done
 ```
 
-飛手與 commands 的共用回歸在 `hil_bridge/tests/`。完整清單與執行方式見 [runbook：離線回歸](../docs/runbooks/model_update_to_hil.md#離線回歸)。
-
-- `FW_HIL_TEST_OUTPUT=<dir>` 可保存每個案例的 CLI、host／pilot console、wire、timing、FC events 與 final status。
-- 600 s 負載：`tests/run_gui_load.py <新目錄>`，預設 thread peer；`--peer-mode process` 只用於診斷對照。門檻見 [GUI_SPEC](../docs/GUI_SPEC.md#負載驗收)。
-- `tests/run_live_unarmed.py` 會連實體 PX4（未解鎖），屬於實體測試。
-- `tests/validate_library.py` 由 updater 呼叫，驗證新建的 library。
+- 設 `FW_HIL_TEST_OUTPUT=<資料夾>` 時，`test_runbridge_fake.py` 會留下每個案例的 CLI、console、wire 與 status。
+- 600 s 負載（不開視窗）：`"$PY" -B hitl/tests/run_load.py <新的空資料夾> --duration 600`。PASS 條件寫在 `run_load.py`：每步計算 p99 < 2 ms、最慢 < 4 ms、0 次晚到（≥ 4 ms）、每 10 s 的即時倍率在 0.99–1.01、沒有序列埠錯誤或掉 log。`--peer-mode process` 只用來診斷對照。
+- `tests/validate_library.py` 由 `update-model` 呼叫，用 Simulink 參考結果與 ABI 驗證新建的 library。
+- `tests/run_live_unarmed.py` 會連實體 PX4（不解鎖），屬實體測試；它的序列埠寫死成 macOS 的 `/dev/cu.usbmodem01`，在 Linux 不能直接用。

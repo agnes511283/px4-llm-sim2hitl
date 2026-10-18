@@ -258,7 +258,7 @@ class RunbridgeFakeTests(unittest.TestCase):
         again=self.cli('param-plan','--out',str(self.folder/'plan2'))['operation']['result']
         self.assertEqual(again['writes'],[])
     def test_sd_card_cli(self):
-        extras='/fs/microsd/etc/extras.txt';local=self.folder/'extras.txt';local.write_bytes(b'sks_hello start\n')
+        extras='/fs/microsd/etc/extras.txt';local=self.folder/'extras.txt';local.write_bytes(b'sks_template start\n')
         self.assertEqual(self.cli('sd-list','--sd-path','/fs/microsd')['operation']['result']['entries'],[{'type':'dir','name':'log'}])
         self.cli('sd-put','--sd-path',extras,'--out',str(self.folder/'p'),expected=4)  # --file is required
         self.cli('sd-put','--file',str(local),'--sd-path','/fs/microsd/etc/rc.txt','--out',str(self.folder/'p'),expected=4)
@@ -266,7 +266,7 @@ class RunbridgeFakeTests(unittest.TestCase):
         self.assertEqual((put['verdict'],put['changed']),('PASS',True))
         self.assertIn(246,self.command_ids())  # rebooted, then read back
         got=self.cli('sd-get','--sd-path',extras,'--out',str(self.folder/'g'))['operation']['result']
-        self.assertEqual(Path(got['file']).read_bytes(),b'sks_hello start\n')
+        self.assertEqual(Path(got['file']).read_bytes(),b'sks_template start\n')
         gone=self.cli('sd-rm','--sd-path',extras,'--out',str(self.folder/'r'))['operation']['result']
         self.assertEqual((gone['verdict'],gone['changed']),('PASS',True))
         self.assertEqual(self.cli('sd-list')['operation']['result']['entries'],[])

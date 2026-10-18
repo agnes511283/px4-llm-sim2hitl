@@ -255,7 +255,7 @@ def compare_firmware(old_path, new_path, release_dir=None):
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument('--release', type=Path, default=ROOT / 'deploy/00_native')
-    p.add_argument('--readback', type=Path, help='params_*.json written by ./runbridge.command param-readback')
+    p.add_argument('--readback', type=Path, help='params_*.json written by ./runbridge param-readback')
     p.add_argument('--compare-firmware', nargs=2, type=Path, metavar=('OLD', 'NEW'))
     args = p.parse_args(argv)
     if bool(args.readback) == bool(args.compare_firmware):

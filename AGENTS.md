@@ -83,8 +83,8 @@ for f in hitl/tests/test_*.py deploy/test_*.py; do echo "== $f"; "$PY" -B "$f" 2
 | `model/` | 飛機模型來源；`generated/` 是轉好的 C 與 Simulink 參考結果 |
 | `plant/` | plant 核心包裝、C 真值、C 感測器、各自的檢查程式、錄製的參考資料 |
 | `sitl/` | 精簡 PX4 的 plant 模組 `sks_sim`、情境、配平、ULog 重播 |
-| `modules/` | 自己的 PX4 模組（同一份原始碼編進 SITL 與韌體；`sks_hello` 是範本） |
+| `modules/` | 自己的 PX4 模組（同一份原始碼編進 SITL 與韌體；`sks_template` 是範例，見它的 README「照著做一個自己的模組」）。韌體只編配方 `recipe.modules` 列的模組；SITL 要在 `sitl/px4_external/src/` 加包裝並列進那裡的 `CMakeLists.txt` |
 | `hitl/` | runtime（owner、worker、`hitl-run`）、起飛與起飛後動作腳本、`flight_test.json`（預設飛行與判定）、模型 release |
-| `deploy/` | 部署配方：`00_native`（原生韌體＋參數，可隨時刷回）、`01_sdfix`（原生＋記憶卡修正 patch）；自建配方的 `firmware/firmware.json` 的 `recipe` 寫要套的 patch 與 `modules/` 的模組，`px4/build_firmware.py` 在 PX4 原始碼樹旁的建置樹編譯（原樹不動），patch 以固定作者與日期 commit，FC 回報的 NuttX hash 因此可預期、可核對 |
+| `deploy/` | 部署配方：`00_native`（原生韌體＋參數，可隨時刷回）、`01_sdfix`（原生＋記憶卡修正 patch，交接時 FC 上是它）、`02_template`（01＋範例模組 `sks_template`＋開機檔＋`hitl.json` 指定的起飛後動作與判定）；自建配方的 `firmware/firmware.json` 的 `recipe` 寫要套的 patch 與 `modules/` 的模組，`px4/build_firmware.py` 在 PX4 原始碼樹旁的建置樹編譯（原樹不動），patch 以固定作者與日期 commit，FC 回報的 NuttX hash 因此可預期、可核對 |
 | `px4/` | PX4 版本鎖、原始碼樹核對、修正 patch |
 | `analysis/` | 響應指標、ULog 讀檔與嚴格解析、重播比對 |

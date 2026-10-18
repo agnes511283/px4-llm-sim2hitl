@@ -301,7 +301,10 @@ def run_deploy(runtime, args):
         if args.no_hitl:
             report['verdict'] = 'PASS'
             return report, path
-        result = subprocess.run([str(project / 'runbridge'), 'hitl-run', '--release', str(release)], cwd=project,
+        # The recipe's own flight action and judgement of its module (deploy/<name>/hitl.json), if it has them.
+        hitl = json.loads((release / 'hitl.json').read_text()) if (release / 'hitl.json').is_file() else {}
+        extra = [x for key in ('after', 'check') if hitl.get(key) for x in (f'--{key}', hitl[key])]
+        result = subprocess.run([str(project / 'runbridge'), 'hitl-run', '--release', str(release), *extra], cwd=project,
                                 capture_output=True, text=True)
         (run / 'hitl_run.out').write_text(result.stdout + result.stderr)
         line = next((x for x in reversed(result.stdout.strip().splitlines()) if x.startswith('{')), '{}')

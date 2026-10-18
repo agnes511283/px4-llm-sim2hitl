@@ -8,6 +8,7 @@ import importlib.util
 import json
 import os
 import struct
+import subprocess
 import sys
 import time
 import uuid
@@ -126,8 +127,9 @@ def run_hitl(runtime, args):
     run = out / f'run_{time.strftime("%Y%m%d_%H%M%SZ", time.gmtime())}_{uuid.uuid4().hex[:8]}'
     run.mkdir(parents=True)
     started = time.monotonic()
+    after = getattr(args, 'after', None) or 'after_takeoff_loiter'
     pilot_files = ['hitl/scenarios/ground.json', 'hitl/autotakeoff/FW_SkySurfer_HIL_AutoTakeoff.py',
-                   'hitl/commands/after_takeoff_loiter.py']
+                   f'hitl/commands/{after}.py']
     manifest = {
         'schema_version': 1,
         'kind': 'hitl-run',
@@ -137,7 +139,8 @@ def run_hitl(runtime, args):
         'verdict': None,
         'reasons': [],
         'parts': {},
-        'scenario': {'name': SCENARIO, 'flight': flight, 'files': None,
+        'scenario': {'name': SCENARIO, 'flight': flight, 'files': None, 'after': after,
+                     'check': getattr(args, 'check', None),
                      'nonstandard_parameters': {k: {'requested': v, 'standard': fixed[k]} for k, v in flight.items()
                                                 if float(v) != float(fixed[k])}},
     }
@@ -277,7 +280,7 @@ def run_hitl(runtime, args):
         try:
             with (run / 'flight_console.txt').open('w') as console, contextlib.redirect_stdout(console):
                 run_test(runtime, SimpleNamespace(fake_fc=args.fake_fc, fake_state_dir=args.fake_state_dir,
-                                                  fake_config=args.fake_config, port=args.port,
+                                                  fake_config=args.fake_config, port=args.port, after=after,
                                                   log_dir=run / 'flight', **flight))
         except Exception as exc:
             # The checks after the flight are read-only and still run (the owner refuses what is not safe).
@@ -427,8 +430,28 @@ def run_hitl(runtime, args):
                                    + (f' and {bad} places that are no valid MAVLink frame' if bad else ''))
             part('data', 'INCOMPLETE' if reasons else 'PASS', reasons, **details)
 
+        def algorithm():
+            # The recipe's own judgement of its module (hitl.json "check"), run on this flight's FC log.
+            check = getattr(args, 'check', None)
+            if not check:
+                return
+            log = (result.get('fc_log') or {}).get('path')
+            if not log or parts.get('fc_log', {}).get('verdict') == 'FAIL':
+                part('algorithm', 'INCOMPLETE', ['no trustworthy FC log of this flight to judge'], check=check)
+                return
+            proc = subprocess.run([sys.executable, '-B', str(project / check), log, '--out', str(run / 'algorithm.json')],
+                                  capture_output=True, text=True)
+            try:
+                judged = json.loads((run / 'algorithm.json').read_text())
+            except (OSError, ValueError):
+                part('algorithm', 'INCOMPLETE', [f'{check} gave no report (exit {proc.returncode}): {proc.stderr[-300:]}'],
+                     check=check)
+                return
+            verdict = judged.get('verdict') if judged.get('verdict') in ('PASS', 'FAIL') else 'INCOMPLETE'
+            part('algorithm', verdict, list(judged.get('problems') or []), check=check, report=str(run / 'algorithm.json'))
+
         for stage[0], step in [('identity_end', identity_end), ('params_after', params_after), ('fc_log', fc_log),
-                               ('data', data)]:
+                               ('algorithm', algorithm), ('data', data)]:
             try:
                 step()
             except Exception as exc:

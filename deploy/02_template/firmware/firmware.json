@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "release": "02_template",
+  "board": "px4_fmu-v6c",
+  "recipe": {
+    "make_target": "px4_fmu-v6c_default",
+    "patches": [
+      {
+        "file": "px4/patches/nuttx_82d12852_stm32h7_sdmmc_rx_invalidate.patch",
+        "repo": "platforms/nuttx/NuttX/nuttx"
+      }
+    ],
+    "modules": [
+      "sks_template"
+    ]
+  },
+  "px4": {
+    "lock": "px4/px4_lock.json",
+    "tag": "v1.17.0",
+    "commit": "d6f12ad1c4f70ad3230afd7d86e971421e02fef4"
+  },
+  "outputs": {
+    "firmware": {
+      "file": "px4_fmu-v6c_default.px4",
+      "sha256": "b5507158f859703980cd7c43bd2e95a72f3c00dbe5800028f057a97a2af115e3",
+      "size": 1805884
+    },
+    "image_bin": {
+      "file": "not kept (inside the .px4 image field)",
+      "sha256": "89c849ae8c366bfb91f339eb08caea2bd68e39c481b9da845202c3d988684763",
+      "size": 1928700
+    },
+    "parameters": {
+      "file": "parameters.json.xz",
+      "sha256": "4d582c4265d511181fd8998b7bdf4982d19c1ab89a178fa1d3df5e5b4ad9375e",
+      "count": 2038,
+      "origin": "PX4 build output, unmodified"
+    }
+  },
+  "embedded": {
+    "board_id": 56,
+    "git_identity": "v1.17.0",
+    "git_hash": "d6f12ad1c4f70ad3230afd7d86e971421e02fef4",
+    "nuttx_git_hash": "8d3ed2a2177267cb0ad5a1cadbee9ccdb6aab70d",
+    "image_size": 1928700,
+    "image_maxsize": 1966080,
+    "flash_used_percent": 98.1
+  },
+  "build": {
+    "command": "make px4_fmu-v6c_default BUILD_DIR_SUFFIX=_02_template EXTERNAL_MODULES_LOCATION=/home/iec/.cache/SkySurfer/firmware/02_template/ext",
+    "build_tree": "/home/iec/px4/PX4-Autopilot-build",
+    "output_dir": "/home/iec/px4/PX4-Autopilot-build/build/px4_fmu-v6c_default_02_template",
+    "patches": [
+      {
+        "file": "px4/patches/nuttx_82d12852_stm32h7_sdmmc_rx_invalidate.patch",
+        "sha256": "ebdecae0b43ade65f7cb156ff04648ff4169b833eafde5c4761d291da3a8f75a",
+        "repo": "platforms/nuttx/NuttX/nuttx",
+        "commit": "8d3ed2a2177267cb0ad5a1cadbee9ccdb6aab70d"
+      }
+    ],
+    "modules": {
+      "sks_template": {
+        "CMakeLists.txt": "70751cd13be117e54ba304e72e0d3757823d1055306402f61a6998692cc2f205",
+        "SksTemplate.cpp": "10f595ee96a14592e6575216c016bcfdc1c38126c32850bd5cb6fb144c6cc538",
+        "SksTemplate.hpp": "76139c7013cea943a26b0c53e26f978f53163529c446d28bdf1773b3258529be"
+      }
+    },
+    "toolchain": "arm-none-eabi-gcc (15:13.2.rel1-2) 13.2.1 20231009",
+    "built_at_utc": "2026-10-18T02:50:37Z",
+    "seconds": 37.5,
+    "log": "/home/iec/.cache/SkySurfer/firmware/02_template/build_20261018_105000.log"
+  },
+  "flashed": null
+}

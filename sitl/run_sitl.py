@@ -52,7 +52,9 @@ EXCLUDED_PREFIXES = ('CAL_', 'UAVCAN_', 'RC', 'MAV_', 'SER_', 'BAT', 'EKF2_', 'S
 SIM_IMU_ID = 1310988  # DRV_IMU_DEVTYPE_SIM, bus 1, address 1 (sks_sim's PX4Accelerometer / PX4Gyroscope)
 # PX4 modules per mode, started before sks_sim (decision 8).
 COMMON = ['sensors start', 'pwm_out_sim start -m sim', 'control_allocator start', 'fw_rate_control start']
-MODULES = {'acro': COMMON, 'stabilized': COMMON + ['fw_att_control start']}
+MODULES = {'acro': COMMON, 'stabilized': COMMON + ['fw_att_control start'],
+           # OFFBOARD (velocity): PX4's own altitude/speed control under a guidance module started by "start"
+           'offboard': COMMON + ['fw_att_control start', 'fw_lat_lon_control start']}
 
 
 def read_params(path):
@@ -203,7 +205,8 @@ def main():
         if args.logger_topics:
             (work / 'etc' / 'logging').mkdir(parents=True, exist_ok=True)
             (work / 'etc' / 'logging' / 'logger_topics.txt').write_text(args.logger_topics.read_text())
-        script.write_text(startup_script(work / 'sitl_params.bson', scenario['mode'], duration, work, args.ulog, args.start))
+        script.write_text(startup_script(work / 'sitl_params.bson', scenario['mode'], duration, work, args.ulog,
+                                              list(args.start) + scenario.get('start', [])))
         log = open(work / 'px4.log', 'w')
         proc = subprocess.Popen([str(px4), '-d', '-i', str(i), '-s', str(script), '-w', str(work)],
                                 stdout=log, stderr=subprocess.STDOUT, env=env)

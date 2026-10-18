@@ -186,8 +186,15 @@ class CommandTests(unittest.TestCase):
         self.tick(t, 13.04)
         self.assertEqual(t.after_sequence.state, 'failed')
 
+    def test_offboard_allowed_and_template_script_loads(self):
+        # OFFBOARD (6) is allowed since a module of modules/ can send the offboard signal; PX4 refuses it otherwise.
+        validate([Mode(6, 0, timeout=8.)])
+        script = load_script('template_offboard')
+        self.assertIn(Mode(6, 0, timeout=8.), script.actions)
+        self.assertEqual(script.finish, 'loiter')
+
     def test_bad_actions_rejected_before_flight(self):
-        for action in (Mode(6), Mode(7, timeout=math.inf), Sticks(2, 0, .35, 1),
+        for action in (Mode(9), Mode(7, timeout=math.inf), Sticks(2, 0, .35, 1),
                        Sticks(0, 0, -1, 1), Wait(0), Wait(math.nan), object()):
             with self.subTest(action=action), self.assertRaises(ValueError):
                 validate([action])

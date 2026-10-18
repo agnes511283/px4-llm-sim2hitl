@@ -35,7 +35,7 @@ SksSim::~SksSim()
 }
 
 // Scenario file, one record per line (sitl/run_sitl.py writes it):
-//   mode stabilized|acro
+//   mode stabilized|acro|offboard
 //   ic <height_agl_m> <u> <v> <w m/s body> <roll> <pitch> <yaw deg> <lat> <lon deg>
 //   base <roll> <pitch> <yaw> <throttle>          sticks held for the whole run
 //   step <start_s> <end_s> <roll> <pitch> <yaw> <throttle>   added to base while start <= t < end
@@ -63,8 +63,9 @@ bool SksSim::load_scenario()
 			char mode[32] {};
 			sscanf(line, "%*s %31s", mode);
 			_acro = !strcmp(mode, "acro");
+			_offboard = !strcmp(mode, "offboard");
 
-			if (!_acro && strcmp(mode, "stabilized")) {
+			if (!_acro && !_offboard && strcmp(mode, "stabilized")) {
 				PX4_ERR("unsupported mode %s", mode);
 				fclose(f);
 				return false;
@@ -159,17 +160,24 @@ void SksSim::publish_stub(hrt_abstime now, const Sticks &sticks, bool armed)
 
 	vehicle_status_s status{};
 	status.timestamp = now;
-	const uint8_t nav_state = _acro ? vehicle_status_s::NAVIGATION_STATE_ACRO : vehicle_status_s::NAVIGATION_STATE_STAB;
+	const uint8_t nav_state = _acro ? vehicle_status_s::NAVIGATION_STATE_ACRO
+				  : _offboard ? vehicle_status_s::NAVIGATION_STATE_OFFBOARD : vehicle_status_s::NAVIGATION_STATE_STAB;
 	status.nav_state = nav_state;
 	status.arming_state = armed ? vehicle_status_s::ARMING_STATE_ARMED : vehicle_status_s::ARMING_STATE_DISARMED;
 	status.vehicle_type = vehicle_status_s::VEHICLE_TYPE_FIXED_WING;
 	_status_pub.publish(status);
 
-	// Same flags as commander's ModeUtil (control_mode.cpp) for NAVIGATION_STATE_STAB / NAVIGATION_STATE_ACRO.
+	// Same flags as commander's ModeUtil (control_mode.cpp) for NAVIGATION_STATE_STAB / NAVIGATION_STATE_ACRO, and for
+	// NAVIGATION_STATE_OFFBOARD with offboard_control_mode.velocity (no Commander here: the module's signal is not read).
 	vehicle_control_mode_s mode{};
 	mode.timestamp = now;
 	mode.flag_armed = armed;
-	mode.flag_control_manual_enabled = true;
+	mode.flag_control_manual_enabled = !_offboard;
+	mode.flag_control_offboard_enabled = _offboard;
+	mode.flag_control_velocity_enabled = _offboard;
+	mode.flag_control_altitude_enabled = _offboard;
+	mode.flag_control_climb_rate_enabled = _offboard;
+	mode.flag_control_acceleration_enabled = _offboard;
 	mode.flag_control_attitude_enabled = !_acro;
 	mode.flag_control_rates_enabled = true;
 	mode.flag_control_allocation_enabled = true;

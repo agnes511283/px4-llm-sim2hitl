@@ -79,6 +79,7 @@ private:
 	char _scenario_path[256] {};
 	// Scenario (written by sitl/run_sitl.py from a scenario JSON): mode, initial state, base sticks, steps.
 	bool _acro{false};
+	bool _offboard{false};  // OFFBOARD with offboard_control_mode.velocity (a module of modules/ does the guidance)
 	SksInitialConditions _ic{};
 	Sticks _base{0.f, 0.f, 0.f, -1.f};
 	Step _step_list[kMaxSteps] {};

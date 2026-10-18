@@ -3,5 +3,6 @@
 set(config_module_list_external
 	sks_sim
 	sks_hello
+	sks_template
 	PARENT_SCOPE
 )

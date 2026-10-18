@@ -92,6 +92,9 @@ def main(argv=None):
         # Default flight of hitl/flight_test.json; other values run and are recorded in the report.
         for name in ['--altitude', '--hold-seconds', '--hold-timeout', '--flight-timeout']:
             p.add_argument(name, type=float)
+    if arguments[:1] in (['hitl-run'], ['test-takeoff-hold']):
+        p.add_argument('--after', help='after-takeoff script of hitl/commands (default after_takeoff_loiter)')
+        p.add_argument('--check', help='hitl-run: script judging the module on the FC log (e.g. analysis/template_check.py)')
     args, extra = p.parse_known_args(argv)
     if (args.fake_state_dir or args.fake_config) and not args.fake_fc:
         raise ValueError(

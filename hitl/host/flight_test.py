@@ -234,7 +234,7 @@ def run_test(runtime, args):
                     '--altitude',
                     str(args.altitude),
                     '--after',
-                    'after_takeoff_loiter',
+                    getattr(args, 'after', None) or 'after_takeoff_loiter',
                     '--record',
                 ]
             },

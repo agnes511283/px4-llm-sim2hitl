@@ -43,10 +43,12 @@ def validate(actions):
             if not positive(action.seconds):
                 raise ValueError('Wait.seconds must be finite and positive')
         elif isinstance(action, Mode):
-            if (type(action.main_mode) is not int or action.main_mode not in (1, 2, 3, 4, 5, 7, 8)
+            # 6 = OFFBOARD: PX4 enters it only while a source sends the offboard signal (a module of modules/, e.g.
+            # sks_template) and leaves it through its own offboard-loss failsafe when the signal stops.
+            if (type(action.main_mode) is not int or action.main_mode not in (1, 2, 3, 4, 5, 6, 7, 8)
                     or type(action.sub_mode) is not int or not 0 <= action.sub_mode <= 255
                     or not positive(action.timeout)):
-                raise ValueError('Mode requires a supported non-Offboard main mode, submode 0..255 and positive timeout')
+                raise ValueError('Mode requires a supported main mode, submode 0..255 and positive timeout')
         elif isinstance(action, Sticks):
             values = (action.pitch, action.roll, action.yaw, action.throttle)
             if not all(isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x) for x in values):

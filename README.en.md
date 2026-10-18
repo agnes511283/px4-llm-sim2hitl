@@ -2,7 +2,7 @@
 
 [繁體中文](README.md) | **English**
 
-> **This is a translation.** The authoritative README is [README.md](README.md) (Traditional Chinese); where the two differ, follow README.md. Translated from README.md with SHA-256 `8214b54abaea8ea4d767d8dfe2fc55576743108663ac442ba0aae7a68ac6338d`: if `sha256sum README.md` prints something else, this translation is behind. The AI rules ([AGENTS.md](AGENTS.md)) and the folder READMEs are in Traditional Chinese only; an AI agent reads them without trouble.
+> **This is a translation.** The authoritative README is [README.md](README.md) (Traditional Chinese); where the two differ, follow README.md. Translated from README.md with SHA-256 `cb7cbfbad8b54112eed83afc45817dc704ba96bfeebe1c9b06fa9c9be437dcbb`: if `sha256sum README.md` prints something else, this translation is behind. The AI rules ([AGENTS.md](AGENTS.md)) and the folder READMEs are in Traditional Chinese only; an AI agent reads them without trouble.
 
 Flight-control development kit: MATLAB/Simulink aircraft model → C → SITL (minimal PX4) → custom PX4 firmware → HITL on a real flight controller (Pixhawk). When you develop with an AI, its working rules are in [AGENTS.md](AGENTS.md).
 
@@ -74,15 +74,18 @@ Verified on **Ubuntu 24.04 x86-64** only. Each item below says "why" and "how it
 ./runbridge update-model              # stage two: build, four gates, publish the model release (no MATLAB connection needed)
 ./runbridge bridge                    # start the owner (holds the model and the serial port); QGC connects over UDP
 ./runbridge status                    # owner status
+./runbridge model-start              # 3.1: start the model on the ground (first check nothing is pending and status shows empty missing_conditions); --scenario <scene> for another scene
 ./runbridge takeoff --altitude 100 --after template_offboard   # 3.1: with the model running on the ground, automatic takeoff -> Hold -> OFFBOARD (the template; the FC must run 02_template) -> Hold (QGC's menu cannot switch a fixed-wing to Offboard)
 ./runbridge deploy-test --release deploy/<recipe>           # stage 3: plan only (what is on the FC now, what would be done)
 ./runbridge deploy-test --release deploy/<recipe> --flash   # the usual one: build if needed -> flash -> parameters -> boot file -> hitl-run
 ./runbridge deploy-test --release deploy/<recipe> --reuse   # only when the human asks for it: keep the FC's firmware, parameters -> boot file -> hitl-run
 ```
 
+Manual HITL (3.1) order: `bridge` starts the owner → `status` confirms recovery is complete and the start conditions are met → `model-start` → confirm the model runs on the ground → `takeoff`. To finish: `model-stop`, then `recover` following the recovery rules in the [hitl README](hitl/README.md) (add `--hil-force-disarm` when the flight ended in the air), and finally `shutdown` to close the owner.
+
 ## Known issues
 
-- **Model and PX4 parameters do not match (airspeed too high)**: PX4's `FW_THR_TRIM=0.6`, while this aircraft model needs only about 0.115 throttle for level flight at 15 m/s. As a result the native loiter and SITL airspeeds are 20–30 m/s (target 15 m/s), and in HITL, when TECS climbs, the airspeed shoots up and the altitude overshoots (which is why the template's altitude check FAILs). Following the principles in [AGENTS](AGENTS.md), check the model first (thrust, drag, mass), then decide whether the model needs fixing or this aircraft's PX4 parameters must be set to match the real aircraft.
+- **Model and PX4 parameters do not match (airspeed too high)**: PX4's `FW_THR_TRIM=0.6`, while this aircraft model needs only about 0.115 throttle for level flight at 15 m/s. Observed so far: the native loiter and SITL airspeeds are 20–30 m/s (target 15 m/s); in HITL, when TECS climbs, the airspeed shoots up and the altitude overshoots, which is why the template's altitude check FAILs. The throttle-trim gap is one possible cause, but how the two are linked and how much it explains is not yet confirmed. Following the principles in [AGENTS](AGENTS.md), check the model first (thrust, drag, mass), then decide whether the model needs fixing or this aircraft's PX4 parameters must be set to match the real aircraft.
 - **The 3.2 exit check is not done**: the baseline parameters of `deploy/00_native` assign no physical servo outputs (`PWM_MAIN_FUNC*`, `PWM_AUX_FUNC*` all 0), `GPS_1_CONFIG=0`, the airspeed sensor driver is off; with HITL turned off there is no output at all. It needs the real aircraft's wiring and parameters.
 - **Real-time permission for ordinary users**: see the real-time scheduling item in "Environment setup"; without it things run, but with little timing margin.
 

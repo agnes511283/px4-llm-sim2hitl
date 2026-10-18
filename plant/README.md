@@ -2,7 +2,7 @@
 
 飛機的 6DOF 由 `model/FW_SkySurfer_HIL.slx` 轉碼成可重入的 C 核心（`core/`）；這裡另放用 C 寫的 Truth（由核心的狀態與力算出 `PlantTruth`）與 sensors（讀 Truth）。SITL（`sitl/` 的 `plant_sim` 模組）與 HITL（`hitl/aircraft/skysurfer/adapter.c`）用同一份；同一程序可跑多架，只用標準 C。只在 Ubuntu 24.04 x86-64 驗證過。
 
-核心、C Truth、C sensors 都通過驗收。平常不用單獨跑這裡的程式：`./runbridge update-model --generate`（要 MATLAB）把產生的 C 存進 `model/generated/`，`./runbridge update-model` 再把它們和 `adapter.c` 編成模型 release，同時跑四道檢查（reuse-library 閘門、`validate_core.py`、`validate_plant.py`、`hitl/tests/validate_library.py`），全部 PASS 才發布。
+核心、C Truth、C sensors 都通過驗收。這些驗收（含四道檢查）證明的是轉碼、介面與數值和來源模型一致，**不代表模型和實機一樣**；像不像實機，看的是氣動表、推力、質量與慣量這些來源本身。平常不用單獨跑這裡的程式：`./runbridge update-model --generate`（要 MATLAB）把產生的 C 存進 `model/generated/`，`./runbridge update-model` 再把它們和 `adapter.c` 編成模型 release，同時跑四道檢查（reuse-library 閘門、`validate_core.py`、`validate_plant.py`、`hitl/tests/validate_library.py`），全部 PASS 才發布。
 
 | 位置 | 內容 |
 |---|---|
@@ -135,7 +135,7 @@ SkySurfer 的數字（AVL 座標原點在翼根前緣，往機尾為正；模型
 
 **使用者想改重心時**（AI 照這裡換算，改 `CG_m` 的第一個數，`XREF_m` 不動）：
 
-- 「往機頭 d 公尺」：`CG_m(1)` = 0.330 − d；「往機尾 d」：0.330 + d。例：往機頭 1 cm → 0.320。
+- 「往機頭 d 公尺」：`CG_m(1)` = 目前的值 − d；「往機尾 d」：目前的值 + d。**以檔案裡現在的 `CG_m(1)` 為準**，0.330 只是原始 SkySurfer 的值（例：從 0.330 往機頭 1 cm → 0.320，再往前 1 cm → 0.310）。
 - 「在 p % MAC」：`CG_m(1)` = 0.2986 + 0.001791 × p（幾何 MAC）。例：25 % → 0.3434，比現在往機尾約 13 mm。有人說的「MAC」其實是翼根弦長或 0.20 m，這時是 0.280 + 0.002 × p（25 % 就是現在的 0.330）。兩種差很多，先問清楚是哪一種。
 - 換算後告訴使用者新的靜穩定度：（0.411 − `CG_m(1)`）÷ 0.1791；超過中性點就提醒會不穩定。
 - 只移重心，慣量不會跟著變；移很多時要重算慣量。
@@ -153,11 +153,13 @@ SkySurfer 的數字（AVL 座標原點在翼根前緣，往機尾為正；模型
 
 - **風向一律是「風從哪裡吹來」**（0° = 從北方吹來）；`steady_ned_m_s` 則是空氣的 NED 速度（往哪裡吹），程式自己換算。只有水平風，垂直分量不用。
 - **亂流**：原作者把 Dryden 方塊註解掉了，因為停在地面時空速 0，它的濾波器除以空速會變成無限大。2026-10-18 取消註解，空速輸入加 5 m/s 下限（與氣動開始作用的門檻相同，飛行中不起作用），雜訊間隔由 0.1 s 改成 `Thil`（0.004 s；0.1 s 時角速度擾動少約 8–10 %，且讓模型變成兩種速率）。預設強度仍是 0、模式 1，所以無風時結果和改之前逐位元相同。
-- **亂流強度**：Dryden 的強度在編譯時算定，所以核心以參考強度 W20 = 1 m/s 產碼，輸出乘上想要的 W20（`Wind[3]`）。1000 ft（305 m）以下的強度和 W20 成正比，這樣是準的；以上不準。要更高或要精確，就把來源的 W20 設成想要的值重新產碼（`./runbridge update-model --generate`），這也是另一種做法。隨機種子固定，所以每次亂流相同、SITL 與 HITL 可比。
+- **亂流強度**：Dryden 的強度在編譯時算定，所以核心以參考強度 W20 = 1 m/s 產碼，輸出乘上想要的 W20（`Wind[3]`）。1000 ft（305 m）以下的強度和 W20 成正比，這樣是準的；以上不準。要更高或要精確：產碼程式（`plant/core/build_core.m`）固定把核心副本的 W20 設成 1 再乘倍率，**只改來源模型的 W20 不會生效**；得改產碼程式的這個做法（例如直接用指定的 W20 產碼、拿掉倍率），再照 AGENTS 第 5 段的模型列重新產碼並驗證。雜訊每 4 ms 更新。
+- **隨機種子**固定（情境的 `seed` 可改）：同一個種子給的是同一串亂數，每次跑都一樣。但 SITL 從空中開始、HITL 經過地面和爬升，起風的時間、高度與空速不同，**實際吹到的風不會逐點相同**；SITL 與 HITL 比較時寫明起風時間與比較的時段。
 - **陣風、風切、亂流的參數**在產生的 C 裡是共用的全域值；`plant_truth.c` 每一步先套用這一架的設定再步進，所以同一個程式跑多架也各自獨立（一次一個呼叫）。
 - **什麼時候開始吹**（`PlantWindConfig.start_mode`）：預設「離地後」（高度超過 5 m），另有「指定時間」與「一開始」。停在地上遇到側風，模型會轉向並翻倒（10 m/s 側風約側傾 68°），地上就有空速也會讓 PX4 的起飛前檢查和 EKF 出問題，所以預設離地後才吹。開始後定常風、風切、亂流在 `ramp_s`（預設 5 s）內線性加上；陣風在開始後 `gust_start_s` 才來。
-- **陣風會一直維持**：Discrete Wind Gust 照 1−cos 形狀在陣風長度（飛過的距離）內增強到設定大小，之後保持不變，不會自己消失；垂直分量因此是持續的上升或下沉氣流。
-- **怎麼設**：SITL 情境與 HITL 場景都用同一個 `"wind"` 物件，格式與提醒在 [wind.py](wind.py)；例子 `sitl/scenarios/wind_steady.json`、`wind_low_altitude.json`。
+- **陣風會一直維持**：預設大小 0（不吹）、長度 120／120／80 m。Discrete Wind Gust 照 1−cos 形狀在陣風長度（飛過的距離）內增強到設定大小，之後保持不變，不會自己消失；垂直分量因此是持續的上升或下沉氣流（例：向下 2 m/s，`wind_low_altitude` 裡飛機高度掉了約 70 m）。
+- **怎麼設**：SITL 情境與 HITL 場景都用同一個 `"wind"` 物件，格式與提醒在 [wind.py](wind.py)；例子 `sitl/scenarios/wind_steady.json`、`wind_low_altitude.json`、`hitl/scenarios/wind_steady_5.json`。
+- **看結果**：SITL 的 `trace.csv` 有地速 `gs_m_s` 和實際的風 `wind_n/e/d_m_s`；HITL 的提醒在 owner 的 `status`（`wind_reminders`）與每次 run 的紀錄；`plant/wind.py` 產生的提醒照樣顯示，不擋。
 - **驗收**：`build_core.m` 的 wind 對照（全部風都開）原始模型與核心副本逐位元相同；HIL 函式庫的 wind case 和 Simulink 一致（`hitl/tests/validate_library.py`）；Truth 的風等於輸入。
 
 ## plant 介面重點

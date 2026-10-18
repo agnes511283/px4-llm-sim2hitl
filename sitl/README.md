@@ -18,9 +18,12 @@ plant_sim（本資料夾的 PX4 out-of-tree 模組）
   ├─ 取代 EKF：vehicle_attitude、vehicle_local_position、vehicle_global_position、airspeed_validated、
   │            vehicle_air_data、vehicle_land_detected 由 Truth 直接發布
   ├─ stub：vehicle_status、vehicle_control_mode、actuator_armed、manual_control_setpoint（情境的搖桿）
+  │       （沒有 Commander：模式與控制旗標由情境直接決定，模組的 OFFBOARD 訊號不會被讀）
   └─ 讀 actuator_outputs_sim（pwm_out_sim，PWM_MAIN_FUNC1..5 = HIL ABI 的 controls[0..4]）送回 plant
 PX4 模組（Stabilized）：sensors、pwm_out_sim、control_allocator、fw_rate_control、fw_att_control
 ```
+
+**SITL 沒驗到的事**：因為沒有 Commander，解鎖檢查、OFFBOARD 怎麼進入與退出、失聯保護（例如 `COM_OF_LOSS_T`）在 SITL 都沒有驗證；SITL 的導引表現 PASS 不能延伸成這些也沒問題，這些要在實體 FC 的 HITL 量。
 
 目前有三種模式（`run_sitl.py` 的 `MODULES`；`plant_sim` 的模式旗標照 PX4 `commander/ModeUtil/control_mode.cpp`）：
 
@@ -72,7 +75,7 @@ PX4 模組（Stabilized）：sensors、pwm_out_sim、control_allocator、fw_rate
 - **參考情境 `stabilized_steps`**：settle 40 s 後，3–6 s roll 搖桿 0.5、9–11 s pitch 0.3、14–16 s yaw 0.5。指標用 [analysis/response.py](../analysis/response.py) 算。參考值（Ubuntu 2026-10-18，與舊機器的紀錄相同）：roll 尾窗平均 +22.32°（設定 22.5°）、上升 0.316 s、安定 0.456 s；pitch 尾窗平均 −3.39°（絕對設定值 −5.25°）、上升 1.06 s、未安定；yaw 角速度峰值 7.81 °/s（0.22 s）。
 - **`base_sticks`**：絕對的基準桿量（`manual_control_setpoint` 值），取代配平算出的基準；這時 `trim` 只決定空中起始狀態。`base` 是疊加的偏移。
 - **HITL 版 `stabilized_steps_hitl`**：同一組階躍與基準桿量（15 m/s 平飛配平，取到 MANUAL_CONTROL 的 1/1000：pitch −0.125、油門 −0.77），但 HITL 是從起飛後的巡航（約 25 m/s）進入，所以 settle 60 s。在 SITL 跑就是那趟 HITL 的預演（25 m/s 平飛配平起始）；舊機器上量到約 50 s 回到 15 m/s、高度掉約 16 m、階躍指標和參考情境差 ≤ 0.02°／0.02 s。HITL 由 `hitl/commands/stabilized_steps.py` 飛（起飛後動作 `--after stabilized_steps`）。
-- **`--start CMD`**（可重複）：在該模式的 PX4 模組之後、`plant_sim` 之前多啟動一個指令，例如 `--start "guidance_template start"`（`modules/src/guidance_template` 的範例模組；SITL 由 `px4_external/src/guidance_template/` 的包裝編進來）。情境 `template_offboard.json` 已在 `start` 寫了它，所以 `--scenario sitl/scenarios/template_offboard.json` 不用再加；判定用 `"$PY" -B analysis/template_check.py <out>/instance_0/log/<日期>/<檔>.ulg`。A/B 的基準是同一個執行檔、不加這個模組。
+- **`--start CMD`**（可重複）：在該模式的 PX4 模組之後、`plant_sim` 之前多啟動一個指令，例如 `--start "guidance_template start"`（`modules/src/guidance_template` 的範例模組；SITL 由 `px4_external/src/guidance_template/` 的包裝編進來）。情境 `template_offboard.json` 已在 `start` 寫了它，所以 `--scenario sitl/scenarios/template_offboard.json` 不用再加；判定用 `"$PY" -B analysis/template_check.py <out>/instance_0/log/<日期>/<檔>.ulg`。要做 A/B 時，基準要明確指定一個提供同樣任務目標的原生模式與設定值來源；在 OFFBOARD 情境只拿掉這個模組，等於拿掉導引的來源，不等於原生 PX4。
 - **多個 instance**：`--instances N` 平行跑，啟動間隔 `--stagger`（預設 1 s）。PX4 的 server 執行緒在多個同時啟動時可能還沒準備好，所以啟動腳本第一行先等 `px4-ver` 有回應；另外某個 instance 在 `--startup-timeout`（預設 60 s）內沒有建立 `trace.csv`（代表 `plant_sim` 沒起來），或結束時沒有 `summary.json`，runner 會重啟它（`--retries`，結果的 `retries` 欄）。`px4.log` 是區塊緩衝寫入，PX4 結束前讀不到完整內容，不能用來即時判斷。
 - **實測速度（Ubuntu 24.04、i7-14700 28 執行緒，2026-10-18，`template_offboard` 情境模擬 60 s、`--no-ulog`）**：一次完整跑完（含 PX4 啟動與關閉）約 1.3 s；`--instances 25 --stagger 0.1` 跑 1000 次共 140.8 s、全部成功、0 次重試（其中 100 s 是啟動間隔）；`--instances 100 --stagger 0.02` 一批 5.5 s，換算 1000 次約 55 s（約 1,100 倍真實時間）。大量批次用 `--no-ulog`、較短的 `--stagger`；換電腦先量一批確認沒有重試。
 - **速度欄位**：每個 instance 的 `realtime_factor` 是它自己的「模擬秒數／實際秒數」；`throughput_realtime_factor` 是所有 instance 的模擬秒數合計，除以第一個開始推進到最後一個結束的實際時間，只有在各 instance 確實同時在跑時才代表平行吞吐量（要用夠長的 `--duration`）。

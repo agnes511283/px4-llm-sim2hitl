@@ -1,6 +1,8 @@
 # px4-llm-sim2hitl
 
-English: [README.en.md](README.en.md)（翻譯；兩者不一致時以本中文版為準）
+**繁體中文** | [English](README.en.md)
+
+（英文版是翻譯；兩者不一致時以本中文版為準）
 
 飛控開發套件：MATLAB/Simulink 飛機模型 → 轉成 C → SITL（精簡 PX4）→ 客製 PX4 韌體 → 實體飛控（Pixhawk）HITL。用 AI 開發時，AI 的工作規則在 [AGENTS.md](AGENTS.md)。
 

@@ -2,7 +2,7 @@
 ## Makefile generated for component 'SkySurfer_Core'. 
 ## 
 ## Makefile     : SkySurfer_Core.mk
-## Generated on : Sun Oct 18 16:10:05 2026
+## Generated on : Mon Oct 19 01:08:22 2026
 ## Final product: $(RELATIVE_PATH_TO_ANCHOR)/SkySurfer_Core
 ## Product type : executable
 ## 
@@ -21,7 +21,7 @@ MAKEFILE                  = SkySurfer_Core.mk
 MATLAB_ROOT               = /home/iec/MATLAB/R2026b
 MATLAB_BIN                = /home/iec/MATLAB/R2026b/bin
 MATLAB_ARCH_BIN           = $(MATLAB_BIN)/glnxa64
-START_DIR                 = /home/iec/.cache/px4-llm-sim2hitl/core_20261018_160937_303/codegen
+START_DIR                 = /home/iec/.cache/px4-llm-sim2hitl/core_20261019_010753_185/codegen
 SOLVER                    = 
 SOLVER_OBJ                = 
 CLASSIC_INTERFACE         = 0
@@ -187,7 +187,7 @@ INCLUDES = $(INCLUDES_BUILDINFO)
 DEFINES_BUILD_ARGS = -DCLASSIC_INTERFACE=0 -DALLOCATIONFCN=0 -DTERMFCN=1 -DONESTEPFCN=1 -DMAT_FILE=0 -DMULTI_INSTANCE_CODE=1 -DINTEGER_CODE=0 -DMT=0
 DEFINES_CUSTOM = 
 DEFINES_OPTS = -DTID01EQ=1
-DEFINES_STANDARD = -DMODEL=SkySurfer_Core -DNUMST=2 -DNCSTATES=21 -DHAVESTDIO -DMODEL_HAS_DYNAMICALLY_LOADED_SFCNS=0
+DEFINES_STANDARD = -DMODEL=SkySurfer_Core -DNUMST=2 -DNCSTATES=37 -DHAVESTDIO -DMODEL_HAS_DYNAMICALLY_LOADED_SFCNS=0
 
 DEFINES = $(DEFINES_BUILD_ARGS) $(DEFINES_CUSTOM) $(DEFINES_OPTS) $(DEFINES_STANDARD)
 

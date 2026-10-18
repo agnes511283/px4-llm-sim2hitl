@@ -37,7 +37,7 @@ import numpy as np
 
 G0 = 9.80665
 DT = 0.004
-NX = 21
+NX = 37  # PLANT_CORE_STATE_COUNT: 13 rigid body, 5 actuators, 16 turbulence, 3 gust
 SETTLE = 40  # steps for the surface rate limiters to reach the equilibrium deflection (2 deg per step)
 D = C.c_double
 # CoreSnapshot indices (plant/include/plant_core.h)
@@ -110,7 +110,7 @@ def state(z, actuators, airspeed, height, bank):
     x += [airspeed * math.cos(alpha) * math.cos(beta), airspeed * math.sin(beta), airspeed * math.sin(alpha) * math.cos(beta)]
     x += quaternion(bank, theta, 0.0)
     x += [-psi_dot * math.sin(theta), psi_dot * math.sin(bank) * math.cos(theta), psi_dot * math.cos(bank) * math.cos(theta)]
-    x += list(actuators) + [0.0, 0.0, 0.0]
+    x += list(actuators) + [0.0] * 16 + [0.0, 0.0, 0.0]  # turbulence filters and gust distances at rest
     return x
 
 

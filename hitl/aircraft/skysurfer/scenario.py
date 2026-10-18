@@ -1,7 +1,9 @@
-import json,math
+import json,math,sys
 from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[3]/'plant'))
+import wind as plant_wind
 from host.abi import header,Initial
-ALLOWED={'schema_version','aircraft_id','name','height_agl_m','velocity_mode','tas_m_s','body_velocity_m_s','alpha_deg','beta_deg','euler_deg','latitude_deg','longitude_deg','site_msl_m','geoid_separation_m','wind_ned_m_s','angular_rates_rad_s','seed_policy'}
+ALLOWED={'schema_version','aircraft_id','name','height_agl_m','velocity_mode','tas_m_s','body_velocity_m_s','alpha_deg','beta_deg','euler_deg','latitude_deg','longitude_deg','site_msl_m','geoid_separation_m','wind_ned_m_s','wind','angular_rates_rad_s','seed_policy'}
 def load_scene(value):
  scene=json.loads(Path(value).read_text()) if isinstance(value,(str,Path)) else dict(value)
  unknown=set(scene)-ALLOWED
@@ -9,8 +11,8 @@ def load_scene(value):
  if scene.get('schema_version')!=1 or scene.get('aircraft_id')!='skysurfer':raise ValueError('Scene schema/aircraft mismatch')
  for name in ['site_msl_m','geoid_separation_m','seed_policy']:
   if scene.get(name,0)!=0:raise ValueError(name+' is unsupported by this source recipe; supported value is 0')
- for name in ['wind_ned_m_s','angular_rates_rad_s']:
-  if scene.get(name,[0,0,0])!=[0,0,0]:raise ValueError(name+' is unsupported by this source recipe')
+ if scene.get('angular_rates_rad_s',[0,0,0])!=[0,0,0]:raise ValueError('angular_rates_rad_s is unsupported by this source recipe')
+ load_wind(scene)  # malformed wind is rejected here, before anything starts
  def number(name,default,lo,hi):
   v=scene.get(name,default)
   if isinstance(v,bool) or not isinstance(v,(int,float)) or not math.isfinite(v) or not lo<=v<=hi:raise ValueError(name+' outside supported range')
@@ -30,3 +32,13 @@ def load_scene(value):
  initial=header(Initial);initial.height_m=number('height_agl_m',0,0,10000);initial.body_velocity_m_s[:]=velocity;initial.euler_deg[:]=euler
  initial.latitude_deg=number('latitude_deg',22.910275834988674,-90,90);initial.longitude_deg=number('longitude_deg',120.31096929726908,-180,180)
  return scene,initial
+
+def load_wind(scene):
+ """(config, reminders) of plant/wind.py. The scene's wind_ned_m_s is the steady wind (same as wind.steady_ned_m_s).
+ HITL starts on the ground, so the reminders assume a ground start."""
+ wind=dict(scene.get('wind') or {})
+ steady=scene.get('wind_ned_m_s',[0,0,0])
+ if steady!=[0,0,0]:
+  if 'steady_ned_m_s' in wind and wind['steady_ned_m_s']!=steady:raise ValueError('wind_ned_m_s and wind.steady_ned_m_s differ')
+  wind['steady_ned_m_s']=steady
+ return plant_wind.parse(wind or None,ground_start=scene.get('height_agl_m',0)==0)

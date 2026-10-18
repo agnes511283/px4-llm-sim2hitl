@@ -7,9 +7,9 @@
  *
  * Code generated for Simulink model 'SkySurfer_Core'.
  *
- * Model version                  : 14.9
+ * Model version                  : 14.12
  * Simulink Coder version         : 26.2 (R2026b) 22-May-2026
- * C/C++ source code generated on : Sun Oct 18 16:10:01 2026
+ * C/C++ source code generated on : Mon Oct 19 01:08:18 2026
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: Intel->x86-64 (Linux 64)
@@ -50,6 +50,12 @@ extern double rt_atan2d_snf(double u0, double u1);
 extern double rt_powd_snf(double u0, double u1);
 extern void rt_mrdivide_U1d1x3_U2d3x3_Yd1x3_snf(const double u0[3], const double
   u1[9], double y[3]);
+extern double rt_urand_Upu32_Yd_f_pw_snf(uint32_t *u);
+extern double rt_nrand_Upu32_Yd_f_pw_snf(uint32_t *u);
+extern uint32_t plook_bincpa(double u, const double bp[], uint32_t maxIndex,
+  double *fraction, uint32_t *prevIndex);
+extern double intrp2d_la_pw(const uint32_t bpIndex[], const double frac[], const
+  double table[], const uint32_t stride, const uint32_t maxIndex[]);
 extern double look1_binlcpw(double u0, const double bp0[], const double table[],
   uint32_t maxIndex);
 extern uint32_t plook_binx(double u, const double bp[], uint32_t maxIndex,
@@ -58,6 +64,8 @@ extern double intrp3d_l_pw(const uint32_t bpIndex[], const double frac[], const
   double table[], const uint32_t stride[]);
 extern uint32_t plook_binc(double u, const double bp[], uint32_t maxIndex,
   double *fraction);
+extern uint32_t binsearch_u32d_prevIdx(double u, const double bp[], uint32_t
+  startIndex, uint32_t maxIndex);
 extern uint32_t binsearch_u32d(double u, const double bp[], uint32_t startIndex,
   uint32_t maxIndex);
 extern void SkySurfer_Core_Distanceintogusty_Init(double *rty_x,

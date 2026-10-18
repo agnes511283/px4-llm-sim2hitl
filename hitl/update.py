@@ -25,7 +25,7 @@ FLAGS=['-std=c11','-O2','-fno-fast-math','-ffp-contract=off','-fvisibility=hidde
 GATES=['reuse_policy.json','core_validation.json','plant_validation.json','validation.json']
 EVIDENCE=['build.json','core_build.json','core_compile.json']
 CODEGEN='codegen/SkySurfer_Core_ert_rtw'
-RESULTS=['reuse_policy.json','core_build.json']+[f'{k}_{c}.csv' for k in ['source','core','controls'] for c in ['ground','air']]
+RESULTS=['reuse_policy.json','core_build.json','wind_wind.csv']+[f'{k}_{c}.csv' for k in ['source','core','controls'] for c in ['ground','air','wind']]
 def digest(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 def tree(folder,prefix):
  return {prefix+str(p.relative_to(folder)):digest(p) for p in sorted(Path(folder).rglob('*')) if p.is_file() and '__pycache__' not in p.parts}

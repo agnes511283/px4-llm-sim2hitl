@@ -94,8 +94,60 @@ for k = 1:numel(icNames)
     newLine = add_line(parent, get_param(from, 'PortHandles').Outport(1), dst);
     set_param(newLine, 'Name', signalName);
 end
+% Wind per instance, the same way: root inport Wind[4] = [VelWind PsiWind IdxWind TurbulenceScale]
+% (kts; deg, the direction the wind comes from; 1 = steady wind only, 2 = steady + gust + shear +
+% turbulence; scale, see below) replaces the SETTING1 constants Vel_w, Psi_w and IdxWind (1).
+windNames = {'VelWind', 'PsiWind', 'IdxWind'};
+windSids = [94882 94883 94884];  % const15 const16 const17
+windValues = {'Vel_w', 'Psi_w', '1'};
+add_block('simulink/Sources/In1', [model '/Wind'], 'Port', '3', 'PortDimensions', '4', ...
+    'SampleTime', 'Thil', 'Interpolate', 'off', 'Position', p + [0 320 0 320]);
+add_block('simulink/Signal Routing/Demux', [model '/SplitWind'], 'Outputs', '4', 'Position', p + [80 300 85 400]);
+windIn = get_param([model '/Wind'], 'PortHandles'); windSplit = get_param([model '/SplitWind'], 'PortHandles');
+add_line(model, windIn.Outport(1), windSplit.Inport(1));
+for k = 1:4
+    tag = sprintf('WIND_%d', k);
+    add_block('simulink/Signal Routing/Goto', [model '/Goto_' tag], 'GotoTag', tag, 'TagVisibility', 'global', ...
+        'Position', p + [140 300 + 22 * (k - 1) 220 316 + 22 * (k - 1)]);
+    add_line(model, windSplit.Outport(k), get_param([model '/Goto_' tag], 'PortHandles').Inport(1));
+end
+for k = 1:numel(windNames)
+    constant = Simulink.ID.getHandle(sprintf('%s:%d', model, windSids(k)));
+    assert(strcmp(get_param(constant, 'Value'), windValues{k}), 'SETTING1 constant %d no longer holds %s.', windSids(k), windValues{k});
+    parent = get_param(constant, 'Parent'); pos = get_param(constant, 'Position');
+    lineHandle = get_param(constant, 'LineHandles').Outport;
+    signalName = get_param(lineHandle, 'Name'); dst = get_param(lineHandle, 'DstPortHandle');
+    assert(strcmp(signalName, windNames{k}), 'SETTING1 constant %d no longer drives %s.', windSids(k), windNames{k});
+    delete_line(lineHandle); delete_block(constant);
+    from = sprintf('%s/From_WIND_%d', parent, k);
+    add_block('simulink/Signal Routing/From', from, 'GotoTag', sprintf('WIND_%d', k), 'Position', pos);
+    newLine = add_line(parent, get_param(from, 'PortHandles').Outport(1), dst);
+    set_param(newLine, 'Name', signalName);
+end
+% Turbulence: the Dryden mask computes its intensities when the model compiles, so W20 = 0 (the source
+% value) removes the block from the code. This copy uses the reference W20 = 1 m/s and multiplies both
+% Dryden outputs (velocities, rates) by TurbulenceScale = the wanted W20 in m/s. Below 1000 ft the
+% MIL-F-8785C intensities are proportional to W20, so the scaled result is the model's own there;
+% above it the medium/high-altitude intensities do not scale (plant/README.md).
+dryden = getfullname(Simulink.ID.getHandle([model ':97797']));
+assert(contains(get_param(dryden, 'ReferenceBlock'), 'Dryden Wind Turbulence Model'), 'Dryden block moved: review the core wrapper.');
+set_param(dryden, 'W20', '1');
+windParent = get_param(dryden, 'Parent'); dp = get_param(dryden, 'PortHandles'); dpos = get_param(dryden, 'Position');
+add_block('simulink/Signal Routing/From', [windParent '/From_WIND_4'], 'GotoTag', 'WIND_4', ...
+    'Position', [dpos(3) + 20, dpos(4) + 20, dpos(3) + 60, dpos(4) + 36]);
+scaleSource = get_param([windParent '/From_WIND_4'], 'PortHandles').Outport(1);
+for k = 1:2
+    lineHandle = get_param(dp.Outport(k), 'Line'); dst = get_param(lineHandle, 'DstPortHandle');
+    delete_line(lineHandle);
+    product = sprintf('%s/TurbulenceScale%d', windParent, k);
+    add_block('simulink/Math Operations/Product', product, 'Inputs', '**', ...
+        'Position', [dpos(3) + 80, dpos(2) + 40 * (k - 1), dpos(3) + 110, dpos(2) + 40 * (k - 1) + 30]);
+    ph = get_param(product, 'PortHandles');
+    add_line(windParent, dp.Outport(k), ph.Inport(1)); add_line(windParent, scaleSource, ph.Inport(2));
+    for j = 1:numel(dst), add_line(windParent, ph.Outport(1), dst(j)); end
+end
 set_param(model, 'SystemTargetFile', 'ert.tlc', 'ProdHWDeviceType', 'Intel->x86-64 (Linux 64)', 'TargetLang', 'C', ...
-    'Solver', 'ode4', 'SolverType', 'Fixed-step', 'FixedStep', 'Thil', 'SupportContinuousTime', 'on', ...
+    'Solver', 'ode4', 'SolverType', 'Fixed-step', 'FixedStep', 'Thil', 'SolverMode', 'SingleTasking', 'SupportContinuousTime', 'on', ...
     'SupportNonFinite', 'on', 'CodeInterfacePackaging', 'Reusable function', 'RootIOFormat', 'Structure reference', ...
     'GenerateAllocFcn', 'off', 'MultiInstanceErrorCode', 'Error', 'IncludeMdlTerminateFcn', 'on', ...
     'CombineOutputUpdateFcns', 'on', 'DefaultParameterBehavior', 'Tunable', 'GenerateReport', 'off', ...
@@ -129,32 +181,52 @@ for k = 1:5
     controls(t >= 0.1 + (k - 1) * 0.15 & t < 0.15 + (k - 1) * 0.15, k) = 0.1 * k;
 end
 controls(t >= 0.9 & t < 1, :) = repmat((1:16) * 0.015, sum(t >= 0.9 & t < 1), 1);
-labels = {'ground', 'air'};
-values = {struct(), struct('U0', 20, 'H0', 100, 'Psi0', 25)};
+labels = {'ground', 'air', 'wind'};
+values = {struct(), struct('U0', 20, 'H0', 100, 'Psi0', 25), struct('U0', 20, 'H0', 100, 'Psi0', 25)};
 names = {'U0', 'V0', 'W0', 'H0', 'Phi0', 'Theta0', 'Psi0'};
-for c = 1:2
+% The wind case switches every wind component on in both models: steady 15 kts from 30 deg, the
+% discrete gust from 0.3 s, shear W20 3 m/s from 30 deg, Dryden turbulence at the reference W20 1 m/s
+% (scale 1 in the core). Its input row is [VelWind PsiWind IdxWind TurbulenceScale].
+windRows = {[0 0 1 0], [0 0 1 0], [15 30 2 1]};
+for c = 1:3
     ic = zeros(1, 7);
     for k = 1:7
         ic(k) = baseline.(names{k});
         if isfield(values{c}, names{k}), ic(k) = values{c}.(names{k}); end
     end
     in = Simulink.SimulationInput(source);
+    % Single-tasking like the generated core (the Dryden noise runs at 0.1 s): the same rate transitions.
     in = in.setModelParameter('StopTime', num2str(duration), 'SaveOutput', 'on', 'SaveFormat', 'Dataset', ...
-        'SaveTime', 'on', 'OutputSaveName', 'yout');
+        'SaveTime', 'on', 'OutputSaveName', 'yout', 'SolverMode', 'SingleTasking');
     ds = Simulink.SimulationData.Dataset; ds{1} = timeseries(controls, t); in = in.setExternalInput(ds);
     for k = 1:7, in = in.setVariable(names{k}, ic(k)); end
+    in = in.setVariable('Vel_w', windRows{c}(1)); in = in.setVariable('Psi_w', windRows{c}(2));
+    in = in.setBlockParameter(getfullname(Simulink.ID.getHandle([source ':94884'])), 'Value', num2str(windRows{c}(3)));
+    in = in.setBlockParameter(getfullname(Simulink.ID.getHandle([source ':97797'])), 'W20', '1');
+    in = wind_case_parameters(in, source, labels{c});
     sourceData = core_snapshot_rows(sim(in));
     in = Simulink.SimulationInput(model);
     in = in.setModelParameter('StopTime', num2str(duration), 'SaveOutput', 'on', 'SaveFormat', 'Dataset', ...
         'SaveTime', 'on', 'OutputSaveName', 'yout');
     ds = Simulink.SimulationData.Dataset; ds{1} = timeseries(controls, t); ds{2} = timeseries(repmat(ic, numel(t), 1), t);
+    ds{3} = timeseries(repmat(windRows{c}, numel(t), 1), t);
     in = in.setExternalInput(ds);
+    in = wind_case_parameters(in, model, labels{c});
     coreData = core_snapshot_rows(sim(in));
     writematrix(sourceData, fullfile(cacheRoot, 'results', ['source_' labels{c} '.csv']));
     writematrix(coreData, fullfile(cacheRoot, 'results', ['core_' labels{c} '.csv']));
     writematrix([t, controls], fullfile(cacheRoot, 'results', ['controls_' labels{c} '.csv']));
+    if strcmp(labels{c}, 'wind'), writematrix([t, repmat(windRows{c}, numel(t), 1)], fullfile(cacheRoot, 'results', 'wind_wind.csv')); end
     fprintf('REFERENCE %s: %d samples, source == core copy: %d\n', labels{c}, size(coreData, 1), isequal(sourceData, coreData));
 end
+end
+
+function in = wind_case_parameters(in, model, label)
+% Gust and shear settings of the wind case (tunable parameters in the core: set per process by the C wrapper).
+if ~strcmp(label, 'wind'), return, end
+in = in.setBlockParameter(getfullname(Simulink.ID.getHandle([model ':97796'])), 't_0', '0.3');
+shear = getfullname(Simulink.ID.getHandle([model ':97812']));
+in = in.setBlockParameter(shear, 'W_20', '3'); in = in.setBlockParameter(shear, 'Wdeg', '30');
 end
 
 function rows = core_snapshot_rows(out)

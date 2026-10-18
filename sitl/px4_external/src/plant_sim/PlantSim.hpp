@@ -81,6 +81,9 @@ private:
 	bool _acro{false};
 	bool _offboard{false};  // OFFBOARD with offboard_control_mode.velocity (a module of modules/ does the guidance)
 	PlantInitialConditions _ic{};
+	PlantWindConfig _wind{};       // scenario line "wind" (plant/wind.py sitl_line)
+	double _steady_wind_ned[3] {};
+	bool _have_wind{false};
 	Sticks _base{0.f, 0.f, 0.f, -1.f};
 	Step _step_list[kMaxSteps] {};
 	int _num_steps{0};

@@ -76,6 +76,7 @@ int32_t plant_core_init(PlantCore *core, const PlantCoreInitial *initial) {
   bind(core);
   SkySurfer_Core_initialize(&core->model, &core->input, &core->output);
   set_initial(core); /* initialize() clears the inputs */
+  core->input.Wind[2] = 1.0; /* steady wind only, zero: the source model's setting */
   core->ready = 1;
   return PLANT_CORE_OK;
 }
@@ -97,6 +98,57 @@ int32_t plant_core_step(PlantCore *core, const double controls[PLANT_CORE_CONTRO
     }
   }
   if (snapshot != NULL) memcpy(snapshot, core->output.CoreSnapshot, sizeof(core->output.CoreSnapshot));
+  return PLANT_CORE_OK;
+}
+
+int32_t plant_core_set_wind(PlantCore *core, const double wind[PLANT_CORE_WIND_COUNT]) {
+  if (core == NULL || wind == NULL) return PLANT_CORE_ERR_INPUT;
+  for (int k = 0; k < PLANT_CORE_WIND_COUNT; k++) {
+    if (!isfinite(wind[k])) return PLANT_CORE_ERR_INPUT;
+  }
+  if (wind[0] < 0.0 || wind[3] < 0.0 || (wind[2] != 1.0 && wind[2] != 2.0)) return PLANT_CORE_ERR_INPUT;
+  memcpy(core->input.Wind, wind, sizeof(core->input.Wind));
+  return PLANT_CORE_OK;
+}
+
+void plant_core_default_wind_parameters(PlantCoreWindParameters *p) {
+  if (p == NULL) return;
+  memset(p, 0, sizeof(*p));
+  /* Source model values (FW_SkySurfer_HIL.slx); amplitudes zero so that mode 2 has no gust unless asked. */
+  p->gust_length_m[0] = 120.0;
+  p->gust_length_m[1] = 120.0;
+  p->gust_length_m[2] = 80.0;
+  p->turbulence_seed[0] = 23341.0;
+  p->turbulence_seed[1] = 23342.0;
+  p->turbulence_seed[2] = 23343.0;
+  p->turbulence_seed[3] = 23344.0;
+}
+
+int32_t plant_core_set_wind_parameters(const PlantCoreWindParameters *p) {
+  if (p == NULL) return PLANT_CORE_ERR_INPUT;
+  const double *values = (const double *)p;
+  for (size_t k = 0; k < sizeof(*p) / sizeof(double); k++) {
+    if (!isfinite(values[k])) return PLANT_CORE_ERR_INPUT;
+  }
+  for (int k = 0; k < 3; k++) {
+    if (p->gust_length_m[k] <= 0.0) return PLANT_CORE_ERR_INPUT;
+  }
+  if (p->shear_speed_6m_m_s < 0.0) return PLANT_CORE_ERR_INPUT;
+  for (int k = 0; k < 4; k++) {
+    if (p->turbulence_seed[k] < 0.0 || p->turbulence_seed[k] != floor(p->turbulence_seed[k])) return PLANT_CORE_ERR_INPUT;
+  }
+  SkySurfer_Core_P.DiscreteWindGustModelOn_t_0 = p->gust_start_s;
+  for (int k = 0; k < 3; k++) {
+    SkySurfer_Core_P.DiscreteWindGustModelOn_d_m[k] = p->gust_length_m[k];
+    SkySurfer_Core_P.DiscreteWindGustModelOn_v_m[k] = p->gust_magnitude_m_s[k];
+  }
+  SkySurfer_Core_P.Distanceintogustx_d_m = p->gust_length_m[0]; /* the integrator limits of the same block */
+  SkySurfer_Core_P.Distanceintogusty_d_m = p->gust_length_m[1];
+  SkySurfer_Core_P.Distanceintogustz_d_m = p->gust_length_m[2];
+  SkySurfer_Core_P.WindShearModel_W_20 = p->shear_speed_6m_m_s;
+  SkySurfer_Core_P.WindShearModel_Wdeg = p->shear_from_deg;
+  SkySurfer_Core_P.DrydenWindTurbulenceModelContinuousqr_Wdeg = p->turbulence_from_deg;
+  for (int k = 0; k < 4; k++) SkySurfer_Core_P.DrydenWindTurbulenceModelContinuousqr_Seed[k] = p->turbulence_seed[k];
   return PLANT_CORE_OK;
 }
 

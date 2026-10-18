@@ -22,6 +22,7 @@ extern "C" {
 #define HIL_CAP_TRUTH 8u
 #define HIL_CAP_RESET 16u
 #define HIL_CAP_RUNTIME_INITIAL 32u
+#define HIL_CAP_WIND 256u /* hil_model_configure_wind */
 /* initialize/reset/step/terminate require serialized calls. Reset after worker stop. */
 /* Natural C alignment. No packing. All arrays have fixed dimensions. */
 typedef struct {
@@ -61,6 +62,21 @@ HIL_EXPORT int32_t hil_model_get_info(HilModelInfo *out);
 HIL_EXPORT int32_t hil_model_initialize(const HilInitialConditions *initial);
 HIL_EXPORT int32_t hil_model_step(const HilModelInput *input,HilModelOutput *output);
 HIL_EXPORT int32_t hil_model_reset(const HilInitialConditions *initial);
+/* Optional (HIL_CAP_WIND): wind of the run, after initialize/reset and before the first step.
+ * steady_ned_m_s is the NED velocity of the air (direction it blows TO; vertical part ignored). The model has
+ * two wind modes: steady, or shear + gust + turbulence (any of these non-zero; the steady wind is then
+ * ignored). start_mode 0: after airborne (height > start_height_m), 1: at start_time_s, 2: from t = 0.
+ * Speeds m/s, directions deg (the direction the wind comes FROM), turbulence = Dryden W20 (at 6 m). */
+typedef struct {
+  uint32_t abi_version, struct_size;
+  double steady_ned_m_s[3];
+  uint32_t start_mode, reserved0;
+  double start_height_m, start_time_s, ramp_s, gust_start_s;
+  double gust_length_m[3], gust_magnitude_m_s[3];
+  double shear_speed_6m_m_s, shear_from_deg, turbulence_speed_6m_m_s, turbulence_from_deg;
+  uint32_t turbulence_seed[4];
+} HilWindConfig;
+HIL_EXPORT int32_t hil_model_configure_wind(const HilWindConfig *wind);
 HIL_EXPORT int32_t hil_model_terminate(void);
 HIL_EXPORT int32_t hil_model_get_last_error(char *buffer,uint32_t capacity);
 #ifdef __cplusplus

@@ -24,16 +24,79 @@
 
 static const double kPi = 3.14159265358979323846;
 
+#define PLANT_KTS_M_S (1852.0 / 3600.0) /* the source Velocity Conversion */
+
 struct Plant {
   double origin_latitude_deg, origin_longitude_deg;
-  uint32_t ready;
-  uint32_t reserved;
+  PlantWindConfig wind;
+  PlantCoreInitial initial;   /* kept to re-initialise the core when the turbulence seeds change */
+  double last_height_m;       /* truth height of the previous step: decides "after airborne" */
+  double wind_start_s;
+  uint32_t ready, wind_started, stepped, wind_active; /* wind_active: some wind is in effect this step */
   double core[]; /* plant_core_size() bytes; double keeps pointer/double alignment */
 };
 
 static PlantCore *core_of(Plant *plant) { return (PlantCore *)plant->core; }
 
 uint32_t plant_api_version(void) { return PLANT_API_VERSION; }
+
+void plant_default_wind_config(PlantWindConfig *c) {
+  if (c == NULL) return;
+  memset(c, 0, sizeof(*c));
+  c->start_mode = PLANT_WIND_AFTER_AIRBORNE;
+  c->start_height_m = 5.0;
+  c->ramp_s = 5.0;
+  PlantCoreWindParameters d;
+  plant_core_default_wind_parameters(&d);
+  for (int k = 0; k < 3; k++) c->gust_length_m[k] = d.gust_length_m[k];
+  for (int k = 0; k < 4; k++) c->turbulence_seed[k] = (uint32_t)d.turbulence_seed[k];
+}
+
+static int low_altitude_mode(const PlantWindConfig *c) {
+  return c->gust_magnitude_m_s[0] != 0.0 || c->gust_magnitude_m_s[1] != 0.0 || c->gust_magnitude_m_s[2] != 0.0 ||
+         c->shear_speed_6m_m_s > 0.0 || c->turbulence_speed_6m_m_s > 0.0;
+}
+
+/* Fraction of the configured wind in effect at time_s (0 before the start, then the ramp). */
+static double wind_factor(const Plant *plant, double time_s) {
+  if (!plant->wind_started) return 0.0;
+  if (plant->wind.ramp_s <= 0.0) return 1.0;
+  const double f = (time_s - plant->wind_start_s) / plant->wind.ramp_s;
+  return f < 0.0 ? 0.0 : (f > 1.0 ? 1.0 : f);
+}
+
+/* This aircraft's gust/shear/turbulence settings into the generated core's shared parameters. */
+static int32_t apply_wind_parameters(const Plant *plant, double factor) {
+  const PlantWindConfig *c = &plant->wind;
+  PlantCoreWindParameters p;
+  plant_core_default_wind_parameters(&p);
+  p.gust_start_s = plant->wind_started ? plant->wind_start_s + c->gust_start_s : 1e9; /* 1e9 s: never */
+  for (int k = 0; k < 3; k++) {
+    p.gust_length_m[k] = c->gust_length_m[k];
+    p.gust_magnitude_m_s[k] = c->gust_magnitude_m_s[k];
+  }
+  p.shear_speed_6m_m_s = c->shear_speed_6m_m_s * factor;
+  p.shear_from_deg = c->shear_from_deg;
+  p.turbulence_from_deg = c->turbulence_from_deg;
+  for (int k = 0; k < 4; k++) p.turbulence_seed[k] = (double)c->turbulence_seed[k];
+  return plant_core_set_wind_parameters(&p);
+}
+
+static int32_t valid_wind_config(const PlantWindConfig *c) {
+  const double numbers[] = {c->start_height_m, c->start_time_s, c->ramp_s, c->gust_start_s, c->gust_length_m[0],
+                            c->gust_length_m[1], c->gust_length_m[2], c->gust_magnitude_m_s[0], c->gust_magnitude_m_s[1],
+                            c->gust_magnitude_m_s[2], c->shear_speed_6m_m_s, c->shear_from_deg,
+                            c->turbulence_speed_6m_m_s, c->turbulence_from_deg};
+  for (size_t k = 0; k < sizeof(numbers) / sizeof(numbers[0]); k++) {
+    if (!isfinite(numbers[k])) return 0;
+  }
+  if (c->start_mode > PLANT_WIND_FROM_START || c->ramp_s < 0.0 || c->gust_start_s < 0.0) return 0;
+  if (c->shear_speed_6m_m_s < 0.0 || c->turbulence_speed_6m_m_s < 0.0) return 0;
+  for (int k = 0; k < 3; k++) {
+    if (c->gust_length_m[k] <= 0.0) return 0;
+  }
+  return 1;
+}
 
 size_t plant_size(void) { return offsetof(Plant, core) + plant_core_size(); }
 
@@ -54,12 +117,58 @@ int32_t plant_init(Plant *plant, const PlantInitialConditions *initial) {
   }
   ic.height_m = initial->height_agl_m;
   plant->ready = 0;
+  plant_default_wind_config(&plant->wind);
+  plant->initial = ic;
+  plant->last_height_m = ic.height_m;
+  plant->wind_start_s = 0.0;
+  plant->wind_started = plant->stepped = plant->wind_active = 0;
+  if (apply_wind_parameters(plant, 0.0) != PLANT_CORE_OK) return PLANT_ERR_STATE; /* seeds read by init */
   int32_t code = plant_core_init(core_of(plant), &ic);
   if (code != PLANT_CORE_OK) return code == PLANT_CORE_ERR_INPUT ? PLANT_ERR_INPUT : PLANT_ERR_STATE;
   plant->origin_latitude_deg = initial->latitude_deg;
   plant->origin_longitude_deg = initial->longitude_deg;
   plant->ready = 1;
   return PLANT_OK;
+}
+
+int32_t plant_configure_wind(Plant *plant, const PlantWindConfig *config) {
+  if (plant == NULL || config == NULL || !valid_wind_config(config)) return PLANT_ERR_INPUT;
+  if (!plant->ready || plant->stepped) return PLANT_ERR_STATE;
+  plant->wind = *config;
+  plant->wind.reserved = 0;
+  if (apply_wind_parameters(plant, 0.0) != PLANT_CORE_OK) return PLANT_ERR_INPUT;
+  return plant_core_init(core_of(plant), &plant->initial) == PLANT_CORE_OK ? PLANT_OK : PLANT_ERR_STATE;
+}
+
+/* Core wind input for the step from time_s; starts the wind when its condition is met. */
+static int32_t step_wind(Plant *plant, const double steady_ned[3], double time_s) {
+  const PlantWindConfig *c = &plant->wind;
+  if (!plant->wind_started) {
+    const int start = c->start_mode == PLANT_WIND_FROM_START ||
+                      (c->start_mode == PLANT_WIND_AT_TIME && time_s >= c->start_time_s) ||
+                      (c->start_mode == PLANT_WIND_AFTER_AIRBORNE && plant->last_height_m > c->start_height_m);
+    if (start) {
+      plant->wind_started = 1;
+      plant->wind_start_s = time_s;
+    }
+  }
+  const double factor = wind_factor(plant, time_s);
+  if (apply_wind_parameters(plant, factor) != PLANT_CORE_OK) return PLANT_ERR_INPUT;
+  double wind[PLANT_CORE_WIND_COUNT] = {0.0, 0.0, 1.0, 0.0};
+  plant->wind_active = plant->wind_started && (low_altitude_mode(c) || hypot(steady_ned[0], steady_ned[1]) > 0.0);
+  if (plant->wind_active) {
+    if (low_altitude_mode(c)) {
+      wind[2] = 2.0;
+      wind[3] = c->turbulence_speed_6m_m_s * factor;
+    } else {
+      const double speed = hypot(steady_ned[0], steady_ned[1]) * factor;
+      double from_deg = atan2(-steady_ned[1], -steady_ned[0]) * (180.0 / kPi); /* air moves TO; wind comes FROM */
+      if (from_deg < 0.0) from_deg += 360.0;
+      wind[0] = speed / PLANT_KTS_M_S;
+      wind[1] = speed > 0.0 ? from_deg : 0.0;
+    }
+  }
+  return plant_core_set_wind(core_of(plant), wind) == PLANT_CORE_OK ? PLANT_OK : PLANT_ERR_INPUT;
 }
 
 static void fill_truth(const Plant *plant, const double *y, double time_s, PlantTruth *t) {
@@ -112,7 +221,17 @@ static void fill_truth(const Plant *plant, const double *y, double time_s, Plant
   t->static_pressure_pa = y[PLANT_CORE_STATIC_PRESSURE_PA];
   t->air_temperature_k = y[PLANT_CORE_AIR_TEMPERATURE_K];
   t->dynamic_pressure_pa = 0.5 * t->air_density_kg_m3 * t->airspeed_true_m_s * t->airspeed_true_m_s;
-  /* wind_ned_m_s stays zero: the core accepts zero wind only (plant_step rejects others). */
+  if (plant->wind_active) {
+    /* The wind actually in effect (steady, shear, gust, turbulence): ground velocity - R(q) * air velocity. */
+    const double *q = t->quaternion_nb, *a = &y[PLANT_CORE_AIR_VELOCITY_BODY_M_S];
+    const double w0 = q[0], x = q[1], yq = q[2], z = q[3];
+    const double r[3][3] = {{1 - 2 * (yq * yq + z * z), 2 * (x * yq - w0 * z), 2 * (x * z + w0 * yq)},
+                            {2 * (x * yq + w0 * z), 1 - 2 * (x * x + z * z), 2 * (yq * z - w0 * x)},
+                            {2 * (x * z - w0 * yq), 2 * (yq * z + w0 * x), 1 - 2 * (x * x + yq * yq)}};
+    for (int k = 0; k < 3; k++) {
+      t->wind_ned_m_s[k] = t->velocity_ned_m_s[k] - (r[k][0] * a[0] + r[k][1] * a[1] + r[k][2] * a[2]);
+    }
+  }
   t->throttle_actual = y[PLANT_CORE_THROTTLE];
 
   const double *fg = t->force_ground_body_N;
@@ -129,7 +248,7 @@ int32_t plant_step(Plant *plant, const PlantInput *input, PlantTruth *truth) {
   if (plant == NULL || input == NULL || truth == NULL) return PLANT_ERR_INPUT;
   if (!plant->ready) return PLANT_ERR_STATE;
   for (int k = 0; k < 3; k++) {
-    if (input->wind_ned_m_s[k] != 0.0) return PLANT_ERR_INPUT; /* source supports zero only */
+    if (!isfinite(input->wind_ned_m_s[k])) return PLANT_ERR_INPUT;
   }
   const PlantActuatorCommand *c = &input->command;
   double controls[PLANT_CORE_CONTROL_COUNT] = {0};
@@ -139,12 +258,16 @@ int32_t plant_step(Plant *plant, const PlantInput *input, PlantTruth *truth) {
   controls[PLANT_CORE_CTRL_RUDDER] = c->rudder;
   controls[PLANT_CORE_CTRL_THROTTLE] = c->throttle;
   const double time_s = plant_core_time_s(core_of(plant));
+  int32_t wind_code = step_wind(plant, input->wind_ned_m_s, time_s);
+  if (wind_code != PLANT_OK) return wind_code;
+  plant->stepped = 1;
   double y[PLANT_CORE_SNAPSHOT_COUNT];
   int32_t code = plant_core_step(core_of(plant), controls, y);
   if (code == PLANT_CORE_ERR_INPUT) return PLANT_ERR_INPUT;
   if (code == PLANT_CORE_ERR_DIVERGED) return PLANT_ERR_DIVERGED;
   if (code != PLANT_CORE_OK) return PLANT_ERR_STATE;
   fill_truth(plant, y, time_s, truth);
+  plant->last_height_m = truth->height_agl_m;
   return PLANT_OK;
 }
 
@@ -153,7 +276,13 @@ int32_t plant_copy(Plant *dst, const Plant *src) {
   if (dst == src) return PLANT_OK;
   dst->origin_latitude_deg = src->origin_latitude_deg;
   dst->origin_longitude_deg = src->origin_longitude_deg;
+  dst->wind = src->wind;
+  dst->initial = src->initial;
+  dst->last_height_m = src->last_height_m;
+  dst->wind_start_s = src->wind_start_s;
   dst->ready = src->ready;
-  dst->reserved = 0;
+  dst->wind_started = src->wind_started;
+  dst->stepped = src->stepped;
+  dst->wind_active = src->wind_active;
   return plant_core_copy(core_of(dst), (const PlantCore *)src->core) == PLANT_CORE_OK ? PLANT_OK : PLANT_ERR_STATE;
 }

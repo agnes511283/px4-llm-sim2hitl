@@ -46,12 +46,12 @@
 | 項目 | 結果 |
 |---|---|
 | 模型 release `skysurfer-f53eee94…` | 四道檢查 PASS；對 macOS 錄的參考資料，除了靜止時沒有定義的攻角／側滑角，差 ≤ 6.2e-15 |
-| 離線測試 | 15 個檔、186 項 OK（2026-10-18，範本加入後） |
+| 離線測試 | 15 個檔、186 項 OK（2026-10-18，範本時間點與盤旋高度判定修改後） |
 | 600 s 負載（不開視窗） | PASS；有即時權限時最慢晚到 0.47 ms |
 | SITL | 編譯 PASS；參考情境 `stabilized_steps` 的指標和 macOS 紀錄相同；速度：1000 次（每次模擬 60 s）實測 140.8 s，加大批次約 55 s；範本 `sks_template` PASS |
 | ULog 與 MATLAB | SITL 與 HITL 的 ULog 都能用 MATLAB `ulogreader` 畫（`analysis/matlab/sks_ulog_plot.m`，不需要 Java），也能轉 CSV（`analysis/ulog_export.py`） |
 | HITL（實體 FC） | 00_native 基準 `hitl-run` PASS（2026-10-17 UTC）：盤旋 60 s、2.78 圈；23,039 步 0 次晚到、最慢 0.79 ms；USB 寫入最慢 0.26 ms；FC 量到感測器 250.009 Hz |
 | 第 3 段一條龍 | `deploy/01_sdfix`（原生＋記憶卡修正）用 `deploy-test` 燒錄並跑完：FC 回報 NuttX `8d3ed2a2…`（可預期的那個）；寫參數 0 個；`hitl-run` 七部分全 PASS，盤旋 60.13 s、2.78 圈，23,104 步 0 次晚到、最慢 0.19 ms；飛控記錄（10.9 MB）下載兩次相同、嚴格解析 PASS |
-| 範本 `02_template`（HITL，2026-10-18） | 一條龍：重編、燒錄（一次成功）、身分、參數 0 筆、開機檔 `sks_template start` 全 PASS；**FC 接受模組在韌體內自己發的 OFFBOARD 訊號**，航向轉 30.1°、高度 +10.8 m。判定 FAIL 是測試設計：從傾斜的盤旋切進 OFFBOARD，傾角 28.9° 是前一個模式留下的（之後最大 13.9°）；範本爬高 10 m 後回盤旋，超出飛行測試「100 m ±15 m」的盤旋高度判定。修正待使用者決定 |
+| 範本 `02_template`（HITL，2026-10-18） | 一條龍全 PASS（重編、燒錄、身分、參數、開機檔）；**FC 接受模組在韌體內自己發的 OFFBOARD 訊號**。動作改成進 OFFBOARD 15 s 後轉 30°、35 s 後爬 10 m、共 60 s，盤旋高度判定改以開始盤旋的高度 ±15 m 之後：飛行 PASS；航向 +29.1°（不超越、15.2 s 安定）、最大傾角 14°；**高度衝過頭 33%**（SITL 0%）、OFFBOARD 結束前未回到 ±0.5 m，判定 FAIL。同時空速從 21 衝到 28 m/s：TECS 加能量時油門過多（`FW_THR_TRIM=0.6` 對模型的約 0.115），屬於模型與 PX4 參數不吻合，待查 |
 | 乾淨目錄試跑 | 從 git 拉到新資料夾、不連 MATLAB、不靠舊 cache：`update-model` 建出**相同的 build-id**、四道檢查 PASS、配平相同 |
 | 收尾 | 把討論定案的計畫（`~/Documents/Codex/2026-10-18/skysurfer_architecture_v3/PLAN.md`）的核心精神放進專案；整套跑通後再做一次乾淨目錄試跑；上 GitHub |

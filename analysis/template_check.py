@@ -4,7 +4,10 @@
   <SkySurfer venv python> -B analysis/template_check.py <flight.ulg> [--out metrics.json]
 
 From entering OFFBOARD (vehicle_status.nav_state): the course should turn by COURSE_STEP after COURSE_AT and the
-altitude rise by ALTITUDE_STEP after ALTITUDE_AT (modules/src/sks_template). Course = atan2(vy, vx) and
+altitude rise by ALTITUDE_STEP after ALTITUDE_AT (modules/src/sks_template). Each step is measured from the steady
+value in the second before it (the altitude from the TECS altitude setpoint then, the module's own target), and
+the bank from the first step on, so the mode flown before OFFBOARD (in HITL a
+banked loiter) does not count. Course = atan2(vy, vx) and
 altitude = -z + ref_alt of vehicle_local_position (truth in SITL, the FC's EKF in HITL). Reported per step:
 the change at the end of its window, rise time 10->90 %, overshoot, settling time into a 5 % band; plus the
 largest bank and the airspeed range while in OFFBOARD. The pass limits below are the example's own (written in
@@ -22,8 +25,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ulog  # noqa: E402
 
 OFFBOARD = 14  # vehicle_status NAVIGATION_STATE_OFFBOARD
-COURSE_STEP, COURSE_AT = 30.0, 5.0          # deg, s after entering OFFBOARD
-ALTITUDE_STEP, ALTITUDE_AT = 10.0, 25.0     # m, s
+COURSE_STEP, COURSE_AT = 30.0, 15.0         # deg, s after entering OFFBOARD
+ALTITUDE_STEP, ALTITUDE_AT = 10.0, 35.0     # m, s
 LIMITS = {'course_change_error_deg': 3.0, 'altitude_change_error_m': 1.5, 'bank_max_deg': 25.0}
 
 
@@ -60,14 +63,30 @@ def check(path):
     t = (pos['timestamp'].astype(np.int64) - entered) * 1e-6
     course = np.degrees(np.unwrap(np.arctan2(pos['vy'], pos['vx'])))
     altitude = -pos['z'] + pos['ref_alt']
-    w0 = np.argmin(np.abs(t))
     duration = (end - entered) * 1e-6
+
+    def before(y, at):
+        # The steady value in the second before a step: the entry from another mode (a banked loiter) has
+        # settled by then, so only the module's own response is judged.
+        window = (t >= at - 1.0) & (t < at)
+        return float(np.mean(y[window])) if window.any() else float('nan')
+
+    # Altitude from the module's own target before the step (TECS altitude setpoint): TECS may hold a small
+    # offset from it, which is not the module's response.
+    tecs = log.topics.get(('tecs_status', 0))
+    altitude_base = before(altitude, ALTITUDE_AT)
+    if tecs is not None:
+        ts = (tecs['timestamp'].astype(np.int64) - entered) * 1e-6
+        window = (ts >= ALTITUDE_AT - 1.0) & (ts < ALTITUDE_AT)
+        if window.any():
+            altitude_base = float(np.mean(tecs['altitude_sp'][window]))
     report = {'log': str(path), 'offboard_seconds': duration,
-              'course': step_metrics(t, course - course[w0], COURSE_AT, ALTITUDE_AT, COURSE_STEP),
-              'altitude': step_metrics(t, altitude - altitude[w0], ALTITUDE_AT, duration, ALTITUDE_STEP)}
+              'course': step_metrics(t, course - before(course, COURSE_AT), COURSE_AT, ALTITUDE_AT, COURSE_STEP),
+              'altitude': step_metrics(t, altitude - altitude_base, ALTITUDE_AT, duration, ALTITUDE_STEP),
+              'altitude_base_m': altitude_base}
     att = log.topics[('vehicle_attitude', 0)]
     ta = (att['timestamp'].astype(np.int64) - entered) * 1e-6
-    q = att['q'][(ta >= 0) & (ta <= duration)]
+    q = att['q'][(ta >= COURSE_AT) & (ta <= duration)]  # bank from the module's first step on
     roll = np.degrees(np.arctan2(2 * (q[:, 0] * q[:, 1] + q[:, 2] * q[:, 3]), 1 - 2 * (q[:, 1] ** 2 + q[:, 2] ** 2)))
     report['bank_max_deg'] = float(np.max(np.abs(roll))) if len(roll) else None
     air = log.topics.get(('airspeed_validated', 0))
@@ -76,8 +95,8 @@ def check(path):
         eas = air['calibrated_airspeed_m_s'][(tv >= 0) & (tv <= duration)]
         report['airspeed_m_s'] = [float(np.min(eas)), float(np.max(eas))] if len(eas) else None
     problems = []
-    if duration < ALTITUDE_AT + 10:
-        problems.append(f'OFFBOARD only {duration:.1f} s (needs {ALTITUDE_AT + 10:.0f} s)')
+    if duration < ALTITUDE_AT + 20:
+        problems.append(f'OFFBOARD only {duration:.1f} s (needs {ALTITUDE_AT + 20:.0f} s)')
     for name, limit in [('course', LIMITS['course_change_error_deg']), ('altitude', LIMITS['altitude_change_error_m'])]:
         m = report[name]
         if not m['valid'] or abs(m['error']) > limit or m['settling_time_s'] is None:

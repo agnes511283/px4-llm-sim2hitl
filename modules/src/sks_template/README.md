@@ -5,7 +5,7 @@
 ## 這個例子做什麼
 
 - **接法**：模組編進韌體，自己發 OFFBOARD 訊號（`offboard_control_mode.velocity = true`），不需要外接任務電腦。PX4 進入 OFFBOARD 後，只把「導引」交給這個模組；高度與速度（`fw_lat_lon_control`）、姿態、角速度、控制分配都還是 PX4 原生的。
-- **算法**（`SksTemplate::guidance()`，換成你的就改這一段）：進入 OFFBOARD 時記下當下的航向與高度；5 秒後航向目標 +30°，25 秒後高度目標 +10 m。側向加速度 = 地速 × 0.2 × 航向誤差（傾角限 20°），高度交給 PX4 的 TECS，空速用預設值。
+- **算法**（`SksTemplate::guidance()`，換成你的就改這一段）：進入 OFFBOARD 時記下當下的航向與高度；15 秒後航向目標 +30°，35 秒後高度目標 +10 m（先直飛 15 秒，讓前一個模式（HITL 是傾斜的盤旋）的影響消失）。側向加速度 = 地速 × 0.2 × 航向誤差（傾角限 20°），高度交給 PX4 的 TECS，空速用預設值。
 - **出事時**：位置資料無效或太舊，就停發 OFFBOARD 訊號，PX4 自己的「OFFBOARD 失聯保護」接手（`COM_OF_LOSS_T`、`COM_OBL_RC_ACT`）。沒有這個模組在跑時，PX4 根本不讓你切進 OFFBOARD。
 
 ## 驗收（這個例子自己的標準）

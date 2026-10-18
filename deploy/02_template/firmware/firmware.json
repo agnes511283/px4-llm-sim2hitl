@@ -22,13 +22,13 @@
   "outputs": {
     "firmware": {
       "file": "px4_fmu-v6c_default.px4",
-      "sha256": "4583e0c0958a3472abb9d4df09fbfc020efaf654c1de8840070dd0fa619fc277",
-      "size": 1805884
+      "sha256": "41aa1b06116656cb1b5809957c0a0a633419b1a1f36fc3c3f4a21147fdfd8903",
+      "size": 1805984
     },
     "image_bin": {
       "file": "not kept (inside the .px4 image field)",
-      "sha256": "40645835a3be1f605ee61cea67946c3d72a2d60dcf81a8b4142ce27a6b2a2dec",
-      "size": 1928700
+      "sha256": "03a5e6994bdb90a869d7a78b5c737ccc2ccacbf4eefaa658c98b00205e7888bd",
+      "size": 1928708
     },
     "parameters": {
       "file": "parameters.json.xz",
@@ -42,7 +42,7 @@
     "git_identity": "v1.17.0",
     "git_hash": "d6f12ad1c4f70ad3230afd7d86e971421e02fef4",
     "nuttx_git_hash": "8d3ed2a2177267cb0ad5a1cadbee9ccdb6aab70d",
-    "image_size": 1928700,
+    "image_size": 1928708,
     "image_maxsize": 1966080,
     "flash_used_percent": 98.1
   },
@@ -61,19 +61,19 @@
     "modules": {
       "sks_template": {
         "CMakeLists.txt": "70751cd13be117e54ba304e72e0d3757823d1055306402f61a6998692cc2f205",
-        "README.md": "5ecfc0281fcaab0ffec922b35173a6ba59ecfc6952b8da55fdb84eb251ef0288",
+        "README.md": "34fd9d69c010374264efb8398633838551ad58433667a87283c05e561433ffa5",
         "SksTemplate.cpp": "10f595ee96a14592e6575216c016bcfdc1c38126c32850bd5cb6fb144c6cc538",
-        "SksTemplate.hpp": "76139c7013cea943a26b0c53e26f978f53163529c446d28bdf1773b3258529be"
+        "SksTemplate.hpp": "c996b728b3d730f1ca02d56cfb62231cc8e247c89d0b8202c9b797bcfa5dc4e3"
       }
     },
     "toolchain": "arm-none-eabi-gcc (15:13.2.rel1-2) 13.2.1 20231009",
-    "built_at_utc": "2026-10-18T03:19:29Z",
-    "seconds": 12.7,
-    "log": "/home/iec/.cache/SkySurfer/firmware/02_template/build_20261018_111917.log"
+    "built_at_utc": "2026-10-18T04:06:57Z",
+    "seconds": 8.4,
+    "log": "/home/iec/.cache/SkySurfer/firmware/02_template/build_20261018_120649.log"
   },
   "flashed": {
     "status": "PASS",
-    "at_utc": "2026-10-18T03:20:06Z",
+    "at_utc": "2026-10-18T04:07:34Z",
     "port": "/dev/ttyACM0",
     "tool": "/home/iec/px4/PX4-Autopilot/Tools/px_uploader.py --port /dev/ttyACM0 px4_fmu-v6c_default.px4",
     "attempts": 1,
@@ -83,6 +83,6 @@
       "os_hash_prefix": "8d3ed2a2177267cb",
       "board_version": 56
     },
-    "evidence": "/home/iec/.cache/SkySurfer/deploy_runs/run_20261018_031911Z_71d04fb7/flash"
+    "evidence": "/home/iec/.cache/SkySurfer/deploy_runs/run_20261018_040645Z_b4d1cab1/flash"
   }
 }

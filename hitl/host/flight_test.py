@@ -292,14 +292,17 @@ def run_test(runtime, args):
                 metrics = orbit_metrics(samples)
                 if now - hold_start >= args.hold_seconds and metrics['turns'] >= 1.0:
                     report['orbit'] = metrics
+                    # PX4's Hold keeps the altitude it was entered at (a module flown before it may have
+                    # changed it): the band is around the height when the hold started (user 2026-10-18).
+                    hold_height = samples[0]['height_m']
                     if (
                         max(
-                            abs(metrics['height_min_m'] - args.altitude),
-                            abs(metrics['height_max_m'] - args.altitude),
+                            abs(metrics['height_min_m'] - hold_height),
+                            abs(metrics['height_max_m'] - hold_height),
                         )
                         > 15
                     ):
-                        raise RuntimeError('Hold height left the target +/-15 m acceptance band')
+                        raise RuntimeError('Hold height left the +/-15 m band around the hold entry height')
                     report['flight'] = 'PASS'
                     report['flight_seconds'] = now - flight_start
                     report['hold_seconds'] = now - hold_start

@@ -37,9 +37,9 @@ public:
 	static constexpr float COURSE_GAIN = 0.2f;                // [1/s] lateral acceleration = V * gain * course error
 	static constexpr float BANK_LIMIT_DEG = 20.f;
 	static constexpr float COURSE_STEP_DEG = 30.f;
-	static constexpr float COURSE_STEP_AT = 5.f;              // [s] after entering OFFBOARD
+	static constexpr float COURSE_STEP_AT = 15.f;             // [s] after entering OFFBOARD (the previous mode settles)
 	static constexpr float ALTITUDE_STEP_M = 10.f;
-	static constexpr float ALTITUDE_STEP_AT = 25.f;           // [s] after entering OFFBOARD
+	static constexpr float ALTITUDE_STEP_AT = 35.f;           // [s] after entering OFFBOARD
 
 	SksTemplate();
 	~SksTemplate() override = default;

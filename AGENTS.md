@@ -108,6 +108,7 @@ for f in hitl/tests/test_*.py deploy/test_*.py; do echo "== $f"; "$PY" -B "$f" 2
 | 資料夾 | 內容 |
 |---|---|
 | `model/` | 飛機模型來源；`generated/` 是轉好的 C 與 Simulink 參考結果 |
+| `aircraft/` | 飛機的氣動來源：`avl/` 是產生氣動表的 AVL 幾何、質量檔與轉表程式（不在 `model/` 裡，改它不影響模型版本） |
 | `plant/` | plant 核心包裝、C 真值、C 感測器、各自的檢查程式、錄製的參考資料 |
 | `sitl/` | 精簡 PX4 的 plant 模組 `plant_sim`、情境、配平、ULog 重播 |
 | `modules/` | 自己的 PX4 模組（同一份原始碼編進 SITL 與韌體；`guidance_template` 是範例，見它的 README「照著做一個自己的模組」）。韌體只編配方 `recipe.modules` 列的模組；SITL 要在 `sitl/px4_external/src/` 加包裝並列進那裡的 `CMakeLists.txt` |

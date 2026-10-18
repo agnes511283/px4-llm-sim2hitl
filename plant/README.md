@@ -115,7 +115,7 @@ IMU 的 noise density 換成每筆標準差：σ = density·√(1/(2·dt))。沒
 
 模型裡有三個「點」，參數在 `model/FW_SkySurfer_InitialFunction.m`（`CG_m`、`XREF_m` 是機身站位，單位 m，往機尾為正）：
 
-- **力矩參考點 `XREF_m`**：氣動表（`model/m_05.mat`、`m_1.mat`，AVL 算的）的力矩是對這一點算的，等於 AVL 的 `Xref`。只有重新用 AVL 算表時才改，而且要和算表時一致。
+- **力矩參考點 `XREF_m`**：氣動表（`model/m_05.mat`、`m_1.mat`，由 [aircraft/avl](../aircraft/avl/README.md) 的幾何用 AVL 算的）的力矩是對這一點算的，等於 AVL 的 `Xref`。只有重新用 AVL 算表時才改，而且要和算表時一致。
 - **重心 `CG_m`**：飛機實際的重心。氣動方塊（Aerospace Blockset 的 Aerodynamic Forces and Moments）每一步把力矩從 `XREF_m` 搬到 `CG_m`（力乘上兩點的距離）。`CG_m` 只用在這裡；地面接觸點本來就在重心，感測器也當作裝在重心。
 - **中性點**：迎角變化時，升力變化的作用點（AVL 的 `Xnp`，氣動表裡也有這一列）。重心在它前面，飛機被擾動後會自己回正。靜穩定度 =（中性點 − 重心）÷ MAC，重心往後移就變小，到中性點就不穩定。
 

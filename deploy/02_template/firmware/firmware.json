@@ -22,12 +22,12 @@
   "outputs": {
     "firmware": {
       "file": "px4_fmu-v6c_default.px4",
-      "sha256": "b5507158f859703980cd7c43bd2e95a72f3c00dbe5800028f057a97a2af115e3",
+      "sha256": "4583e0c0958a3472abb9d4df09fbfc020efaf654c1de8840070dd0fa619fc277",
       "size": 1805884
     },
     "image_bin": {
       "file": "not kept (inside the .px4 image field)",
-      "sha256": "89c849ae8c366bfb91f339eb08caea2bd68e39c481b9da845202c3d988684763",
+      "sha256": "40645835a3be1f605ee61cea67946c3d72a2d60dcf81a8b4142ce27a6b2a2dec",
       "size": 1928700
     },
     "parameters": {
@@ -61,14 +61,28 @@
     "modules": {
       "sks_template": {
         "CMakeLists.txt": "70751cd13be117e54ba304e72e0d3757823d1055306402f61a6998692cc2f205",
+        "README.md": "5ecfc0281fcaab0ffec922b35173a6ba59ecfc6952b8da55fdb84eb251ef0288",
         "SksTemplate.cpp": "10f595ee96a14592e6575216c016bcfdc1c38126c32850bd5cb6fb144c6cc538",
         "SksTemplate.hpp": "76139c7013cea943a26b0c53e26f978f53163529c446d28bdf1773b3258529be"
       }
     },
     "toolchain": "arm-none-eabi-gcc (15:13.2.rel1-2) 13.2.1 20231009",
-    "built_at_utc": "2026-10-18T02:50:37Z",
-    "seconds": 37.5,
-    "log": "/home/iec/.cache/SkySurfer/firmware/02_template/build_20261018_105000.log"
+    "built_at_utc": "2026-10-18T03:19:29Z",
+    "seconds": 12.7,
+    "log": "/home/iec/.cache/SkySurfer/firmware/02_template/build_20261018_111917.log"
   },
-  "flashed": null
+  "flashed": {
+    "status": "PASS",
+    "at_utc": "2026-10-18T03:20:06Z",
+    "port": "/dev/ttyACM0",
+    "tool": "/home/iec/px4/PX4-Autopilot/Tools/px_uploader.py --port /dev/ttyACM0 px4_fmu-v6c_default.px4",
+    "attempts": 1,
+    "after": {
+      "flight_sw_version": 17891583,
+      "git_hash_prefix": "d6f12ad1c4",
+      "os_hash_prefix": "8d3ed2a2177267cb",
+      "board_version": 56
+    },
+    "evidence": "/home/iec/.cache/SkySurfer/deploy_runs/run_20261018_031911Z_71d04fb7/flash"
+  }
 }

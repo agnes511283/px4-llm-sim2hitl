@@ -52,5 +52,6 @@
 | ULog 與 MATLAB | SITL 與 HITL 的 ULog 都能用 MATLAB `ulogreader` 畫（`analysis/matlab/sks_ulog_plot.m`，不需要 Java），也能轉 CSV（`analysis/ulog_export.py`） |
 | HITL（實體 FC） | 00_native 基準 `hitl-run` PASS（2026-10-17 UTC）：盤旋 60 s、2.78 圈；23,039 步 0 次晚到、最慢 0.79 ms；USB 寫入最慢 0.26 ms；FC 量到感測器 250.009 Hz |
 | 第 3 段一條龍 | `deploy/01_sdfix`（原生＋記憶卡修正）用 `deploy-test` 燒錄並跑完：FC 回報 NuttX `8d3ed2a2…`（可預期的那個）；寫參數 0 個；`hitl-run` 七部分全 PASS，盤旋 60.13 s、2.78 圈，23,104 步 0 次晚到、最慢 0.19 ms；飛控記錄（10.9 MB）下載兩次相同、嚴格解析 PASS |
+| 範本 `02_template`（HITL，2026-10-18） | 一條龍：重編、燒錄（一次成功）、身分、參數 0 筆、開機檔 `sks_template start` 全 PASS；**FC 接受模組在韌體內自己發的 OFFBOARD 訊號**，航向轉 30.1°、高度 +10.8 m。判定 FAIL 是測試設計：從傾斜的盤旋切進 OFFBOARD，傾角 28.9° 是前一個模式留下的（之後最大 13.9°）；範本爬高 10 m 後回盤旋，超出飛行測試「100 m ±15 m」的盤旋高度判定。修正待使用者決定 |
 | 乾淨目錄試跑 | 從 git 拉到新資料夾、不連 MATLAB、不靠舊 cache：`update-model` 建出**相同的 build-id**、四道檢查 PASS、配平相同 |
 | 收尾 | 把討論定案的計畫（`~/Documents/Codex/2026-10-18/skysurfer_architecture_v3/PLAN.md`）的核心精神放進專案；整套跑通後再做一次乾淨目錄試跑；上 GitHub |

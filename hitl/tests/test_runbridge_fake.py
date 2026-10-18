@@ -10,6 +10,7 @@ import json
 import struct
 import os
 from pathlib import Path
+import shutil
 import signal
 import socket
 import subprocess
@@ -54,7 +55,20 @@ class RunbridgeFakeTests(unittest.TestCase):
         finally:
             if self.host.poll() is None:self.host.kill();self.host.wait(timeout=3)
             self.console.close()
-            if self.temp:self.temp.cleanup()
+            if self.temp:
+                if self.failed():self.keep_failed_folder()
+                self.temp.cleanup()
+    def failed(self):
+        result=getattr(self._outcome,'result',None)
+        return bool(result) and any(test is self for test,_ in result.failures+result.errors)
+    def keep_failed_folder(self):
+        """A failed test keeps its folder (host log, wire, timing, state) in the cache instead of losing it."""
+        sys.path.insert(0,str(PROJECT/'plant'/'core'))
+        import toolchain
+        kept=toolchain.cache_root()/'failed_tests'/f'{self._testMethodName}_{time.strftime("%Y%m%d_%H%M%S")}'
+        special=lambda folder,names:[n for n in names if not ((Path(folder)/n).is_file() or (Path(folder)/n).is_dir())]
+        shutil.copytree(self.folder,kept,symlinks=True,ignore=special)
+        print(f'\nkept the failed test folder: {kept}',file=sys.stderr)
     def write_config(self):
         temp=self.config_path.with_suffix('.tmp');temp.write_text(json.dumps(self.config));os.replace(temp,self.config_path)
     def cli(self,action,*args,expected=0):

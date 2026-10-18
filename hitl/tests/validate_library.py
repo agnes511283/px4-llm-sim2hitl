@@ -71,9 +71,16 @@ def validate(cache):
  ri=[a for a,b,c in RAW_FROM_CORE];ci=[b for a,b,c in RAW_FROM_CORE];sign=np.array([c for a,b,c in RAW_FROM_CORE],dtype=float)
  at=np.full(len(ri),1e-6);rt=np.full(len(ri),1e-8);at[3:7]=1e-9;at[22:27]=1e-9
  a=None;a_bytes=None
- for case in ['ground','air']:
+ # The wind case of build_core.m (every wind component on, from t = 0): steady 15 kts from 30 deg (not used in the
+ # shear/gust/turbulence mode), gust from 0.3 s with the source amplitudes, shear 3 m/s from 30 deg, turbulence at the
+ # reference W20 1 m/s, source seeds. The same through the HIL ABI (hil_model_configure_wind).
+ wind_case=dict(steady_ned_m_s=[0.0,0.0,0.0],start_mode=2,start_height_m=5.0,start_time_s=0.0,ramp_s=0.0,gust_start_s=0.3,
+  gust_length_m=[120.0,120.0,80.0],gust_magnitude_m_s=[3.5,3.0,3.0],shear_speed_6m_m_s=3.0,shear_from_deg=30.0,
+  turbulence_speed_6m_m_s=1.0,turbulence_from_deg=0.0,turbulence_seed=[23341,23342,23343,23344])
+ for case in ['ground','air','wind']:
   # Simulink: the unmodified source and the builder's core copy (plant/core/build_core.m) must agree exactly.
-  source=np.loadtxt(r/f'source_{case}.csv',delimiter=',');ref=np.loadtxt(r/f'core_{case}.csv',delimiter=',');u=np.loadtxt(r/f'controls_{case}.csv',delimiter=',')[:,1:];data,canonical=m.run(u,case=='air')
+  source=np.loadtxt(r/f'source_{case}.csv',delimiter=',');ref=np.loadtxt(r/f'core_{case}.csv',delimiter=',');u=np.loadtxt(r/f'controls_{case}.csv',delimiter=',')[:,1:]
+  data,canonical=m.run(u,case!='ground',wind=wind_case if case=='wind' else None)
   expected=ref[:,1:][:,ci]*sign;ratio=np.abs(data[:,1:][:,ri]-expected)/(at+rt*np.abs(expected))
   report[case]={'status':'PASS' if np.array_equal(source,ref) and np.isfinite(data).all() and ratio.max()<=1 and np.array_equal(data[:,0],ref[:,0]) else 'FAIL','max_error_ratio':float(ratio.max()),'samples':len(data),'fields':len(ri)}
   if case=='ground':a=data;a_bytes=canonical

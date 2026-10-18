@@ -24,7 +24,7 @@ static Plant *plant=NULL;
 static PlantSensors *sensors=NULL;
 static int active=0;
 static uint64_t next_step=0;
-static double held_controls[16], geoid_separation;
+static double held_controls[16], geoid_separation, steady_wind[3];
 static char last_error[256];
 static int32_t fail(int32_t code,const char *msg) {snprintf(last_error,sizeof(last_error),"%s",msg);return code;}
 static int valid_header(uint32_t a,uint32_t s,size_t expected) {return a==HIL_ABI_VERSION && s==expected;}
@@ -33,6 +33,7 @@ _Static_assert(offsetof(HilModelInput,controls)==8,"Unexpected ABI alignment");
 _Static_assert(sizeof(HilInitialConditions)==120,"Unexpected initial ABI");
 _Static_assert(sizeof(HilModelInput)==176,"Unexpected input ABI");
 _Static_assert(sizeof(HilModelOutput)==680,"Unexpected output ABI");
+_Static_assert(sizeof(HilWindConfig)==168,"Unexpected wind ABI");
 uint32_t hil_model_get_abi_version(void) {return HIL_ABI_VERSION;}
 int32_t hil_model_get_info(HilModelInfo *o) {
   if(!o || !valid_header(o->abi_version,o->struct_size,sizeof(*o))) return fail(4,"info ABI mismatch");
@@ -43,7 +44,7 @@ int32_t hil_model_get_info(HilModelInfo *o) {
   snprintf(o->aircraft_id,sizeof(o->aircraft_id),"skysurfer");
   snprintf(o->build_id,sizeof(o->build_id),"%s",HIL_BUILD_ID);
   snprintf(o->source_sha256,sizeof(o->source_sha256),"%s",HIL_SOURCE_HASH);
-  snprintf(o->platform,sizeof(o->platform),"%s",HIL_PLATFORM);o->raw_count=HIL_RAW_COUNT;o->instance_count=1;o->capabilities=0x3f;o->initial_supported=0x7f;
+  snprintf(o->platform,sizeof(o->platform),"%s",HIL_PLATFORM);o->raw_count=HIL_RAW_COUNT;o->instance_count=1;o->capabilities=0x3f|HIL_CAP_WIND;o->initial_supported=0x7f;
   return 0;
 }
 static int32_t initialize(const HilInitialConditions *i) {
@@ -63,11 +64,27 @@ static int32_t initialize(const HilInitialConditions *i) {
   PlantSensorConfig config;plant_sensors_default_config(&config);
   if(plant_sensors_init(sensors,&config,ic.seed)!=PLANT_OK) return fail(4,"Sensors rejected the configuration");
   geoid_separation=i->geoid_separation_m;
-  memset(held_controls,0,sizeof(held_controls));next_step=0;
+  memset(held_controls,0,sizeof(held_controls));memset(steady_wind,0,sizeof(steady_wind));next_step=0;
   active=1;last_error[0]=0;return 0;
 }
 int32_t hil_model_initialize(const HilInitialConditions *i) {if(active) return fail(2,"Already initialized; use reset after host stops stepping");return initialize(i);}
 int32_t hil_model_reset(const HilInitialConditions *i) {return initialize(i);}
+int32_t hil_model_configure_wind(const HilWindConfig *w) {
+  if(!active) return fail(2,"Model is not initialized");
+  if(next_step!=0) return fail(2,"Wind is set before the first step");
+  if(!w||!valid_header(w->abi_version,w->struct_size,sizeof(*w))) return fail(4,"wind ABI mismatch");
+  for(int k=0;k<3;k++) if(!isfinite(w->steady_ned_m_s[k])||fabs(w->steady_ned_m_s[k])>100) return fail(4,"Invalid steady wind");
+  PlantWindConfig c;plant_default_wind_config(&c);
+  c.start_mode=w->start_mode;c.start_height_m=w->start_height_m;c.start_time_s=w->start_time_s;c.ramp_s=w->ramp_s;
+  c.gust_start_s=w->gust_start_s;
+  for(int k=0;k<3;k++) {c.gust_length_m[k]=w->gust_length_m[k];c.gust_magnitude_m_s[k]=w->gust_magnitude_m_s[k];}
+  c.shear_speed_6m_m_s=w->shear_speed_6m_m_s;c.shear_from_deg=w->shear_from_deg;
+  c.turbulence_speed_6m_m_s=w->turbulence_speed_6m_m_s;c.turbulence_from_deg=w->turbulence_from_deg;
+  for(int k=0;k<4;k++) c.turbulence_seed[k]=w->turbulence_seed[k];
+  if(plant_configure_wind(plant,&c)!=PLANT_OK) return fail(4,"Plant rejected the wind");
+  memcpy(steady_wind,w->steady_ned_m_s,sizeof(steady_wind));
+  return 0;
+}
 int32_t hil_model_terminate(void) {active=0;free(plant);free(sensors);plant=NULL;sensors=NULL;return 0;}
 /* raw_source[58]: positions and units of the recorded reference (plant/reference); Truth fields from the
  * C Truth with the P8 corrections (true airspeed, horizontal ground speed, G = -f_z / g), sensor
@@ -103,6 +120,7 @@ int32_t hil_model_step(const HilModelInput *i,HilModelOutput *o) {
   PlantInput in;memset(&in,0,sizeof(in));
   in.command.aileron_left=held_controls[0];in.command.aileron_right=held_controls[1];in.command.elevator=held_controls[2];
   in.command.rudder=held_controls[3];in.command.throttle=held_controls[4];
+  memcpy(in.wind_ned_m_s,steady_wind,sizeof(in.wind_ned_m_s));
   PlantTruth t;PlantSensorOutput s;
   int32_t code=plant_step(plant,&in,&t);
   if(code==PLANT_ERR_DIVERGED) {active=0;return fail(3,"Plant returned nonfinite data; reset required");}

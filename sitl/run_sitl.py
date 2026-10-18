@@ -43,6 +43,8 @@ from pathlib import Path
 sys.dont_write_bytecode = True  # imports trim, replay, analysis modules: no __pycache__ in the project
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'sitl'))
+sys.path.insert(0, str(ROOT / 'plant'))
+import wind as plant_wind  # noqa: E402  same wind description as the HITL scene
 NATIVE = ROOT / 'deploy' / '00_native'
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'px4'))
 from check_px4_tree import px4_root  # noqa: E402
@@ -141,7 +143,11 @@ def scenario_text(scenario, params):
         lines.append('step {:.9g} {:.9g} {:.9g} {:.9g} {:.9g} {:.9g}'.format(
             settle + step['start_s'], settle + step['end_s'], step.get('roll', 0.0), step.get('pitch', 0.0), step.get('yaw', 0.0),
             step.get('throttle', 0.0)))
-    return '\n'.join(lines) + '\n', trim_result
+    # Wind: the scenario's "wind" object (plant/wind.py); SITL starts in the air.
+    wind_config, wind_reminders = plant_wind.parse(scenario.get('wind'), ground_start=initial['height_agl_m'] == 0)
+    if scenario.get('wind') is not None:
+        lines.append(plant_wind.sitl_line(wind_config))
+    return '\n'.join(lines) + '\n', trim_result, wind_reminders
 
 
 def replay_main(args):
@@ -188,7 +194,9 @@ def main():
         params['SDLOG_PROFILE'] = read_params(NATIVE / 'hitl_overrides.params')['SDLOG_PROFILE']
     scenario = json.loads(args.scenario.read_text())
     duration = args.duration or scenario.get('settle_s', 0.0) + scenario['duration_s']
-    text, trim_result = scenario_text(scenario, params)
+    text, trim_result, wind_reminders = scenario_text(scenario, params)
+    for reminder in wind_reminders:
+        print('wind: ' + reminder, file=sys.stderr)
     env = dict(os.environ, PATH=f'{px4.parent}:{os.environ.get("PATH", "")}')
     # The start-up script waits for the PX4 server, launches are staggered, and an instance whose plant_sim has
     # not started (no trace.csv) within --startup-timeout s or that exited without a summary is restarted
@@ -261,7 +269,7 @@ def main():
     sim = sum(r.get('sim_s', 0.0) for r in results)
     stepping = [r for r in results if 'wall_start_unix_us' in r]
     window = (max(r['wall_end_unix_us'] for r in stepping) - min(r['wall_start_unix_us'] for r in stepping)) * 1e-6 if stepping else 0.0
-    report = {'scenario': scenario['name'], 'start': args.start, 'trim': trim_result, 'instances': results, 'parameters': len(params), 'wall_s_total': wall,
+    report = {'scenario': scenario['name'], 'start': args.start, 'trim': trim_result, 'wind_reminders': wind_reminders, 'instances': results, 'parameters': len(params), 'wall_s_total': wall,
               # Throughput: simulated seconds of all instances per wall second, from the first instance's
               # first plant step to the last instance's last (only meaningful when the runs overlap).
               'throughput_realtime_factor': sum(r['sim_s'] for r in stepping) / window if window else 0.0,

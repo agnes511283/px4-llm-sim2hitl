@@ -39,6 +39,7 @@ PLANT = CORE.parent
 sys.path.insert(0, str(CORE))
 import toolchain  # noqa: E402
 TOLERANCE = 1e-9  # absolute, after scaling by max(1, |reference|)
+NX = 37  # PLANT_CORE_STATE_COUNT: 13 rigid body, 5 actuators, 16 Dryden turbulence, 3 gust
 
 # CoreSnapshot index -> reference raw index (positions as in hitl/aircraft/skysurfer/adapter.c fill_raw()).
 PAIRS = {
@@ -117,7 +118,7 @@ def run(core, case, controls, instance=None):
 # controls[0..4] (left aileron, right aileron, elevator, rudder, throttle) -> actuator state in x (plant_core.h:
 # x[13..17] = throttle, right aileron, left aileron, elevator, rudder).
 ACTUATOR_STATE = {0: 15, 1: 14, 2: 16, 3: 17, 4: 13}
-GUST_STATES = (18, 19, 20)
+GUST_STATES = range(34, 37)  # plant_core.h PLANT_CORE_X_GUST
 DT_S = 0.004  # PLANT_CORE_DT_S
 
 
@@ -138,7 +139,7 @@ def derivative_oracle(core, src, x, controls, xdot, y):
         dst = core.new()
         core.check(core.lib.plant_core_copy(dst, src))
         core.step(dst, u)
-        nxt = (C.c_double * 21)()
+        nxt = (C.c_double * NX)()
         core.check(core.lib.plant_core_get_state(dst, nxt))
         return (np.array(nxt[:]) - xs) / DT_S
 
@@ -154,7 +155,7 @@ def derivative_oracle(core, src, x, controls, xdot, y):
         u[control] += -0.1 if u[control] > 0.5 else 0.1
         dst = core.new()
         core.check(core.lib.plant_core_copy(dst, src))
-        out, snap = (C.c_double * 21)(), (C.c_double * 72)()
+        out, snap = (C.c_double * NX)(), (C.c_double * 72)()
         core.check(core.lib.plant_core_eval(dst, x, (C.c_double * 16)(*u), out, snap))
         changed = [k for k in range(13, 18) if np.array(out[:])[k] != xdot[k]]
         moved[str(control)] = changed
@@ -234,7 +235,7 @@ def main():
     result['reinit'] = {'status': 'PASS' if bit_equal(again, snapshots[a_case['name']]) else 'FAIL', 'case': a_case['name']}
 
     # State access and f(x, u) (API 1.1): eval from the state read back equals a normal step.
-    nx = 21
+    nx = NX
     src = core.new()
     core.init(src, c_case)
     for k in range(split):

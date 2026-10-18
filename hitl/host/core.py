@@ -3,6 +3,7 @@ from collections import Counter, deque
 from pathlib import Path
 from pymavlink.dialects.v20 import common as mav
 from .abi import (
+    CAP_WIND,
     Model,
     Worker,
     header,
@@ -13,7 +14,7 @@ from .abi import (
     diagnostics,
     clock_calibration,
 )
-from .scenario import load_scene
+from .scenario import load_scene, load_wind
 from .packets import Encoder
 from .errors import PreconditionError, OperationError
 from .release import read_release
@@ -777,6 +778,7 @@ class Core(SdFiles):
             'ready_after_recovery': self.recovery == 'complete'
             and fresh
             and self.fc['armed'] is False,
+            'wind_reminders': list(getattr(self, 'wind_reminders', [])),
             'model_time_s': s.output.model_time_ns / 1e9 if s.produced else 0,
             'produced_steps': s.produced,
             'misses': s.misses,
@@ -1848,8 +1850,15 @@ class Core(SdFiles):
                 new.get('height_agl_m', 0) != 0 or any(initial.body_velocity_m_s)
             ):
                 raise ValueError('Air-start currently supports offline validation only')
+            wind, reminders = load_wind(new)
             self.scene, self.initial = new, initial
             self.model.check(self.model.lib.hil_model_reset(C.byref(initial)))
+            if wind is not None and (self.model.info.capabilities & CAP_WIND):
+                self.model.configure_wind(wind)
+            elif wind is not None and (any(wind['steady_ned_m_s']) or any(wind['gust_magnitude_m_s'])
+                                       or wind['shear_speed_6m_m_s'] or wind['turbulence_speed_6m_m_s']):
+                raise ValueError('This model release has no wind support')
+            self.wind_reminders = reminders
             self.controls = [0.0] * 16
             self.control_valid = self.pending_control = False
             self.control_sequence = 0
@@ -1864,6 +1873,7 @@ class Core(SdFiles):
                 json.dumps(
                     {
                         'scene': new,
+                        'wind_reminders': reminders,
                         'build_id': self.manifest['build_id'],
                         'run_id': self.run_id,
                         'model_epoch_us': self.model_epoch_us,

@@ -13,7 +13,8 @@ Checks (results in <cache>/results/plant_validation.json; exit code 0 only when 
                same meaning (a regression report like validate_core's reference; an intentional model
                change makes it differ)
   consistency  |F_gravity| = mass*g; specific force = (aero + thrust + ground) / mass
-  rejects      non-zero initial rates, site_msl and wind are refused
+  rejects      non-zero initial rates and site_msl, a non-finite wind and a zero gust length are refused
+  wind         steady wind from t = 0: the truth wind equals the input and the airspeed differs from still air
   plant_state  two plants interleaved, plant_copy mid-run: bit-identical
   geo          flat-earth LLA and wrapping against MATLAB flat2lla (plant/truth/flat2lla_test_vectors.json)
   wmm          C WMM against MATLAB wrldmagm (plant/sensors/wmm_test_vectors.json)
@@ -51,6 +52,14 @@ class Initial(C.Structure):
 
 class Input(C.Structure):
     _fields_ = [('command', C.c_double * 5), ('wind_ned_m_s', D3)]
+
+
+class WindConfig(C.Structure):  # PlantWindConfig (skysurfer_plant.h)
+    _fields_ = [('start_mode', C.c_uint32), ('reserved', C.c_uint32), ('start_height_m', C.c_double),
+                ('start_time_s', C.c_double), ('ramp_s', C.c_double), ('gust_start_s', C.c_double),
+                ('gust_length_m', D3), ('gust_magnitude_m_s', D3), ('shear_speed_6m_m_s', C.c_double),
+                ('shear_from_deg', C.c_double), ('turbulence_speed_6m_m_s', C.c_double),
+                ('turbulence_from_deg', C.c_double), ('turbulence_seed', C.c_uint32 * 4)]
 
 
 class Truth(C.Structure):
@@ -127,6 +136,8 @@ class Lib:
         lib.plant_init.argtypes = [C.c_void_p, C.POINTER(Initial)]
         lib.plant_step.argtypes = [C.c_void_p, C.POINTER(Input), C.POINTER(Truth)]
         lib.plant_copy.argtypes = [C.c_void_p, C.c_void_p]
+        lib.plant_default_wind_config.argtypes = [C.POINTER(WindConfig)]
+        lib.plant_configure_wind.argtypes = [C.c_void_p, C.POINTER(WindConfig)]
         lib.plant_sensors_default_config.argtypes = [C.POINTER(Config)]
         lib.plant_sensors_init.argtypes = [C.c_void_p, C.POINTER(Config), C.c_uint32]
         lib.plant_sensors_step.argtypes = [C.c_void_p, C.POINTER(Truth), C.POINTER(Output)]
@@ -250,9 +261,49 @@ def check_rejects(lib, ref):
     plant = lib.plant()
     lib.lib.plant_init(plant, C.byref(initial_for(base, ref)))
     inp = Input()
-    inp.wind_ned_m_s[0] = 1.0
-    results['wind'] = lib.lib.plant_step(plant, C.byref(inp), C.byref(Truth()))
+    inp.wind_ned_m_s[0] = math.nan
+    results['wind_nonfinite'] = lib.lib.plant_step(plant, C.byref(inp), C.byref(Truth()))
+    plant = lib.plant()
+    lib.lib.plant_init(plant, C.byref(initial_for(base, ref)))
+    config = WindConfig()
+    lib.lib.plant_default_wind_config(C.byref(config))
+    config.gust_length_m[0] = 0.0
+    results['wind_gust_length'] = lib.lib.plant_configure_wind(plant, C.byref(config))
     return {'status': 'PASS' if all(v == 4 for v in results.values()) else 'FAIL', 'codes': results}
+
+
+def check_wind(lib, ref):
+    """Steady wind from t = 0 without ramp, air start: the truth wind is the input wind, and it is what separates
+    the ground velocity from the air velocity (the core's own output). The default start (after airborne) waits
+    on the ground; with zero wind input nothing changes against a run without wind."""
+    base = ref.CASES[3]
+    wind = [3.0, -4.0, 0.0]
+    plant = lib.plant()
+    lib.lib.plant_init(plant, C.byref(initial_for(base, ref)))
+    config = WindConfig()
+    lib.lib.plant_default_wind_config(C.byref(config))
+    config.start_mode, config.ramp_s = 2, 0.0
+    code = lib.lib.plant_configure_wind(plant, C.byref(config))
+    worst, airspeeds = 0.0, []
+    for k in range(250):
+        inp, t = Input(), Truth()
+        inp.wind_ned_m_s[:] = wind
+        lib.lib.plant_step(plant, C.byref(inp), C.byref(t))
+        if k > 0:
+            worst = max(worst, max(abs(a - b) for a, b in zip(t.wind_ned_m_s, wind)))
+        airspeeds.append(t.airspeed_true_m_s)
+    still = lib.plant()
+    lib.lib.plant_init(still, C.byref(initial_for(base, ref)))
+    calm = []
+    for k in range(250):
+        inp, t = Input(), Truth()
+        lib.lib.plant_step(still, C.byref(inp), C.byref(t))
+        calm.append(t.airspeed_true_m_s)
+    differs = max(abs(a - b) for a, b in zip(airspeeds, calm)) > 0.1
+    # 1e-6 m/s: the truth rotates the air velocity with the core's quaternion, the core used its own DCM (~3e-9 seen).
+    ok = code == 0 and worst <= 1e-6 and differs
+    return {'status': 'PASS' if ok else 'FAIL', 'configure_code': code, 'truth_wind_max_abs_error': worst,
+            'airspeed_differs_from_still_air': differs}
 
 
 def check_plant_state(lib, ref, data, truths_by_case):
@@ -527,6 +578,7 @@ def main():
     result['reference_build_id'] = json.loads((PLANT / 'reference' / 'data' / 'manifest.json').read_text())['model_build_id']
     result['truth'], result['consistency'], truths_by_case = check_truth(lib, ref, data)
     result['rejects'] = check_rejects(lib, ref)
+    result['wind'] = check_wind(lib, ref)
     result['plant_state'] = check_plant_state(lib, ref, data, truths_by_case)
     result['geo'] = check_geo()
     result['wmm'] = check_wmm(lib)
@@ -537,7 +589,7 @@ def main():
     result['rng'] = check_rng(lib, flight)
     result['boundaries'] = check_boundaries(lib, ref)
     result['truth']['blocking'] = False  # regression report against the recorded reference, not a gate
-    checks = ['self_test', 'layout', 'consistency', 'rejects', 'plant_state', 'geo', 'wmm', 'ideal', 'noise',
+    checks = ['self_test', 'layout', 'consistency', 'rejects', 'wind', 'plant_state', 'geo', 'wmm', 'ideal', 'noise',
               'vibration', 'rng', 'boundaries']
     result['status'] = 'PASS' if all(result[c]['status'] == 'PASS' for c in checks) else 'FAIL'
     (args.cache / 'results' / 'plant_validation.json').write_text(json.dumps(result, indent=2))

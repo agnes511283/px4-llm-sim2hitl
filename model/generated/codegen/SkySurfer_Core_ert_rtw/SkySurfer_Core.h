@@ -7,9 +7,9 @@
  *
  * Code generated for Simulink model 'SkySurfer_Core'.
  *
- * Model version                  : 14.9
+ * Model version                  : 14.12
  * Simulink Coder version         : 26.2 (R2026b) 22-May-2026
- * C/C++ source code generated on : Sun Oct 18 16:10:01 2026
+ * C/C++ source code generated on : Mon Oct 19 01:08:18 2026
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: Intel->x86-64 (Linux 64)
@@ -172,19 +172,19 @@ typedef struct {
 /* Continuous states for system '<S140>/Distance into gust (y)' */
 typedef struct {
   double DistanceintoGustxLimitedtogustlengthd_CSTATE;
-               /* '<S145>/Distance into Gust (x) (Limited to gust length d) ' */
+               /* '<S146>/Distance into Gust (x) (Limited to gust length d) ' */
 } X_Distanceintogusty_SkySurfer_Core_T;
 
 /* State derivatives for system '<S140>/Distance into gust (y)' */
 typedef struct {
   double DistanceintoGustxLimitedtogustlengthd_CSTATE;
-               /* '<S145>/Distance into Gust (x) (Limited to gust length d) ' */
+               /* '<S146>/Distance into Gust (x) (Limited to gust length d) ' */
 } XDot_Distanceintogusty_SkySurfer_Core_T;
 
 /* State Disabled for system '<S140>/Distance into gust (y)' */
 typedef struct {
   bool DistanceintoGustxLimitedtogustlengthd_CSTATE;
-               /* '<S145>/Distance into Gust (x) (Limited to gust length d) ' */
+               /* '<S146>/Distance into Gust (x) (Limited to gust length d) ' */
 } XDis_Distanceintogusty_SkySurfer_Core_T;
 
 /* Block signals and states (default storage) for system '<Root>' */
@@ -193,40 +193,63 @@ typedef struct {
   DW_Distanceintogusty_SkySurfer_Core_T Distanceintogusty;/* '<S140>/Distance into gust (y)' */
   double Reshape2[3];                  /* '<S18>/Reshape2' */
   double Selector2[9];                 /* '<S16>/Selector2' */
-  double Product1[3];                  /* '<S141>/Product1' */
+  double Product1[3];                  /* '<S142>/Product1' */
   double Windspeedatreferenceheight[3];
-                                   /* '<S143>/Wind speed at reference height' */
-  double AR[3];                        /* '<S131>/AR' */
+                                   /* '<S144>/Wind speed at reference height' */
+  double Product[4];                   /* '<S160>/Product' */
   double Selector1[9];                 /* '<S16>/Selector1' */
   double Selector[9];                  /* '<S16>/Selector' */
   double Reshape[3];                   /* '<S16>/Reshape' */
   double Sum[3];                       /* '<S6>/Sum' */
   double TmpSignalConversionAtQ0123Inport1[4];/* '<S14>/qdot' */
+  double w[2];                         /* '<S166>/w' */
+  double w_c[2];                       /* '<S166>/w ' */
+  double LwgV1[2];                     /* '<S166>/Lwg//V 1' */
+  double w_b[2];                       /* '<S165>/w' */
+  double w_j[2];                       /* '<S165>/w ' */
+  double w1[2];                        /* '<S165>/w 1' */
+  double w_k[2];                       /* '<S164>/w' */
+  double w1_h[2];                      /* '<S164>/w1' */
+  double w_m[2];                       /* '<S163>/w' */
+  double UnaryMinus[2];                /* '<S163>/Unary Minus' */
+  double w_jm[2];                      /* '<S162>/w' */
+  double w_kq[2];                      /* '<S161>/w' */
+  double sigma_w[2];                   /* '<S161>/sigma_w' */
   double Switch[3];                    /* '<S7>/Switch' */
   double Switch1[3];                   /* '<S7>/Switch1' */
+  double NextOutput[4];                /* '<S160>/White Noise' */
   double Product2_DWORK4[9];           /* '<S16>/Product2' */
   double Gain;                         /* '<S13>/Gain' */
   double q0;                           /* '<S21>/q0' */
   double q1;                           /* '<S21>/q1' */
   double q2;                           /* '<S21>/q2' */
   double q3;                           /* '<S21>/q3' */
-  double lnref_heightz0;               /* '<S143>/ln(ref_height//z0)' */
+  double lnref_heightz0;               /* '<S144>/ln(ref_height//z0)' */
+  double UnitConversion;               /* '<S149>/Unit Conversion' */
+  double Sqrt;                         /* '<S11>/Sqrt' */
+  double UnitConversion_m;             /* '<S187>/Unit Conversion' */
+  double sigma_wg;                     /* '<S168>/sigma_wg ' */
+  double PreLookUpIndexSearchprobofexceed_o2;
+                        /* '<S167>/PreLook-Up Index Search  (prob of exceed)' */
+  double UnitConversion_n;             /* '<S153>/Unit Conversion' */
   double RateLimiter;                  /* '<S3>/Rate Limiter' */
   double RateLimiter3;                 /* '<S3>/Rate Limiter3' */
   double RateLimiter1;                 /* '<S3>/Rate Limiter1' */
   double RateLimiter2;                 /* '<S3>/Rate Limiter2' */
-  double Sqrt;                         /* '<S11>/Sqrt' */
   double Gain_g;                       /* '<S3>/Gain' */
   double Gain1;                        /* '<S3>/Gain1' */
   double Gain2;                        /* '<S3>/Gain2' */
   double Gain6;                        /* '<S3>/Gain6' */
   double Limit_THR;                    /* '<S3>/Limit_THR' */
+  double sqrt_a;                       /* '<S166>/sqrt' */
+  double w4;                           /* '<S161>/w4' */
+  double u16;                          /* '<S161>/u^1//6' */
   double DistanceintoGustxLimitedtogustlengthd;
-               /* '<S146>/Distance into Gust (x) (Limited to gust length d) ' */
+               /* '<S147>/Distance into Gust (x) (Limited to gust length d) ' */
   double DistanceintoGustxLimitedtogustlengthd_k;
-               /* '<S145>/Distance into Gust (x) (Limited to gust length d) ' */
+               /* '<S146>/Distance into Gust (x) (Limited to gust length d) ' */
   double DistanceintoGustxLimitedtogustlengthd_l;
-                /* '<S144>/Distance into Gust (x) (Limited to gust length d)' */
+                /* '<S145>/Distance into Gust (x) (Limited to gust length d)' */
   double Merge;                        /* '<S42>/Merge' */
   double Merge_i;                      /* '<S46>/Merge' */
   double PrevY;                        /* '<S3>/Rate Limiter' */
@@ -237,7 +260,19 @@ typedef struct {
   double LastMajorTime_p;              /* '<S3>/Rate Limiter1' */
   double PrevY_m;                      /* '<S3>/Rate Limiter2' */
   double LastMajorTime_d;              /* '<S3>/Rate Limiter2' */
+  uint32_t RandSeed[4];                /* '<S160>/White Noise' */
+  uint32_t PreLookUpIndexSearchprobofexceed_o1;
+                        /* '<S167>/PreLook-Up Index Search  (prob of exceed)' */
+  uint32_t PreLookUpIndexSearchaltitude_DWORK1;
+                              /* '<S167>/PreLook-Up Index Search  (altitude)' */
+  uint32_t PreLookUpIndexSearchprobofexceed_DWORK1;
+                        /* '<S167>/PreLook-Up Index Search  (prob of exceed)' */
   int8_t If_ActiveSubsystem;           /* '<S36>/If' */
+  int8_t ifHeightMaxlowaltitudeelseifHeightMinisotropicaltitude_ActiveSubsystem;
+  /* '<S156>/if Height < Max low altitude  elseif Height > Min isotropic altitude ' */
+  int8_t
+    ifHeightMaxlowaltitudeelseifHeightMinisotropicaltitude_ActiveSubsystem_l;
+  /* '<S155>/if Height < Max low altitude  elseif Height > Min isotropic altitude ' */
   int8_t If1_ActiveSubsystem;          /* '<S41>/If1' */
   int8_t If_ActiveSubsystem_i;         /* '<S42>/If' */
   int8_t If_ActiveSubsystem_a;         /* '<S46>/If' */
@@ -250,6 +285,12 @@ typedef struct {
   bool PrevLimited_j;                  /* '<S3>/Rate Limiter3' */
   bool PrevLimited_j4;                 /* '<S3>/Rate Limiter1' */
   bool PrevLimited_n;                  /* '<S3>/Rate Limiter2' */
+  bool Hwgws_MODE;                     /* '<S151>/Hwgw(s)' */
+  bool Hvgws_MODE;                     /* '<S151>/Hvgw(s)' */
+  bool Hugws_MODE;                     /* '<S151>/Hugw(s)' */
+  bool Hrgw_MODE;                      /* '<S150>/Hrgw' */
+  bool Hqgw_MODE;                      /* '<S150>/Hqgw' */
+  bool Hpgw_MODE;                      /* '<S150>/Hpgw' */
   bool Distanceintogustx_MODE;         /* '<S140>/Distance into gust (x)' */
   bool Aerodynamic_MODE;               /* '<S5>/Aerodynamic' */
 } DW_SkySurfer_Core_T;
@@ -265,10 +306,18 @@ typedef struct {
   double TransferFcn4_CSTATE;          /* '<S3>/Transfer Fcn4' */
   double TransferFcn1_CSTATE;          /* '<S3>/Transfer Fcn1' */
   double TransferFcn2_CSTATE;          /* '<S3>/Transfer Fcn2' */
+  double wg_p1_CSTATE[2];              /* '<S166>/wg_p1' */
+  double wg_p2_CSTATE[2];              /* '<S166>/wg_p2' */
+  double vg_p1_CSTATE[2];              /* '<S165>/vg_p1' */
+  double vgw_p2_CSTATE[2];             /* '<S165>/vgw_p2' */
+  double ug_p_CSTATE[2];               /* '<S164>/ug_p' */
+  double rgw_p_CSTATE[2];              /* '<S163>/rgw_p' */
+  double qgw_p_CSTATE[2];              /* '<S162>/qgw_p' */
+  double pgw_p_CSTATE[2];              /* '<S161>/pgw_p' */
   X_Distanceintogusty_SkySurfer_Core_T Distanceintogustz;/* '<S140>/Distance into gust (y)' */
   X_Distanceintogusty_SkySurfer_Core_T Distanceintogusty;/* '<S140>/Distance into gust (y)' */
   double DistanceintoGustxLimitedtogustlengthd_CSTATE_p;
-                /* '<S144>/Distance into Gust (x) (Limited to gust length d)' */
+                /* '<S145>/Distance into Gust (x) (Limited to gust length d)' */
 } X_SkySurfer_Core_T;
 
 /* State derivatives (default storage) */
@@ -282,10 +331,18 @@ typedef struct {
   double TransferFcn4_CSTATE;          /* '<S3>/Transfer Fcn4' */
   double TransferFcn1_CSTATE;          /* '<S3>/Transfer Fcn1' */
   double TransferFcn2_CSTATE;          /* '<S3>/Transfer Fcn2' */
+  double wg_p1_CSTATE[2];              /* '<S166>/wg_p1' */
+  double wg_p2_CSTATE[2];              /* '<S166>/wg_p2' */
+  double vg_p1_CSTATE[2];              /* '<S165>/vg_p1' */
+  double vgw_p2_CSTATE[2];             /* '<S165>/vgw_p2' */
+  double ug_p_CSTATE[2];               /* '<S164>/ug_p' */
+  double rgw_p_CSTATE[2];              /* '<S163>/rgw_p' */
+  double qgw_p_CSTATE[2];              /* '<S162>/qgw_p' */
+  double pgw_p_CSTATE[2];              /* '<S161>/pgw_p' */
   XDot_Distanceintogusty_SkySurfer_Core_T Distanceintogustz;/* '<S140>/Distance into gust (y)' */
   XDot_Distanceintogusty_SkySurfer_Core_T Distanceintogusty;/* '<S140>/Distance into gust (y)' */
   double DistanceintoGustxLimitedtogustlengthd_CSTATE_p;
-                /* '<S144>/Distance into Gust (x) (Limited to gust length d)' */
+                /* '<S145>/Distance into Gust (x) (Limited to gust length d)' */
 } XDot_SkySurfer_Core_T;
 
 /* State disabled  */
@@ -299,10 +356,18 @@ typedef struct {
   bool TransferFcn4_CSTATE;            /* '<S3>/Transfer Fcn4' */
   bool TransferFcn1_CSTATE;            /* '<S3>/Transfer Fcn1' */
   bool TransferFcn2_CSTATE;            /* '<S3>/Transfer Fcn2' */
+  bool wg_p1_CSTATE[2];                /* '<S166>/wg_p1' */
+  bool wg_p2_CSTATE[2];                /* '<S166>/wg_p2' */
+  bool vg_p1_CSTATE[2];                /* '<S165>/vg_p1' */
+  bool vgw_p2_CSTATE[2];               /* '<S165>/vgw_p2' */
+  bool ug_p_CSTATE[2];                 /* '<S164>/ug_p' */
+  bool rgw_p_CSTATE[2];                /* '<S163>/rgw_p' */
+  bool qgw_p_CSTATE[2];                /* '<S162>/qgw_p' */
+  bool pgw_p_CSTATE[2];                /* '<S161>/pgw_p' */
   XDis_Distanceintogusty_SkySurfer_Core_T Distanceintogustz;/* '<S140>/Distance into gust (y)' */
   XDis_Distanceintogusty_SkySurfer_Core_T Distanceintogusty;/* '<S140>/Distance into gust (y)' */
   bool DistanceintoGustxLimitedtogustlengthd_CSTATE_p;
-                /* '<S144>/Distance into Gust (x) (Limited to gust length d)' */
+                /* '<S145>/Distance into Gust (x) (Limited to gust length d)' */
 } XDis_SkySurfer_Core_T;
 
 /* Invariant block signals (default storage) */
@@ -325,6 +390,7 @@ typedef struct {
 typedef struct {
   double Controls[16];                 /* '<Root>/Controls' */
   double InitialConditions[7];         /* '<Root>/InitialConditions' */
+  double Wind[4];                      /* '<Root>/Wind' */
 } ExtU_SkySurfer_Core_T;
 
 /* External outputs (root outports fed by signals with default storage) */
@@ -335,13 +401,13 @@ typedef struct {
 /* Parameters for system: '<S140>/Distance into gust (y)' */
 struct P_Distanceintogusty_SkySurfer_Core_T_ {
   double x_Y0;                         /* Expression: [0]
-                                        * Referenced by: '<S145>/x'
+                                        * Referenced by: '<S146>/x'
                                         */
   double DistanceintoGustxLimitedtogustlengthd_IC;/* Expression: 0
-                                                   * Referenced by: '<S145>/Distance into Gust (x) (Limited to gust length d) '
+                                                   * Referenced by: '<S146>/Distance into Gust (x) (Limited to gust length d) '
                                                    */
   double DistanceintoGustxLimitedtogustlengthd_LowerSat;/* Expression: 0
-                                                         * Referenced by: '<S145>/Distance into Gust (x) (Limited to gust length d) '
+                                                         * Referenced by: '<S146>/Distance into Gust (x) (Limited to gust length d) '
                                                          */
 };
 
@@ -349,10 +415,10 @@ struct P_Distanceintogusty_SkySurfer_Core_T_ {
 struct P_SkySurfer_Core_T_ {
   struct_pj9o0ruoSIJrFqhg8Kr6MC uavData;/* Variable: uavData
                                          * Referenced by:
-                                         *   '<S152>/Damper'
-                                         *   '<S152>/Spring Kp'
-                                         *   '<S153>/friction coefficient'
-                                         *   '<S153>/vd'
+                                         *   '<S192>/Damper'
+                                         *   '<S192>/Spring Kp'
+                                         *   '<S193>/friction coefficient'
+                                         *   '<S193>/vd'
                                          */
   double Aeroelasticity_AIL[2];        /* Variable: Aeroelasticity_AIL
                                         * Referenced by:
@@ -690,16 +756,10 @@ struct P_SkySurfer_Core_T_ {
   double Mass0;                        /* Variable: Mass0
                                         * Referenced by: '<S4>/const1'
                                         */
-  double Psi_w;                        /* Variable: Psi_w
-                                        * Referenced by: '<S4>/const16'
-                                        */
   double S;                            /* Variable: S
                                         * Referenced by:
                                         *   '<S7>/Aerodynamic Forces and Moments '
                                         *   '<S7>/Aerodynamic Forces and Moments 1'
-                                        */
-  double Vel_w;                        /* Variable: Vel_w
-                                        * Referenced by: '<S4>/const15'
                                         */
   double XREF_m[3];                    /* Variable: XREF_m
                                         * Referenced by:
@@ -916,17 +976,52 @@ struct P_SkySurfer_Core_T_ {
                                         *   '<S7>/b7'
                                         *   '<S7>/b8'
                                         */
+  double DrydenWindTurbulenceModelContinuousqr_L_high;
+                 /* Mask Parameter: DrydenWindTurbulenceModelContinuousqr_L_high
+                  * Referenced by: '<S186>/Medium//High Altitude'
+                  */
+  double DrydenWindTurbulenceModelContinuousqr_Seed[4];
+                   /* Mask Parameter: DrydenWindTurbulenceModelContinuousqr_Seed
+                    * Referenced by: '<S160>/White Noise'
+                    */
+  double DrydenWindTurbulenceModelContinuousqr_T_on;
+                   /* Mask Parameter: DrydenWindTurbulenceModelContinuousqr_T_on
+                    * Referenced by:
+                    *   '<S150>/Constant1'
+                    *   '<S150>/Constant2'
+                    *   '<S150>/Constant3'
+                    *   '<S151>/Constant'
+                    */
+  double WhiteNoise_Ts;                /* Mask Parameter: WhiteNoise_Ts
+                                        * Referenced by: '<S160>/Constant1'
+                                        */
+  double DrydenWindTurbulenceModelContinuousqr_TurbProb;
+               /* Mask Parameter: DrydenWindTurbulenceModelContinuousqr_TurbProb
+                * Referenced by: '<S167>/Probability of  Exceedance'
+                */
+  double DrydenWindTurbulenceModelContinuousqr_W20;
+                    /* Mask Parameter: DrydenWindTurbulenceModelContinuousqr_W20
+                     * Referenced by: '<S141>/Windspeed at 20ft (6m)'
+                     */
   double WindShearModel_W_20;          /* Mask Parameter: WindShearModel_W_20
-                                        * Referenced by: '<S143>/Wind speed at reference height'
+                                        * Referenced by: '<S144>/Wind speed at reference height'
                                         */
   double WindShearModel_Wdeg;          /* Mask Parameter: WindShearModel_Wdeg
-                                        * Referenced by: '<S143>/Wind Direction'
+                                        * Referenced by: '<S144>/Wind Direction'
                                         */
+  double DrydenWindTurbulenceModelContinuousqr_Wdeg;
+                   /* Mask Parameter: DrydenWindTurbulenceModelContinuousqr_Wdeg
+                    * Referenced by: '<S141>/Wind direction'
+                    */
+  double DrydenWindTurbulenceModelContinuousqr_Wingspan;
+               /* Mask Parameter: DrydenWindTurbulenceModelContinuousqr_Wingspan
+                * Referenced by: '<S141>/Wingspan'
+                */
   double CompareToConstant_const;     /* Mask Parameter: CompareToConstant_const
                                        * Referenced by: '<S8>/Constant'
                                        */
   double Distanceintogustx_d_m;        /* Mask Parameter: Distanceintogustx_d_m
-                                        * Referenced by: '<S144>/Distance into Gust (x) (Limited to gust length d)'
+                                        * Referenced by: '<S145>/Distance into Gust (x) (Limited to gust length d)'
                                         */
   double Distanceintogusty_d_m;        /* Mask Parameter: Distanceintogusty_d_m
                                         * Referenced by: '<S140>/Distance into gust (y)'
@@ -938,6 +1033,9 @@ struct P_SkySurfer_Core_T_ {
                                   /* Mask Parameter: DiscreteWindGustModelOn_d_m
                                    * Referenced by: '<S140>/pi//Gust length'
                                    */
+  double WhiteNoise_pwr[4];            /* Mask Parameter: WhiteNoise_pwr
+                                        * Referenced by: '<S160>/Constant'
+                                        */
   double DiscreteWindGustModelOn_t_0;
                                   /* Mask Parameter: DiscreteWindGustModelOn_t_0
                                    * Referenced by: '<S140>/Gust start time'
@@ -1246,34 +1344,121 @@ struct P_SkySurfer_Core_T_ {
                                         * Referenced by: '<S7>/Switch1'
                                         */
   double x_Y0;                         /* Expression: [0]
-                                        * Referenced by: '<S144>/x'
+                                        * Referenced by: '<S145>/x'
                                         */
   double DistanceintoGustxLimitedtogustlengthd_IC;/* Expression: 0
-                                                   * Referenced by: '<S144>/Distance into Gust (x) (Limited to gust length d)'
+                                                   * Referenced by: '<S145>/Distance into Gust (x) (Limited to gust length d)'
                                                    */
   double DistanceintoGustxLimitedtogustlengthd_LowerSat;/* Expression: 0
-                                                         * Referenced by: '<S144>/Distance into Gust (x) (Limited to gust length d)'
+                                                         * Referenced by: '<S145>/Distance into Gust (x) (Limited to gust length d)'
                                                          */
-  double Constant2_Value[3];           /* Expression: [0; 0; 0]
-                                        * Referenced by: '<S131>/Constant2'
+  double pgw_Y0;                       /* Expression: 0
+                                        * Referenced by: '<S161>/pgw'
+                                        */
+  double pgw_p_IC;                     /* Expression: 0
+                                        * Referenced by: '<S161>/pgw_p'
+                                        */
+  double Constant2_Value;              /* Expression: 1/6
+                                        * Referenced by: '<S161>/Constant2'
+                                        */
+  double Constant3_Value;              /* Expression: pi/4
+                                        * Referenced by: '<S161>/Constant3'
+                                        */
+  double Constant1_Value_m;            /* Expression: 1/3
+                                        * Referenced by: '<S161>/Constant1'
+                                        */
+  double qgw_Y0;                       /* Expression: 0
+                                        * Referenced by: '<S162>/qgw'
+                                        */
+  double qgw_p_IC;                     /* Expression: 0
+                                        * Referenced by: '<S162>/qgw_p'
+                                        */
+  double pi4_Gain;                     /* Expression: pi/4
+                                        * Referenced by: '<S162>/pi//4'
+                                        */
+  double rgw_Y0;                       /* Expression: 0
+                                        * Referenced by: '<S163>/rgw'
+                                        */
+  double rgw_p_IC;                     /* Expression: 0
+                                        * Referenced by: '<S163>/rgw_p'
+                                        */
+  double pi3_Gain;                     /* Expression: pi/3
+                                        * Referenced by: '<S163>/pi//3'
+                                        */
+  double ugw_Y0;                       /* Expression: 0
+                                        * Referenced by: '<S164>/ugw'
+                                        */
+  double upi_Gain;                     /* Expression: 2/pi
+                                        * Referenced by: '<S164>/(2//pi)'
+                                        */
+  double ug_p_IC;                      /* Expression: 0
+                                        * Referenced by: '<S164>/ug_p'
+                                        */
+  double vgw_Y0;                       /* Expression: 0
+                                        * Referenced by: '<S165>/vgw'
+                                        */
+  double upi_Gain_c;                   /* Expression: 1/pi
+                                        * Referenced by: '<S165>/(1//pi)'
+                                        */
+  double vg_p1_IC;                     /* Expression: 0
+                                        * Referenced by: '<S165>/vg_p1'
+                                        */
+  double sqrt3_Gain;                   /* Expression: sqrt(3)
+                                        * Referenced by: '<S165>/sqrt(3)'
+                                        */
+  double vgw_p2_IC;                    /* Expression: 0
+                                        * Referenced by: '<S165>/vgw_p2'
+                                        */
+  double wgw_Y0;                       /* Expression: 0
+                                        * Referenced by: '<S166>/wgw'
+                                        */
+  double upi_Gain_o;                   /* Expression: 1/pi
+                                        * Referenced by: '<S166>/1//pi'
+                                        */
+  double wg_p1_IC;                     /* Expression: 0
+                                        * Referenced by: '<S166>/wg_p1'
+                                        */
+  double Constant_Value_d;             /* Expression: 3
+                                        * Referenced by: '<S166>/Constant'
+                                        */
+  double wg_p2_IC;                     /* Expression: 0
+                                        * Referenced by: '<S166>/wg_p2'
+                                        */
+  double Gain_Gain_a;                  /* Expression: 1
+                                        * Referenced by: '<S171>/Gain'
+                                        */
+  double max_height_low_Value;         /* Expression: max_height_low
+                                        * Referenced by: '<S169>/max_height_low'
+                                        */
+  double min_height_high_Value;        /* Expression: min_height_high
+                                        * Referenced by: '<S169>/min_height_high'
+                                        */
+  double Gain_Gain_f;                  /* Expression: 1
+                                        * Referenced by: '<S179>/Gain'
+                                        */
+  double max_height_low_Value_b;       /* Expression: max_height_low
+                                        * Referenced by: '<S177>/max_height_low'
+                                        */
+  double min_height_high_Value_a;      /* Expression: min_height_high
+                                        * Referenced by: '<S177>/min_height_high'
                                         */
   double uftinf_UpperSat;              /* Expression: inf
-                                        * Referenced by: '<S143>/3ft-->inf'
+                                        * Referenced by: '<S144>/3ft-->inf'
                                         */
   double uftinf_LowerSat;              /* Expression: 3
-                                        * Referenced by: '<S143>/3ft-->inf'
+                                        * Referenced by: '<S144>/3ft-->inf'
                                         */
   double hz0_Gain;                     /* Expression: 1/z0
-                                        * Referenced by: '<S143>/h//z0'
+                                        * Referenced by: '<S144>/h//z0'
                                         */
   double rho_sealevelslugft32_Value;   /* Expression: 0
                                         * Referenced by: '<S13>/rho_sealevel (slug//ft^3)2'
                                         */
-  double Gain_Gain_f;                  /* Expression: -1
+  double Gain_Gain_fa;                 /* Expression: -1
                                         * Referenced by: '<S13>/Gain'
                                         */
   double Gain1_Gain_m;                 /* Expression: pi/180
-                                        * Referenced by: '<S162>/Gain1'
+                                        * Referenced by: '<S202>/Gain1'
                                         */
   double u2_Gain;                      /* Expression: 0.5
                                         * Referenced by: '<S21>/1//2'
@@ -1308,7 +1493,7 @@ struct P_SkySurfer_Core_T_ {
   double Gain_Gain_la;                 /* Expression: 2
                                         * Referenced by: '<S66>/Gain'
                                         */
-  double Gain_Gain_a;                  /* Expression: 2
+  double Gain_Gain_ah;                 /* Expression: 2
                                         * Referenced by: '<S72>/Gain'
                                         */
   double Gain_Gain_eu;                 /* Expression: 2
@@ -1347,14 +1532,11 @@ struct P_SkySurfer_Core_T_ {
   double Constant_Value_k5;            /* Expression: 0
                                         * Referenced by: '<S12>/Constant'
                                         */
-  double const17_Value;                /* Expression: 1
-                                        * Referenced by: '<S4>/const17'
-                                        */
   double Wdeg1_Value;                  /* Expression: 0
-                                        * Referenced by: '<S141>/Wdeg1'
+                                        * Referenced by: '<S142>/Wdeg1'
                                         */
   double _Gain;                        /* Expression: -1
-                                        * Referenced by: '<S141>/ '
+                                        * Referenced by: '<S142>/ '
                                         */
   double u_Value;                      /* Expression: 1.0
                                         * Referenced by: '<S140>/2'
@@ -1363,10 +1545,52 @@ struct P_SkySurfer_Core_T_ {
                                         * Referenced by: '<S11>/Negate_D_to_Alt'
                                         */
   double ref_heightz0_Value;           /* Expression: 20/z0
-                                        * Referenced by: '<S143>/ref_height//z0'
+                                        * Referenced by: '<S144>/ref_height//z0'
                                         */
   double Wdeg1_Value_m;                /* Expression: 0
-                                        * Referenced by: '<S143>/Wdeg1'
+                                        * Referenced by: '<S144>/Wdeg1'
+                                        */
+  double Drydenairspeedfloor_UpperSat; /* Expression: inf
+                                        * Referenced by: '<S131>/Dryden airspeed floor'
+                                        */
+  double Drydenairspeedfloor_LowerSat; /* Expression: 5
+                                        * Referenced by: '<S131>/Dryden airspeed floor'
+                                        */
+  double LimitFunction10ftto1000ft_UpperSat;/* Expression: max_height_low
+                                             * Referenced by: '<S185>/Limit Function 10ft to 1000ft'
+                                             */
+  double LimitFunction10ftto1000ft_LowerSat;/* Expression: 10
+                                             * Referenced by: '<S185>/Limit Function 10ft to 1000ft'
+                                             */
+  double LimitHeighth1000ft_UpperSat;  /* Expression: max_height_low
+                                        * Referenced by: '<S168>/Limit Height h<1000ft'
+                                        */
+  double LimitHeighth1000ft_LowerSat;  /* Expression: 0
+                                        * Referenced by: '<S168>/Limit Height h<1000ft'
+                                        */
+  double sigma_wg_Gain;                /* Expression: 0.1
+                                        * Referenced by: '<S168>/sigma_wg '
+                                        */
+  double PreLookUpIndexSearchaltitude_BreakpointsData[12];/* Expression: h_vec
+                                                           * Referenced by: '<S167>/PreLook-Up Index Search  (altitude)'
+                                                           */
+  double PreLookUpIndexSearchprobofexceed_BreakpointsData[7];/* Expression: [1:7]
+                                                              * Referenced by: '<S167>/PreLook-Up Index Search  (prob of exceed)'
+                                                              */
+  double MediumHighAltitudeIntensity_Table[84];/* Expression: sigma_vec'
+                                                * Referenced by: '<S167>/Medium//High Altitude Intensity'
+                                                */
+  double WhiteNoise_Mean;              /* Expression: 0
+                                        * Referenced by: '<S160>/White Noise'
+                                        */
+  double WhiteNoise_StdDev;            /* Computed Parameter: WhiteNoise_StdDev
+                                        * Referenced by: '<S160>/White Noise'
+                                        */
+  double Lv_Gain;                      /* Expression: 1
+                                        * Referenced by: '<S157>/Lv'
+                                        */
+  double Lw_Gain;                      /* Expression: 1
+                                        * Referenced by: '<S157>/Lw'
                                         */
   double SeaLevelTemperature_Value;    /* Expression: T0
                                         * Referenced by: '<S136>/Sea Level  Temperature'
@@ -1405,16 +1629,19 @@ struct P_SkySurfer_Core_T_ {
                                         * Referenced by: '<S136>/gamma*R'
                                         */
   double Gain_Gain_k3;                 /* Expression: 180/pi
-                                        * Referenced by: '<S155>/Gain'
+                                        * Referenced by: '<S195>/Gain'
                                         */
   double Constant2_Value_h;            /* Expression: 0
-                                        * Referenced by: '<S157>/Constant2'
+                                        * Referenced by: '<S197>/Constant2'
                                         */
   double Switch_Threshold_j;           /* Expression: 0
-                                        * Referenced by: '<S157>/Switch'
+                                        * Referenced by: '<S197>/Switch'
                                         */
   double Gain_Gain_d;                  /* Expression: 180/pi
-                                        * Referenced by: '<S156>/Gain'
+                                        * Referenced by: '<S196>/Gain'
+                                        */
+  double Constant2_Value_m[3];         /* Expression: [0; 0; 0]
+                                        * Referenced by: '<S131>/Constant2'
                                         */
   double TransferFcn_A;                /* Computed Parameter: TransferFcn_A
                                         * Referenced by: '<S3>/Transfer Fcn'
@@ -1497,17 +1724,17 @@ struct P_SkySurfer_Core_T_ {
   double Constant_Value_f0[3];         /* Expression: [0; 0; g]
                                         * Referenced by: '<S129>/Constant'
                                         */
-  double Constant_Value_d;             /* Expression: 0
-                                        * Referenced by: '<S152>/Constant'
+  double Constant_Value_dw;            /* Expression: 0
+                                        * Referenced by: '<S192>/Constant'
                                         */
   double Switch_Threshold_n;           /* Expression: 0
-                                        * Referenced by: '<S152>/Switch'
+                                        * Referenced by: '<S192>/Switch'
                                         */
   double Saturation_UpperSat;          /* Expression: inf
-                                        * Referenced by: '<S152>/Saturation'
+                                        * Referenced by: '<S192>/Saturation'
                                         */
   double Saturation_LowerSat;          /* Expression: 0
-                                        * Referenced by: '<S152>/Saturation'
+                                        * Referenced by: '<S192>/Saturation'
                                         */
   double P0_Gain;                      /* Expression: P0
                                         * Referenced by: '<S136>/P0'
@@ -1557,6 +1784,22 @@ struct P_SkySurfer_Core_T_ {
   double Limit_THR_LowerSat;           /* Expression: 0
                                         * Referenced by: '<S3>/Limit_THR'
                                         */
+  double
+    constBlockForifHeightMaxlowaltitudeelseifHeightMinisotropicaltitude_max_height_low_Value;/* Expression: max_height_low
+                                                                      * Referenced by:
+                                                                      */
+  double
+    constBlockForifHeightMaxlowaltitudeelseifHeightMinisotropicaltitude_min_height_high_Value;/* Expression: min_height_high
+                                                                      * Referenced by:
+                                                                      */
+  double
+    constBlockForifHeightMaxlowaltitudeelseifHeightMinisotropicaltitude_max_height_low_Value_a;/* Expression: max_height_low
+                                                                      * Referenced by:
+                                                                      */
+  double
+    constBlockForifHeightMaxlowaltitudeelseifHeightMinisotropicaltitude_min_height_high_Value_i;/* Expression: min_height_high
+                                                                      * Referenced by:
+                                                                      */
   uint32_t CD_base_maxIndex[3];        /* Computed Parameter: CD_base_maxIndex
                                         * Referenced by: '<S91>/CD_base'
                                         */
@@ -2133,6 +2376,10 @@ struct P_SkySurfer_Core_T_ {
   uint32_t Cnd04_dimSizes[3];          /* Computed Parameter: Cnd04_dimSizes
                                         * Referenced by: '<S101>/Cnd04'
                                         */
+  uint32_t MediumHighAltitudeIntensity_maxIndex[2];
+                     /* Computed Parameter: MediumHighAltitudeIntensity_maxIndex
+                      * Referenced by: '<S167>/Medium//High Altitude Intensity'
+                      */
   bool Assertion_Enabled;              /* Computed Parameter: Assertion_Enabled
                                         * Referenced by: '<S61>/Assertion'
                                         */
@@ -2161,8 +2408,8 @@ struct tag_RTM_SkySurfer_Core_T {
   bool zCCacheNeedsReset;
   bool derivCacheNeedsReset;
   bool CTOutputIncnstWithState;
-  double odeY[21];
-  double odeF[4][21];
+  double odeY[37];
+  double odeF[4][37];
   ODE4_IntgData intgData;
   DW_SkySurfer_Core_T *dwork;
 
@@ -2188,6 +2435,10 @@ struct tag_RTM_SkySurfer_Core_T {
     double stepSize0;
     uint32_t clockTick1;
     bool firstInitCondFlag;
+    struct {
+      uint8_t TID[2];
+    } TaskCounters;
+
     double tStart;
     SimTimeStep simTimeStep;
     bool stopRequestedFlag;
@@ -2234,8 +2485,14 @@ extern void SkySurfer_Core_terminate(RT_MODEL_SkySurfer_Core_T *const
  * Block '<S134>/Height Conversion' : Eliminated nontunable gain of 1
  * Block '<S140>/Cast' : Eliminate redundant data type conversion
  * Block '<S140>/Cast To Double' : Eliminate redundant data type conversion
- * Block '<S147>/Unit Conversion' : Eliminated nontunable gain of 1
- * Block '<S143>/Cast To Double' : Eliminate redundant data type conversion
+ * Block '<S148>/Unit Conversion' : Eliminated nontunable gain of 1
+ * Block '<S141>/Cast' : Eliminate redundant data type conversion
+ * Block '<S141>/Cast To Double' : Eliminate redundant data type conversion
+ * Block '<S141>/Cast To Double1' : Eliminate redundant data type conversion
+ * Block '<S141>/Cast To Double2' : Eliminate redundant data type conversion
+ * Block '<S141>/Cast To Double3' : Eliminate redundant data type conversion
+ * Block '<S141>/Cast To Double4' : Eliminate redundant data type conversion
+ * Block '<S144>/Cast To Double' : Eliminate redundant data type conversion
  */
 
 /*-
@@ -2393,28 +2650,68 @@ extern void SkySurfer_Core_terminate(RT_MODEL_SkySurfer_Core_T *const
  * '<S138>' : 'SkySurfer_Core/UAV/UAV/Environment/ISA Atmosphere Model/Speed Subsystem'
  * '<S139>' : 'SkySurfer_Core/UAV/UAV/Environment/ISA Atmosphere Model/Temperature Subsystem'
  * '<S140>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Discrete Wind Gust Model - On'
- * '<S141>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Horizontal Wind Model'
- * '<S142>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Velocity Conversion3'
- * '<S143>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Wind Shear Model'
- * '<S144>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Discrete Wind Gust Model - On/Distance into gust (x)'
- * '<S145>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Discrete Wind Gust Model - On/Distance into gust (y)'
- * '<S146>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Discrete Wind Gust Model - On/Distance into gust (z)'
- * '<S147>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Discrete Wind Gust Model - On/Velocity Conversion'
- * '<S148>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Horizontal Wind Model/Angle Conversion'
- * '<S149>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Wind Shear Model/Angle Conversion'
- * '<S150>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Wind Shear Model/Length Conversion'
- * '<S151>' : 'SkySurfer_Core/UAV/UAV/Ground Model/Friction Force'
- * '<S152>' : 'SkySurfer_Core/UAV/UAV/Ground Model/Normal Force'
- * '<S153>' : 'SkySurfer_Core/UAV/UAV/Ground Model/Friction Force/Soft Coulomb Friction'
- * '<S154>' : 'SkySurfer_Core/UAV/UAV/Measurement/Mach Number'
- * '<S155>' : 'SkySurfer_Core/UAV/UAV/Measurement/Radians to Degrees4'
- * '<S156>' : 'SkySurfer_Core/UAV/UAV/Measurement/Radians to Degrees5'
- * '<S157>' : 'SkySurfer_Core/UAV/UAV/Measurement/Subsystem'
- * '<S158>' : 'SkySurfer_Core/UAV/UAV/Measurement/Mach Number/dot'
- * '<S159>' : 'SkySurfer_Core/UAV/UAV/Measurement/Subsystem/Subsystem'
- * '<S160>' : 'SkySurfer_Core/UAV/UAV/Measurement/Subsystem/Subsystem1'
- * '<S161>' : 'SkySurfer_Core/UAV/UAV/Measurement/Subsystem/dot'
- * '<S162>' : 'SkySurfer_Core/UAV/UAV/Subsystem/Degrees to Radians6'
+ * '<S141>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))'
+ * '<S142>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Horizontal Wind Model'
+ * '<S143>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Velocity Conversion3'
+ * '<S144>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Wind Shear Model'
+ * '<S145>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Discrete Wind Gust Model - On/Distance into gust (x)'
+ * '<S146>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Discrete Wind Gust Model - On/Distance into gust (y)'
+ * '<S147>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Discrete Wind Gust Model - On/Distance into gust (z)'
+ * '<S148>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Discrete Wind Gust Model - On/Velocity Conversion'
+ * '<S149>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Angle Conversion'
+ * '<S150>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Filters on angular rates'
+ * '<S151>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Filters on velocities'
+ * '<S152>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Length Conversion'
+ * '<S153>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Length Conversion1'
+ * '<S154>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/RMS turbulence  intensities'
+ * '<S155>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select angular rates'
+ * '<S156>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select velocities'
+ * '<S157>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Turbulence scale lengths'
+ * '<S158>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Velocity Conversion'
+ * '<S159>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Velocity Conversion2'
+ * '<S160>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/White Noise'
+ * '<S161>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Filters on angular rates/Hpgw'
+ * '<S162>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Filters on angular rates/Hqgw'
+ * '<S163>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Filters on angular rates/Hrgw'
+ * '<S164>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Filters on velocities/Hugw(s)'
+ * '<S165>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Filters on velocities/Hvgw(s)'
+ * '<S166>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Filters on velocities/Hwgw(s)'
+ * '<S167>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/RMS turbulence  intensities/High Altitude Intensity'
+ * '<S168>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/RMS turbulence  intensities/Low Altitude Intensity'
+ * '<S169>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select angular rates/Interpolate  rates'
+ * '<S170>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select angular rates/Low altitude  rates'
+ * '<S171>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select angular rates/Medium//High  altitude rates'
+ * '<S172>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select angular rates/Merge Subsystems'
+ * '<S173>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select angular rates/Interpolate  rates/wind to body transformation'
+ * '<S174>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select angular rates/Interpolate  rates/wind to body transformation/convert to earth coords'
+ * '<S175>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select angular rates/Low altitude  rates/wind to body transformation'
+ * '<S176>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select angular rates/Low altitude  rates/wind to body transformation/convert to earth coords'
+ * '<S177>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select velocities/Interpolate  velocities'
+ * '<S178>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select velocities/Low altitude  velocities'
+ * '<S179>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select velocities/Medium//High  altitude velocities'
+ * '<S180>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select velocities/Merge Subsystems'
+ * '<S181>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select velocities/Interpolate  velocities/wind to body transformation'
+ * '<S182>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select velocities/Interpolate  velocities/wind to body transformation/convert to earth coords'
+ * '<S183>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select velocities/Low altitude  velocities/wind to body transformation'
+ * '<S184>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Select velocities/Low altitude  velocities/wind to body transformation/convert to earth coords'
+ * '<S185>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Turbulence scale lengths/Low altitude scale length'
+ * '<S186>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Turbulence scale lengths/Medium//High altitude scale length'
+ * '<S187>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Dryden Wind Turbulence Model  (Continuous (+q -r))/Turbulence scale lengths/Medium//High altitude scale length/Length Conversion'
+ * '<S188>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Horizontal Wind Model/Angle Conversion'
+ * '<S189>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Wind Shear Model/Angle Conversion'
+ * '<S190>' : 'SkySurfer_Core/UAV/UAV/Environment/Wind/Wind Shear Model/Length Conversion'
+ * '<S191>' : 'SkySurfer_Core/UAV/UAV/Ground Model/Friction Force'
+ * '<S192>' : 'SkySurfer_Core/UAV/UAV/Ground Model/Normal Force'
+ * '<S193>' : 'SkySurfer_Core/UAV/UAV/Ground Model/Friction Force/Soft Coulomb Friction'
+ * '<S194>' : 'SkySurfer_Core/UAV/UAV/Measurement/Mach Number'
+ * '<S195>' : 'SkySurfer_Core/UAV/UAV/Measurement/Radians to Degrees4'
+ * '<S196>' : 'SkySurfer_Core/UAV/UAV/Measurement/Radians to Degrees5'
+ * '<S197>' : 'SkySurfer_Core/UAV/UAV/Measurement/Subsystem'
+ * '<S198>' : 'SkySurfer_Core/UAV/UAV/Measurement/Mach Number/dot'
+ * '<S199>' : 'SkySurfer_Core/UAV/UAV/Measurement/Subsystem/Subsystem'
+ * '<S200>' : 'SkySurfer_Core/UAV/UAV/Measurement/Subsystem/Subsystem1'
+ * '<S201>' : 'SkySurfer_Core/UAV/UAV/Measurement/Subsystem/dot'
+ * '<S202>' : 'SkySurfer_Core/UAV/UAV/Subsystem/Degrees to Radians6'
  */
 #endif                                 /* SkySurfer_Core_h_ */
 

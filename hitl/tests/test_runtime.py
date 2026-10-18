@@ -167,10 +167,11 @@ class SceneTests(unittest.TestCase):
   with self.assertRaises(ValueError):load_scene(s)
  def test_unsupported_fields_are_rejected(self):
   base=json.loads((RUNTIME/'scenarios/ground.json').read_text())
-  for name,value in [('site_msl_m',10),('geoid_separation_m',30),('seed_policy',1),('wind_ned_m_s',[1,0,0]),('angular_rates_rad_s',[0,0,1]),('mass_kg',1.3),('height_agl_m',float('nan'))]:
+  for name,value in [('site_msl_m',10),('geoid_separation_m',30),('seed_policy',1),('wind_ned_m_s',[1,0]),('wind',{'gust':{'length_m':[0,1,1]}}),('angular_rates_rad_s',[0,0,1]),('mass_kg',1.3),('height_agl_m',float('nan'))]:
    with self.subTest(name=name):
     s=dict(base);s[name]=value
     with self.assertRaises(ValueError):load_scene(s)
+  s=dict(base);s['wind_ned_m_s']=[1,0,0];load_scene(s)  # a steady wind is a supported scene field now
  @needs_model
  def test_dependency_corruption_rejected(self):
   release,manifest=read_release(RUNTIME)

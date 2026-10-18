@@ -18,6 +18,7 @@ def source_files(project):
         'hitl/scenarios/ground.json',
         'hitl/aircraft/skysurfer/profile.json',
         'hitl/aircraft/skysurfer/scenario.py',
+        'plant/wind.py',
     ]
     paths = {project / name for name in fixed if (project / name).is_file()}
     for folder, suffixes in [

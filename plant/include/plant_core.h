@@ -24,11 +24,12 @@
 extern "C" {
 #endif
 
-#define PLANT_CORE_API_VERSION 0x00010100u /* 1.1: continuous state access and f(x, u) for trim */
+#define PLANT_CORE_API_VERSION 0x00010200u /* 1.2: wind input and wind parameters; 1.1: state access, f(x, u) */
 #define PLANT_CORE_DT_S 0.004
 #define PLANT_CORE_CONTROL_COUNT 16
 #define PLANT_CORE_SNAPSHOT_COUNT 72
-#define PLANT_CORE_STATE_COUNT 21
+#define PLANT_CORE_STATE_COUNT 37
+#define PLANT_CORE_WIND_COUNT 4
 
 #define PLANT_CORE_OK 0
 #define PLANT_CORE_ERR_STATE 2    /* not initialised, or diverged earlier: re-initialise */
@@ -82,15 +83,17 @@ enum {
 /* Continuous states x[PLANT_CORE_STATE_COUNT], in the generated order (ode4 integrates these):
  * position NED m [3], body velocity m/s [3], quaternion body -> NED [4], body rates rad/s [3],
  * the five actuator transfer-function states of the source ACTUATOR subsystem, driven by (checked with
- * plant_core_eval) throttle, right aileron, left aileron, elevator, rudder, then three gust distances
- * (zero without gusts). */
+ * plant_core_eval) throttle, right aileron, left aileron, elevator, rudder, the sixteen Dryden turbulence
+ * filter states (w, w, v, v, u, r, q, p filters, two each; zero without turbulence), then three gust
+ * distances (zero without gusts). */
 enum {
   PLANT_CORE_X_POSITION_NED = 0,
   PLANT_CORE_X_VELOCITY_BODY = 3,
   PLANT_CORE_X_QUATERNION = 6,
   PLANT_CORE_X_RATES_BODY = 10,
   PLANT_CORE_X_ACTUATORS = 13, /* [5] throttle, aileron right, aileron left, elevator, rudder */
-  PLANT_CORE_X_GUST = 18       /* [3] */
+  PLANT_CORE_X_TURBULENCE = 18, /* [16] */
+  PLANT_CORE_X_GUST = 34        /* [3] */
 };
 
 /* Initial conditions in source units (exactly what the source model takes). */
@@ -126,6 +129,31 @@ int32_t plant_core_get_state(const PlantCore *core, double x[PLANT_CORE_STATE_CO
 int32_t plant_core_eval(PlantCore *core, const double x[PLANT_CORE_STATE_COUNT],
                       const double controls[PLANT_CORE_CONTROL_COUNT], double xdot[PLANT_CORE_STATE_COUNT],
                       double snapshot[PLANT_CORE_SNAPSHOT_COUNT]);
+
+/* Wind, per instance, held from step to step, in source units:
+ *   wind[0] VelWind kts, wind[1] PsiWind deg (the direction the wind comes FROM: 0 = from north),
+ *   wind[2] IdxWind: 1 = steady horizontal wind (wind[0], wind[1]) only,
+ *                    2 = wind shear (mean wind growing with height) + discrete gust + Dryden turbulence;
+ *                        the steady wind of mode 1 is NOT added in mode 2 (the source model's design),
+ *   wind[3] turbulence scale = the wanted Dryden W20 (wind speed at 6 m) in m/s: the core is generated at
+ *           the reference W20 = 1 m/s and multiplies the Dryden outputs by this; exact below 1000 ft.
+ * plant_core_init sets {0, 0, 1, 0}: no wind, as the source model. */
+int32_t plant_core_set_wind(PlantCore *core, const double wind[PLANT_CORE_WIND_COUNT]);
+
+/* Gust, shear and turbulence settings. In the generated code they are tunable parameters in one global
+ * shared by every instance, so a caller with several instances sets them before each instance's step
+ * (plant_truth.c does). The turbulence seeds are read by plant_core_init only. */
+typedef struct {
+  double gust_start_s;            /* model time the discrete gust starts */
+  double gust_length_m[3];        /* x y z gust lengths (> 0) */
+  double gust_magnitude_m_s[3];   /* x y z gust amplitudes; zero: no gust */
+  double shear_speed_6m_m_s;      /* wind speed at 6 m (20 ft) of the shear model; zero: no mean wind in mode 2 */
+  double shear_from_deg;          /* direction the shear wind comes from */
+  double turbulence_from_deg;     /* direction of the turbulence axes (normally the mean wind's) */
+  double turbulence_seed[4];      /* Dryden white-noise seeds (integers) */
+} PlantCoreWindParameters;
+void plant_core_default_wind_parameters(PlantCoreWindParameters *parameters);
+int32_t plant_core_set_wind_parameters(const PlantCoreWindParameters *parameters);
 
 /* Time of the next snapshot, in steps and seconds. */
 uint64_t plant_core_step_index(const PlantCore *core);

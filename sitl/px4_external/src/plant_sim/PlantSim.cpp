@@ -48,7 +48,7 @@ bool PlantSim::load_scenario()
 		return false;
 	}
 
-	char line[256];
+	char line[512]; // the wind line has 22 numbers
 	bool have_ic = false;
 
 	while (fgets(line, sizeof(line), f)) {
@@ -83,6 +83,49 @@ bool PlantSim::load_scenario()
 			_ic.latitude_deg = v[7];
 			_ic.longitude_deg = v[8];
 			have_ic = true;
+
+		} else if (!strcmp(word, "wind")) {
+			// steady_ned[3] start_mode start_height start_time ramp gust_start gust_length[3] gust_magnitude[3]
+			// shear_speed shear_from turbulence_speed turbulence_from seed[4] (plant/wind.py sitl_line)
+			double w[22] {};
+			int used = 0;
+			const char *cursor = line + 4;
+			int count = 0;
+
+			while (count < 22 && sscanf(cursor, "%lf%n", &w[count], &used) == 1) {
+				cursor += used;
+				count++;
+			}
+
+			if (count != 22) {
+				PX4_ERR("bad wind line: %s", line);
+				fclose(f);
+				return false;
+			}
+
+			plant_default_wind_config(&_wind);
+
+			for (int k = 0; k < 3; k++) {
+				_steady_wind_ned[k] = w[k];
+				_wind.gust_length_m[k] = w[8 + k];
+				_wind.gust_magnitude_m_s[k] = w[11 + k];
+			}
+
+			_wind.start_mode = (uint32_t)w[3];
+			_wind.start_height_m = w[4];
+			_wind.start_time_s = w[5];
+			_wind.ramp_s = w[6];
+			_wind.gust_start_s = w[7];
+			_wind.shear_speed_6m_m_s = w[14];
+			_wind.shear_from_deg = w[15];
+			_wind.turbulence_speed_6m_m_s = w[16];
+			_wind.turbulence_from_deg = w[17];
+
+			for (int k = 0; k < 4; k++) {
+				_wind.turbulence_seed[k] = (uint32_t)w[18 + k];
+			}
+
+			_have_wind = true;
 
 		} else if (!strcmp(word, "base") && sscanf(line, "%*s %lf %lf %lf %lf", &v[0], &v[1], &v[2], &v[3]) == 4) {
 			_base = Sticks{(float)v[0], (float)v[1], (float)v[2], (float)v[3]};
@@ -309,13 +352,18 @@ void PlantSim::run()
 		return;
 	}
 
+	if (_have_wind && plant_configure_wind(_plant, &_wind) != PLANT_OK) {
+		PX4_ERR("plant rejected the wind");
+		return;
+	}
+
 	char path[320];
 	snprintf(path, sizeof(path), "%s/trace.csv", _output_dir);
 	_trace = fopen(path, "w");
 
 	if (_trace) {
 		fprintf(_trace, "t_s,roll_rad,pitch_rad,yaw_rad,p_rad_s,q_rad_s,r_rad_s,tas_m_s,height_m,"
-			"stick_roll,stick_pitch,stick_yaw,stick_throttle,ail_l,ail_r,elev,rud,thr\n");
+			"stick_roll,stick_pitch,stick_yaw,stick_throttle,ail_l,ail_r,elev,rud,thr,gs_m_s,wind_n_m_s,wind_e_m_s,wind_d_m_s\n");
 	}
 
 	_px4_accel.set_temperature(25.f);
@@ -323,6 +371,11 @@ void PlantSim::run()
 	_sim_time_us = 0; // this module owns the PX4 clock (lockstep), as simulator_sih does
 
 	PlantInput input{};
+
+	for (int k = 0; k < 3; k++) {
+		input.wind_ned_m_s[k] = _steady_wind_ned[k];
+	}
+
 	PlantTruth truth{};
 	PlantSensorOutput sensors{};
 	// Rounded: a float division truncated 60 s to 14,999 steps.
@@ -373,11 +426,12 @@ void PlantSim::run()
 		publish_truth(now, truth, sensors);
 
 		if (_trace && _outputs_seen) {
-			fprintf(_trace, "%.3f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.4f,%.3f,%.3f,%.3f,%.3f,%.3f,%.5f,%.5f,%.5f,%.5f,%.5f\n",
+			fprintf(_trace, "%.3f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.4f,%.3f,%.3f,%.3f,%.3f,%.3f,%.5f,%.5f,%.5f,%.5f,%.5f,%.4f,%.4f,%.4f,%.4f\n",
 				truth.time_s, truth.euler_rad[0], truth.euler_rad[1], truth.euler_rad[2], truth.rates_body_rad_s[0],
 				truth.rates_body_rad_s[1], truth.rates_body_rad_s[2], truth.airspeed_true_m_s, truth.height_agl_m,
 				(double)sticks.roll, (double)sticks.pitch, (double)sticks.yaw, (double)sticks.throttle,
-				_controls[0], _controls[1], _controls[2], _controls[3], _controls[4]);
+				_controls[0], _controls[1], _controls[2], _controls[3], _controls[4], truth.ground_speed_m_s,
+				truth.wind_ned_m_s[0], truth.wind_ned_m_s[1], truth.wind_ned_m_s[2]);
 		}
 
 		if (_modules_up) {

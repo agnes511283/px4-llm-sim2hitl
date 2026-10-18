@@ -32,7 +32,7 @@
 extern "C" {
 #endif
 
-#define PLANT_API_VERSION 0x00000002u /* draft 0.2 */
+#define PLANT_API_VERSION 0x00000003u /* draft 0.3: wind */
 
 /* Return codes. */
 #define PLANT_OK 0
@@ -53,8 +53,33 @@ typedef struct {
 
 typedef struct {
   PlantActuatorCommand command;
-  double wind_ned_m_s[3]; /* steady wind; the reference model supports only zero */
+  double wind_ned_m_s[3]; /* steady wind, NED velocity of the air (direction it blows TO); vertical part ignored */
 } PlantInput;
+
+/* When the wind starts (plant_configure_wind). Before that the aircraft flies in still air. */
+#define PLANT_WIND_AFTER_AIRBORNE 0u /* default: height above the start ground > start_height_m */
+#define PLANT_WIND_AT_TIME 1u        /* model time >= start_time_s */
+#define PLANT_WIND_FROM_START 2u     /* from t = 0 (on the ground a crosswind tips the aircraft over) */
+
+/* Wind besides the steady PlantInput.wind_ned_m_s. The source model has two wind modes: steady wind, or
+ * shear + gust + turbulence (the mean wind then comes from the shear model; the steady wind is ignored).
+ * Any non-zero gust, shear or turbulence selects the second. The steady wind, the shear speed and the
+ * turbulence scale ramp up linearly over ramp_s after the start; the gust starts gust_start_s after it. */
+typedef struct {
+  uint32_t start_mode;            /* PLANT_WIND_* */
+  uint32_t reserved;
+  double start_height_m;          /* default 5 */
+  double start_time_s;
+  double ramp_s;                  /* default 5; 0: at once */
+  double gust_start_s;            /* after the wind starts */
+  double gust_length_m[3];        /* default 120 120 80 (source model) */
+  double gust_magnitude_m_s[3];   /* zero: no gust */
+  double shear_speed_6m_m_s;      /* mean wind at 6 m of the shear model; zero: none */
+  double shear_from_deg;          /* direction the wind comes from */
+  double turbulence_speed_6m_m_s; /* Dryden W20; zero: no turbulence; intensities exact below 1000 ft */
+  double turbulence_from_deg;
+  uint32_t turbulence_seed[4];    /* default 23341..23344 (source model) */
+} PlantWindConfig;
 
 /* Same fields the current scene recipe accepts (hil_runtime/aircraft/skysurfer/scenario.py). */
 typedef struct {
@@ -112,11 +137,18 @@ typedef struct {
 uint32_t plant_api_version(void);
 size_t plant_size(void);
 
-/* Set the state from initial conditions (rates, site_msl and wind must be zero, as in the source). */
+/* Set the state from initial conditions (rates and site_msl must be zero, as in the source). */
 int32_t plant_init(Plant *plant, const PlantInitialConditions *initial);
 
 /* Report truth at t_k into truth, then advance one fixed step with input held. */
 int32_t plant_step(Plant *plant, const PlantInput *input, PlantTruth *truth);
+
+/* Defaults: no gust, shear or turbulence; start after airborne (5 m), 5 s ramp. */
+void plant_default_wind_config(PlantWindConfig *config);
+
+/* Set the wind of this aircraft. Call after plant_init and before the first plant_step (the turbulence
+ * seeds re-initialise the core). plant_init resets the defaults. */
+int32_t plant_configure_wind(Plant *plant, const PlantWindConfig *config);
 
 /* Copy the complete state of src into dst. */
 int32_t plant_copy(Plant *dst, const Plant *src);

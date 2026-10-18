@@ -50,6 +50,6 @@
 | 600 s 負載（不開視窗） | PASS；有即時權限時最慢晚到 0.47 ms |
 | SITL | 編譯 PASS；參考情境 `stabilized_steps` 的指標和 macOS 紀錄相同 |
 | HITL（實體 FC） | 00_native 基準 `hitl-run` PASS（2026-10-17 UTC）：盤旋 60 s、2.78 圈；23,039 步 0 次晚到、最慢 0.79 ms；USB 寫入最慢 0.26 ms；FC 量到感測器 250.009 Hz |
-| 第 3 段一條龍 | `./runbridge deploy-test` 寫好：編韌體（`deploy/01_sdfix` 編譯 PASS、NuttX commit 可重現）、燒錄、身分核對、寫參數、開機檔、`hitl-run`（飛控記錄下載兩次比對＋嚴格解析）。在真 FC 上只跑過「只看計畫」（唯讀）；**燒錄 `01_sdfix` 還沒做** |
+| 第 3 段一條龍 | `deploy/01_sdfix`（原生＋記憶卡修正）用 `deploy-test` 燒錄並跑完：FC 回報 NuttX `8d3ed2a2…`（可預期的那個）；寫參數 0 個；`hitl-run` 七部分全 PASS，盤旋 60.13 s、2.78 圈，23,104 步 0 次晚到、最慢 0.19 ms；飛控記錄（10.9 MB）下載兩次相同、嚴格解析 PASS |
 | 乾淨目錄試跑 | 從 git 拉到新資料夾、不連 MATLAB、不靠舊 cache：`update-model` 建出**相同的 build-id**、四道檢查 PASS、配平相同 |
 | 收尾 | 把討論定案的計畫（`~/Documents/Codex/2026-10-18/skysurfer_architecture_v3/PLAN.md`）的核心精神放進專案；整套跑通後再做一次乾淨目錄試跑；上 GitHub |

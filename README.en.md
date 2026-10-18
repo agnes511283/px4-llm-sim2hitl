@@ -2,7 +2,7 @@
 
 [繁體中文](README.md) | **English**
 
-> **This is a translation.** The authoritative README is [README.md](README.md) (Traditional Chinese); where the two differ, follow README.md. Translated from README.md with SHA-256 `6ee73be35b5710da203400ccb84165b5e114d19d88dcf466105537afbe8ff1de`: if `sha256sum README.md` prints something else, this translation is behind. The AI rules ([AGENTS.md](AGENTS.md)) and the folder READMEs are in Traditional Chinese only; an AI agent reads them without trouble.
+> **This is a translation.** The authoritative README is [README.md](README.md) (Traditional Chinese); where the two differ, follow README.md. Translated from README.md with SHA-256 `8214b54abaea8ea4d767d8dfe2fc55576743108663ac442ba0aae7a68ac6338d`: if `sha256sum README.md` prints something else, this translation is behind. The AI rules ([AGENTS.md](AGENTS.md)) and the folder READMEs are in Traditional Chinese only; an AI agent reads them without trouble.
 
 Flight-control development kit: MATLAB/Simulink aircraft model → C → SITL (minimal PX4) → custom PX4 firmware → HITL on a real flight controller (Pixhawk). When you develop with an AI, its working rules are in [AGENTS.md](AGENTS.md).
 
@@ -11,6 +11,18 @@ Flight-control development kit: MATLAB/Simulink aircraft model → C → SITL (m
 **The example aircraft is SkySurfer** (fixed-wing): `model/`, `hitl/aircraft/skysurfer/`, the model release names `skysurfer-…` and `SkySurfer_Core` belong to the aircraft. The kit is called `px4-llm-sim2hitl`: folders use the full name (`~/.cache/px4-llm-sim2hitl`, `~/.local/share/px4-llm-sim2hitl/venv`, `~/.config/px4-llm-sim2hitl`), environment variables the short name `SIM2HITL_*` (environment variables cannot contain a hyphen). To use your own aircraft, see stage 1.1.
 
 > Status: the move from the old macOS project to Ubuntu is done and the whole pipeline runs (see the last section).
+
+## Getting started
+
+**Just paste this link to your AI.** It reads this README and [AGENTS](AGENTS.md); from then on you only say what you want to do.
+
+- **Only want to understand it**: any AI that can read web pages will do; ask it "what is this and what can it do for me".
+- **Want to develop**: use an AI that can run commands on your computer (for example Claude Code or Codex). Paste the link the same way and ask it to download the repo to a fixed folder on your computer (do not move it later; to move it, recover first as AGENTS says).
+  - The first time: say "set this computer up following the README's environment setup". It checks item by item and asks you to paste once when it needs sudo or a permission. **For now only Ubuntu 24.04 (x86-64) is supported**; other systems have not been verified, the AI will try following the official docs, but expect extra time on pitfalls.
+  - After that: just say what you want, for example "I want to switch to my own aircraft" or "I want to build a new guidance algorithm". It starts the conversation at stage 1, "Requirements and spec".
+- **Use a capable AI**: it has to read long documents, write code, run commands and understand the results. A model that is too small, or set to low reasoning, tends to skip the docs and guess. Tested and works: GPT-6.1 sol (reasoning: medium).
+
+Example opening: "Please download https://github.com/rhyne1012/px4-llm-sim2hitl to ~/Developer, read the README and AGENTS first, then talk with me about stage 1: I want to ..."
 
 ## The spirit of this project
 

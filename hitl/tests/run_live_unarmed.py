@@ -5,7 +5,7 @@ from host.core import Core
 from host.transport import SerialTransport
 from host.ipc import Endpoint
 from pymavlink.dialects.v20 import common as mav
-out=Path(sys.argv[1]);out.mkdir(parents=True,exist_ok=True);core=Core(ROOT,SerialTransport(ROOT.parent,'/dev/cu.usbmodem01'),out,unarmed_only=True);endpoint=Endpoint(core);report={'scope':'unarmed only; no arming/mode/sticks/reboot/parameter changes','status':'NOT_RUN'}
+out=Path(sys.argv[1]);out.mkdir(parents=True,exist_ok=True);core=Core(ROOT,SerialTransport(ROOT.parent,sys.argv[2] if len(sys.argv)>2 else 'auto'),out,unarmed_only=True);endpoint=Endpoint(core);report={'scope':'unarmed only; no arming/mode/sticks/reboot/parameter changes','status':'NOT_RUN'}
 try:
  deadline=time.monotonic()+10
  while not core.status()['ready_to_start_model'] and time.monotonic()<deadline:time.sleep(.05)

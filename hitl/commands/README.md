@@ -21,7 +21,7 @@
 |---|---|---|
 | `after_takeoff_template.py` | 空模板，不送任何命令 | `hold` |
 | `after_takeoff_loiter.py` | 切 AUTO_LOITER（main 4／sub 3） | `loiter` |
-| `template_offboard.py` | 範例模組 `sks_template` 用：AUTO_LOITER → 10 s → OFFBOARD 60 s（模組導引：15 s 後轉 30°、35 s 後爬 10 m）→ AUTO_LOITER。沒有模組送 offboard 訊號時 PX4 拒絕，這一步失敗 | `loiter` |
+| `template_offboard.py` | 範例模組 `guidance_template` 用：AUTO_LOITER → 10 s → OFFBOARD 60 s（模組導引：15 s 後轉 30°、35 s 後爬 10 m）→ AUTO_LOITER。沒有模組送 offboard 訊號時 PX4 拒絕，這一步失敗 | `loiter` |
 | `stabilized_steps.py` | Stabilized 巡航中送 roll／pitch／yaw 桿量階躍，最後切 AUTO_LOITER。序列在載入時讀 `sitl/scenarios/stabilized_steps_hitl.json`，和 SITL 預演同一份（基準桿量、穩定時間、階躍）；情境的桿量是 `manual_control_setpoint` 值（油門 −1..1），必須落在 1/1000 格點上。分析見 [analysis README](../../analysis/README.md)（`response.py --hitl-log`） | `loiter` |
 
 ## 寫一個新腳本
@@ -44,7 +44,7 @@ def build_sequence():
 | `Sticks(pitch, roll, throttle, seconds, yaw=0)` | 持續這組桿量指定秒數 |
 
 - `Sticks` 是 MAVLink MANUAL_CONTROL 的 x／y／z／r 正規化值：pitch、roll、yaw 為 −1..1，throttle 為 0..1，送出時換成 −1000..1000／0..1000。它們不是姿態角或舵面角；負 pitch（負 x）是抬頭；各模式怎麼解讀操桿由飛控決定。要改用「幾度」當介面，得另外定義各模式的換算並驗證。
-- `Mode` 允許 main mode 1–8、sub mode 0–255。這裡用到的：4／3 = AUTO_LOITER、6 = OFFBOARD、7 = STABILIZED。OFFBOARD 只有在有來源送 offboard 訊號時 PX4 才會進（例如 `modules/` 的模組 `sks_template`）；訊號停了 PX4 走自己的 offboard 失聯保護。實際支援哪些模式與進入條件依韌體而定，要在 HITL 確認。
+- `Mode` 允許 main mode 1–8、sub mode 0–255。這裡用到的：4／3 = AUTO_LOITER、6 = OFFBOARD、7 = STABILIZED。OFFBOARD 只有在有來源送 offboard 訊號時 PX4 才會進（例如 `modules/` 的模組 `guidance_template`）；訊號停了 PX4 走自己的 offboard 失聯保護。實際支援哪些模式與進入條件依韌體而定，要在 HITL 確認。
 - `ON_FINISH`：
   - `'hold'`：結束時 PX4 必須在 Stabilized，否則失敗並放手；roll、yaw 桿歸中，自動飛手回到原本的高度保持。
   - `'loiter'`：結束時 PX4 必須在 AUTO_LOITER（4／3）；飛手繼續送中立的 MANUAL_CONTROL 與 heartbeat（照舊滿足 RC 失聯設定），導航由 PX4 負責。會一直持續到明確停止，不會自己停模型；PX4 離開 AUTO_LOITER 就放手。

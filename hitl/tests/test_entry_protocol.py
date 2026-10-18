@@ -42,9 +42,9 @@ class EntryProtocolTests(unittest.TestCase):
         self.project = Path(self.temp.name)/'project'
         shutil.copytree(ROOT, self.project/'hitl', ignore=shutil.ignore_patterns('releases', 'active', '__pycache__'))
         shutil.copy2(ROOT.parent/'runbridge', self.project/'runbridge')
-        self.entry = self.project/'hitl/autotakeoff/FW_SkySurfer_HIL_AutoTakeoff.py'
+        self.entry = self.project/'hitl/autotakeoff/autotakeoff.py'
         self.folder = Path(self.temp.name)/'flight logs'
-        self.env = {**os.environ, 'SKYSURFER_PYTHON': sys.executable}
+        self.env = {**os.environ, 'SIM2HITL_PYTHON': sys.executable}
         self.fc = FastVehicle()
         self.fc.start()
         self.addCleanup(self.close_vehicle)

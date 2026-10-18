@@ -6,13 +6,13 @@ from host.abi import Model,Worker,Input,Output,Info,Initial,header
 from host.packets import Encoder
 PLANT=RUNTIME.parent/'plant';sys.path.insert(0,str(PLANT/'core'))
 from toolchain import lib as libname
-G0=9.80665;SEED=1 # adapter.c HIL_DEFAULT_SEED (seed_policy 0, ROADMAP decision 16)
+G0=9.80665;SEED=1 # adapter.c HIL_DEFAULT_SEED (seed_policy 0)
 LAT,LON=22.910275834988674,120.31096929726908
 def plant_module():
- # ctypes structs of SksPlant / SksSensors; their layout is checked against the C headers by validate_plant.py.
+ # ctypes structs of Plant / PlantSensors; their layout is checked against the C headers by validate_plant.py.
  spec=importlib.util.spec_from_file_location('validate_plant',PLANT/'core/validate_plant.py');mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod);return mod
 def expected_raw(t,s):
- # raw_source[58] from SksTruth / SksSensorOutput, written from the table in docs/MODEL_INTERFACE.md section 6.
+ # raw_source[58] from PlantTruth / PlantSensorOutput, positions as in adapter.c fill_raw().
  d=180/math.pi;r=[0.0]*58;yaw=math.fmod(t.euler_rad[2],2*math.pi)
  if yaw<0:yaw+=2*math.pi
  r[0:5]=[t.surface_deflection_rad[1]*d,t.surface_deflection_rad[0]*d,t.surface_deflection_rad[2]*d,t.throttle_actual,t.surface_deflection_rad[3]*d]
@@ -28,7 +28,7 @@ def ratio(a,b,tol=1e-12):a=np.asarray(a,float);b=np.asarray(b,float);return floa
 def abi_initial(height,u,euler,geoid):
  x=header(Initial);x.height_m=height;x.body_velocity_m_s[0]=u;x.euler_deg[:]=euler;x.latitude_deg=LAT;x.longitude_deg=LON;x.geoid_separation_m=geoid;return x
 def adapter_checks(cache,m):
- # The adapter against SksPlant + SksSensors run directly (libskysurfer_plant, same sources, same seed):
+ # The adapter against Plant + PlantSensors run directly (libskysurfer_plant, same sources, same seed):
  # every raw_source field, every canonical field, P8 relations, raw/canonical decoding, time stamps, flags,
  # GPS latching and geoid. Then the raw yaw wrap at its boundaries.
  vp=plant_module();lib=vp.Lib(cache/'native'/libname('skysurfer_plant'));r=cache/'results';report={}
@@ -37,11 +37,11 @@ def adapter_checks(cache,m):
   controls=np.loadtxt(r/f'controls_{case}.csv',delimiter=',')[:,1:];m.check(m.lib.hil_model_reset(C.byref(abi_initial(height,u,euler,geoid))))
   ic=vp.Initial();ic.height_agl_m=height;ic.velocity_body_m_s[0]=u;ic.latitude_deg=LAT;ic.longitude_deg=LON;ic.seed=SEED
   for k in range(3):ic.euler_rad[k]=euler[k]*(math.pi/180.0)
-  plant=lib.plant();sensors=lib.sensors();config=lib.config();lib.lib.sks_plant_init(plant,C.byref(ic));lib.lib.sks_sensors_init(sensors,C.byref(config),SEED)
+  plant=lib.plant();sensors=lib.sensors();config=lib.config();lib.lib.plant_init(plant,C.byref(ic));lib.lib.plant_sensors_init(sensors,C.byref(config),SEED)
   i=header(Input);o=header(Output);t=vp.Truth();s=vp.Output();pin=vp.Input();gps=None
   for k,row in enumerate(controls):
    i.step_index=k;i.actuator_valid=i.actuator_new=1;i.controls[:]=row;m.check(m.lib.hil_model_step(C.byref(i),C.byref(o)))
-   pin.command[:]=row[:5];lib.lib.sks_plant_step(plant,C.byref(pin),C.byref(t));lib.lib.sks_sensors_step(sensors,C.byref(t),C.byref(s))
+   pin.command[:]=row[:5];lib.lib.plant_step(plant,C.byref(pin),C.byref(t));lib.lib.plant_sensors_step(sensors,C.byref(t),C.byref(s))
    raw=list(o.raw_source);steps+=1
    fields['raw']=max(fields['raw'],ratio(raw,expected_raw(t,s)))
    ideal=[*s.accel_m_s2,*s.gyro_rad_s,*s.magnetic_ut,s.absolute_pressure_pa,s.differential_pressure_pa,s.gps_lla_msl[0],s.gps_lla_msl[1],s.gps_lla_msl[2]-geoid,*s.gps_velocity_ned_m_s,s.gps_ground_speed_m_s,s.gps_course_deg]
@@ -63,7 +63,7 @@ def adapter_checks(cache,m):
   if not(0<=v<2*math.pi and abs(math.remainder(v-math.radians(yaw),2*math.pi))<1e-9):yaws['fail']=True
  report['yaw_wrap']={'status':'FAIL' if yaws.pop('fail',False) else 'PASS','raw_yaw_rad':yaws}
  return report
-# raw_source index -> CoreSnapshot column (plant/include/sks_core.h), sign. Truth fields the core outputs directly.
+# raw_source index -> CoreSnapshot column (plant/include/plant_core.h), sign. Truth fields the core outputs directly.
 RAW_FROM_CORE=[(22,0,1),(23,1,1),(24,2,1),(6,6,1),(7,7,1),(8,8,1),(9,9,1),(28,10,1),(29,11,1),(30,12,1),(15,13,1),(16,14,1),(17,15,1),
  (5,19,1),(13,20,1),(14,21,1),(12,16,1),(11,17,1),(25,53,1),(26,54,1),(27,52,1),(36,55,1),(0,67,1),(1,66,1),(2,68,1),(3,70,1),(4,69,1),(19,2,-1),(18,15,-1)]
 def validate(cache):

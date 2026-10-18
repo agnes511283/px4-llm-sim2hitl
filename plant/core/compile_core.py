@@ -40,7 +40,7 @@ def main():
     if '-DMULTI_INSTANCE_CODE=1' not in defines:
         raise RuntimeError('Generated core is not reusable (MULTI_INSTANCE_CODE != 1)')
     generated = [gen / name for name in ('SkySurfer_Core.c', 'SkySurfer_Core_data.c', 'rtGetInf.c', 'rtGetNaN.c', 'rt_nonfinite.c')]
-    sources = generated + [CORE / 'sks_core.c']
+    sources = generated + [CORE / 'plant_core.c']
     library = out / toolchain.lib('skysurfer_core')
     MATLAB = toolchain.matlab_root()
     cmd = toolchain.cc() + ['-std=c11', '-O2', '-fno-fast-math', '-ffp-contract=off'] + toolchain.shared_flags()
@@ -50,8 +50,8 @@ def main():
     cmd = base + [str(p) for p in sources] + ['-o', str(library)]
     subprocess.run(cmd, check=True)
     # Hand-written C is held to warnings-as-errors; generated C is compiled as generated.
-    handwritten = [CORE / 'sks_core.c', PLANT / 'truth' / 'sks_plant.c', PLANT / 'sensors' / 'sks_sensors.c',
-                   PLANT / 'sensors' / 'sks_wmm.c', PLANT / 'sensors' / 'sks_wmm_coeffs.c']
+    handwritten = [CORE / 'plant_core.c', PLANT / 'truth' / 'plant_truth.c', PLANT / 'sensors' / 'plant_sensors.c',
+                   PLANT / 'sensors' / 'plant_wmm.c', PLANT / 'sensors' / 'plant_wmm_coeffs.c']
     for source in handwritten:
         check = [x for x in base if x not in toolchain.shared_flags()]
         subprocess.run(check + ['-Wall', '-Wextra', '-Werror', '-fsyntax-only', str(source)], check=True)

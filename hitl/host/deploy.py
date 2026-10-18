@@ -217,10 +217,10 @@ def flash_firmware(owner, project, release, out, report):
     identity = [p for p in check['identity'] if p.get('kind') in ('fail', 'incomplete')]
     if identity:
         raise RuntimeError(f'after flashing the FC does not report this firmware: {identity}')
-    record = {'status': 'PASS', 'at_utc': utc(), 'port': port, 'tool': f'{uploader} --port {port} {image.name}',
+    record = {'status': 'PASS', 'at_utc': utc(), 'port': port, 'tool': f'<PX4 tree>/Tools/px_uploader.py --port {port} {image.name}',
               'attempts': len(attempts), 'after': {k: state['autopilot_version'].get(k) for k in
                                                    ['flight_sw_version', 'git_hash_prefix', 'os_hash_prefix', 'board_version']},
-              'evidence': str(out)}
+              'evidence': str(out).replace(str(Path.home()), '~')}
     info['flashed'] = record
     info_path.write_text(json.dumps(info, indent=2, ensure_ascii=False) + '\n')
     return record

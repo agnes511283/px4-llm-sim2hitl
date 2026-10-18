@@ -1,27 +1,27 @@
-/* SkySurfer C sensors. See sks_sensors.h; parameter sources in docs/ROADMAP.md decision 15. */
-#include "sks_sensors.h"
+/* C sensors. See plant_sensors.h. */
+#include "plant_sensors.h"
 
 #include <math.h>
 #include <string.h>
 
-#include "sks_geo.h"
-#include "sks_wmm.h"
+#include "plant_geo.h"
+#include "plant_wmm.h"
 
 static const double kPi = 3.14159265358979323846;
 static const double kG0 = 9.80665;                 /* m/s^2 per g, for datasheet ug values */
 
-struct SksSensors {
-  SksSensorConfig config;
+struct PlantSensors {
+  PlantSensorConfig config;
   uint64_t rng_state, rng_inc; /* PCG32 */
   double spare;                /* second value of the polar Box-Muller pair */
   uint32_t has_spare;
   uint32_t ready;
   uint64_t step_index;
-  SksSensorOutput gps_latch;   /* GPS fields of the last fix */
+  PlantSensorOutput gps_latch;   /* GPS fields of the last fix */
 };
 
 /* PCG32 (O'Neill, pcg-random.org), XSH RR variant. */
-static uint32_t pcg32(SksSensors *s) {
+static uint32_t pcg32(PlantSensors *s) {
   const uint64_t old = s->rng_state;
   s->rng_state = old * 6364136223846793005ULL + s->rng_inc;
   const uint32_t xorshifted = (uint32_t)(((old >> 18u) ^ old) >> 27u);
@@ -29,11 +29,11 @@ static uint32_t pcg32(SksSensors *s) {
   return (xorshifted >> rot) | (xorshifted << ((32u - rot) & 31u));
 }
 
-static double uniform_open(SksSensors *s) { /* (0, 1) */
+static double uniform_open(PlantSensors *s) { /* (0, 1) */
   return ((double)pcg32(s) + 0.5) / 4294967296.0;
 }
 
-static double gaussian(SksSensors *s) { /* standard normal, polar Box-Muller */
+static double gaussian(PlantSensors *s) { /* standard normal, polar Box-Muller */
   if (s->has_spare) {
     s->has_spare = 0;
     return s->spare;
@@ -50,16 +50,16 @@ static double gaussian(SksSensors *s) { /* standard normal, polar Box-Muller */
   return x1 * w;
 }
 
-static double noise(SksSensors *s, double sigma) {
+static double noise(PlantSensors *s, double sigma) {
   if (!s->config.noise_enabled || sigma == 0.0) return 0.0;
   return sigma * gaussian(s);
 }
 
-uint32_t sks_sensors_api_version(void) { return SKS_SENSORS_API_VERSION; }
+uint32_t plant_sensors_api_version(void) { return PLANT_SENSORS_API_VERSION; }
 
-size_t sks_sensors_size(void) { return sizeof(SksSensors); }
+size_t plant_sensors_size(void) { return sizeof(PlantSensors); }
 
-void sks_sensors_default_config(SksSensorConfig *c) {
+void plant_sensors_default_config(PlantSensorConfig *c) {
   if (c == NULL) return;
   memset(c, 0, sizeof(*c));
   c->dt_s = 0.004;
@@ -96,7 +96,7 @@ void sks_sensors_default_config(SksSensorConfig *c) {
 
 static int sigma_valid(double v) { return isfinite(v) && v >= 0.0; }
 
-static int config_valid(const SksSensorConfig *c) {
+static int config_valid(const PlantSensorConfig *c) {
   if (!(c->dt_s > 0.0) || !isfinite(c->dt_s) || c->gps_decimation == 0) return 0;
   for (int k = 0; k < 3; k++) {
     if (!sigma_valid(c->accel_noise_density[k]) || !sigma_valid(c->gyro_noise_density[k]) ||
@@ -110,8 +110,8 @@ static int config_valid(const SksSensorConfig *c) {
          isfinite(c->wmm_decimal_year);
 }
 
-int32_t sks_sensors_init(SksSensors *s, const SksSensorConfig *config, uint32_t seed) {
-  if (s == NULL || config == NULL || !config_valid(config)) return SKS_ERR_INPUT;
+int32_t plant_sensors_init(PlantSensors *s, const PlantSensorConfig *config, uint32_t seed) {
+  if (s == NULL || config == NULL || !config_valid(config)) return PLANT_ERR_INPUT;
   memset(s, 0, sizeof(*s));
   s->config = *config;
   /* PCG32 seeding (pcg32_srandom_r): fixed stream, state from the seed. */
@@ -120,13 +120,13 @@ int32_t sks_sensors_init(SksSensors *s, const SksSensorConfig *config, uint32_t 
   s->rng_state += (uint64_t)seed;
   pcg32(s);
   s->ready = 1;
-  return SKS_OK;
+  return PLANT_OK;
 }
 
-void sks_sensors_magnetic_field_ned(const SksSensorConfig *config, double latitude_deg, double longitude_deg,
+void plant_sensors_magnetic_field_ned(const PlantSensorConfig *config, double latitude_deg, double longitude_deg,
                                     double height_m, double field_ned_ut[3]) {
   double nt[3];
-  sks_wmm_field_ned(latitude_deg, longitude_deg, height_m, config->wmm_decimal_year, nt);
+  plant_wmm_field_ned(latitude_deg, longitude_deg, height_m, config->wmm_decimal_year, nt);
   for (int k = 0; k < 3; k++) field_ned_ut[k] = nt[k] / 1000.0;
 }
 
@@ -140,10 +140,10 @@ static void ned_to_body(const double q[4], const double v[3], double out[3]) {
   for (int i = 0; i < 3; i++) out[i] = r[0][i] * v[0] + r[1][i] * v[1] + r[2][i] * v[2];
 }
 
-int32_t sks_sensors_step(SksSensors *s, const SksTruth *t, SksSensorOutput *o) {
-  if (s == NULL || t == NULL || o == NULL) return SKS_ERR_INPUT;
-  if (!s->ready) return SKS_ERR_STATE;
-  const SksSensorConfig *c = &s->config;
+int32_t plant_sensors_step(PlantSensors *s, const PlantTruth *t, PlantSensorOutput *o) {
+  if (s == NULL || t == NULL || o == NULL) return PLANT_ERR_INPUT;
+  if (!s->ready) return PLANT_ERR_STATE;
+  const PlantSensorConfig *c = &s->config;
   memset(o, 0, sizeof(*o));
   o->time_s = t->time_s;
 
@@ -163,7 +163,7 @@ int32_t sks_sensors_step(SksSensors *s, const SksTruth *t, SksSensorOutput *o) {
 
   /* Magnetometer: WMM at the true position (geoid separation 0), rotated into body axes. */
   double b_ned[3], b_body[3];
-  sks_sensors_magnetic_field_ned(c, t->latitude_deg, t->longitude_deg, t->altitude_msl_m, b_ned);
+  plant_sensors_magnetic_field_ned(c, t->latitude_deg, t->longitude_deg, t->altitude_msl_m, b_ned);
   ned_to_body(t->quaternion_nb, b_ned, b_body);
   for (int k = 0; k < 3; k++) o->magnetic_ut[k] = b_body[k] + noise(s, c->mag_noise_ut[k]);
 
@@ -179,12 +179,12 @@ int32_t sks_sensors_step(SksSensors *s, const SksTruth *t, SksSensorOutput *o) {
   /* GPS at 1 / gps_decimation of the step rate; hold the last fix in between. */
   o->imu_updated = 1;
   if (s->step_index % c->gps_decimation == 0) {
-    SksSensorOutput *g = &s->gps_latch;
+    PlantSensorOutput *g = &s->gps_latch;
     const double dn = noise(s, c->gps_horizontal_noise_m), de = noise(s, c->gps_horizontal_noise_m);
     /* Same local flat-earth step as the Truth, so the result is wrapped into [-90, 90] x [-180, 180]
      * (crossing a pole flips the longitude). Very close to a pole, east noise maps to a large
      * longitude change: geometrically right, and still a legal coordinate. */
-    sks_geo_flat_to_lla(dn, de, t->latitude_deg, t->longitude_deg, &g->gps_lla_msl[0], &g->gps_lla_msl[1]);
+    plant_geo_flat_to_lla(dn, de, t->latitude_deg, t->longitude_deg, &g->gps_lla_msl[0], &g->gps_lla_msl[1]);
     g->gps_lla_msl[2] = t->altitude_msl_m + noise(s, c->gps_vertical_noise_m);
     for (int k = 0; k < 3; k++) {
       g->gps_velocity_ned_m_s[k] = t->velocity_ned_m_s[k] + noise(s, c->gps_velocity_noise_m_s[k]);
@@ -202,11 +202,11 @@ int32_t sks_sensors_step(SksSensors *s, const SksTruth *t, SksSensorOutput *o) {
   o->gps_course_deg = s->gps_latch.gps_course_deg;
   o->gps_sample_time_s = s->gps_latch.gps_sample_time_s;
   s->step_index++;
-  return SKS_OK;
+  return PLANT_OK;
 }
 
-int32_t sks_sensors_copy(SksSensors *dst, const SksSensors *src) {
-  if (dst == NULL || src == NULL) return SKS_ERR_INPUT;
+int32_t plant_sensors_copy(PlantSensors *dst, const PlantSensors *src) {
+  if (dst == NULL || src == NULL) return PLANT_ERR_INPUT;
   if (dst != src) memcpy(dst, src, sizeof(*dst)); /* no internal pointers */
-  return SKS_OK;
+  return PLANT_OK;
 }

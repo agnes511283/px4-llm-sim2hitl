@@ -1,5 +1,5 @@
 /**
- * sks_sim: the SkySurfer plant (FW_SkySurfer_HIL.slx core + C Truth + C sensors) inside PX4.
+ * plant_sim: the aircraft plant (generated core + C Truth + C sensors) inside PX4.
  *
  * Lockstep like PX4's simulator_sih: this module owns the PX4 clock and advances it by the plant step
  * (4 ms). Each step it reads the PX4 actuator outputs (actuator_outputs_sim, channels 1..5 =
@@ -7,7 +7,7 @@
  * PX4Gyroscope (so PX4's own sensors module and gyro filtering run), and publishes the estimator
  * outputs (attitude, position, airspeed, air data, land detected) directly from Truth instead of EKF2.
  * Above the control layer it is a stub: it publishes the vehicle status, control mode, arming and the
- * stick inputs of the scenario. See sitl/README.md and docs/ROADMAP.md decision 8.
+ * stick inputs of the scenario. See sitl/README.md.
  */
 #pragma once
 
@@ -33,16 +33,16 @@
 #include <stdio.h>
 
 #include "skysurfer_plant.h"
-#include "sks_sensors.h"
+#include "plant_sensors.h"
 
-class SksSim : public ModuleBase<SksSim>
+class PlantSim : public ModuleBase<PlantSim>
 {
 public:
-	SksSim(float duration_s, const char *output_dir, const char *scenario_path);
-	~SksSim() override;
+	PlantSim(float duration_s, const char *output_dir, const char *scenario_path);
+	~PlantSim() override;
 
 	static int task_spawn(int argc, char *argv[]);
-	static SksSim *instantiate(int argc, char *argv[]);
+	static PlantSim *instantiate(int argc, char *argv[]);
 	static int custom_command(int argc, char *argv[]);
 	static int print_usage(const char *reason = nullptr);
 
@@ -59,7 +59,7 @@ private:
 	};
 	static constexpr int kMaxSteps = 64;
 
-	static constexpr uint64_t kStepUs = 4000; // plant fixed step (SKS_CORE_DT_S)
+	static constexpr uint64_t kStepUs = 4000; // plant fixed step (PLANT_CORE_DT_S)
 	static constexpr float kAirDensitySeaLevel = 1.225f;
 	// Start-up: (1) wall-clock steps until pwm_out_sim publishes (all PX4 modules and work queues exist;
 	// waiting for lockstep earlier can deadlock while work queues are still being created); (2) this many
@@ -70,7 +70,7 @@ private:
 	bool load_scenario();
 	Sticks scenario_sticks(float t) const;
 	void publish_stub(hrt_abstime now, const Sticks &sticks, bool armed);
-	void publish_truth(hrt_abstime now, const SksTruth &truth, const SksSensorOutput &sensors);
+	void publish_truth(hrt_abstime now, const PlantTruth &truth, const PlantSensorOutput &sensors);
 	void read_controls(bool armed);
 	void advance_clock();
 
@@ -80,13 +80,13 @@ private:
 	// Scenario (written by sitl/run_sitl.py from a scenario JSON): mode, initial state, base sticks, steps.
 	bool _acro{false};
 	bool _offboard{false};  // OFFBOARD with offboard_control_mode.velocity (a module of modules/ does the guidance)
-	SksInitialConditions _ic{};
+	PlantInitialConditions _ic{};
 	Sticks _base{0.f, 0.f, 0.f, -1.f};
 	Step _step_list[kMaxSteps] {};
 	int _num_steps{0};
 
-	SksPlant *_plant{nullptr};
-	SksSensors *_sensors{nullptr};
+	Plant *_plant{nullptr};
+	PlantSensors *_sensors{nullptr};
 	double _controls[5] {};
 	uint64_t _sim_time_us{0};
 	uint64_t _steps{0};

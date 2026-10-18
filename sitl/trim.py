@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Trim of the SkySurfer plant (steady level flight or steady coordinated turn) and the open-loop drop test.
 
-  <SkySurfer venv python> -B sitl/trim.py
+  <venv python> -B sitl/trim.py
       [--airspeed 15 20 25] [--height 100] [--bank 0] [--drop 20] [--plant-lib PATH] [--json]
 
 Default: level flight at 15, 20 and 25 m/s, 100 m, each followed by a 20 s drop test. Output: a table in
 SI with kts / ft alongside (or one JSON line with --json).
 
-Trim: the equilibrium of the plant core (plant/include/sks_core.h, sks_core_eval = f(x, u) on the same code
+Trim: the equilibrium of the plant core (plant/include/plant_core.h, plant_core_eval = f(x, u) on the same code
 path as the simulation). Given airspeed V, height h, bank phi (heading 0, no wind), turn rate
 psi_dot = g tan(phi) / V and body rates from the Euler kinematics (p = -psi_dot sin(theta),
 q = psi_dot sin(phi) cos(theta), r = psi_dot cos(phi) cos(theta)). Unknowns (12): angle of attack,
@@ -25,7 +25,7 @@ Drop test: start the plant at the trim state (rate limiters settled), hold the t
 
 Commands are normalised like the HIL ABI controls[0..4]: elevator + = nose up, + on either aileron
 channel rolls left. The plant library defaults to the one of the active model release (no PX4 or SITL build
-needed); it must have core API 1.1 (sks_core_eval).
+needed); it must have core API 1.1 (plant_core_eval).
 """
 import argparse
 import ctypes as C
@@ -40,7 +40,7 @@ DT = 0.004
 NX = 21
 SETTLE = 40  # steps for the surface rate limiters to reach the equilibrium deflection (2 deg per step)
 D = C.c_double
-# CoreSnapshot indices (plant/include/sks_core.h)
+# CoreSnapshot indices (plant/include/plant_core.h)
 S_POS, S_VNED, S_EULER, S_AIRSPEED, S_SURF = 0, 13, 16, 52, 66
 
 
@@ -60,24 +60,24 @@ class _Initial(C.Structure):
 
 
 class Core:
-    """The plant core through ctypes (sks_core.h, API 1.1)."""
+    """The plant core through ctypes (plant_core.h, API 1.1)."""
 
     def __init__(self, path):
         self.lib = C.CDLL(str(path))
-        self.lib.sks_core_size.restype = C.c_size_t
-        self.lib.sks_core_api_version.restype = C.c_uint32
-        if self.lib.sks_core_api_version() < 0x00010100:
-            raise RuntimeError(f'{path}: core API {self.lib.sks_core_api_version():#x} has no sks_core_eval')
+        self.lib.plant_core_size.restype = C.c_size_t
+        self.lib.plant_core_api_version.restype = C.c_uint32
+        if self.lib.plant_core_api_version() < 0x00010100:
+            raise RuntimeError(f'{path}: core API {self.lib.plant_core_api_version():#x} has no plant_core_eval')
         self.path = Path(path)
-        self.size = self.lib.sks_core_size()
+        self.size = self.lib.plant_core_size()
 
     def new(self, height):
         core = C.create_string_buffer(self.size)
         ic = _Initial((D * 3)(10.0, 0.0, 0.0), height, (D * 3)(0.0, 0.0, 0.0))
-        assert self.lib.sks_core_init(core, C.byref(ic)) == 0
+        assert self.lib.plant_core_init(core, C.byref(ic)) == 0
         # The first step loads the integrators from the initial-condition input, which would overwrite a state
-        # written by sks_core_eval; step once so that the template is past it.
-        assert self.lib.sks_core_step(core, (D * 16)(), None) == 0
+        # written by plant_core_eval; step once so that the template is past it.
+        assert self.lib.plant_core_step(core, (D * 16)(), None) == 0
         return core
 
     def eval(self, template, x, controls, settle=SETTLE):
@@ -85,12 +85,12 @@ class Core:
         servo transfer function, and the limiter keeps its previous output, so x is written and stepped
         `settle` times (continuous states reset to x each time) before the result is taken."""
         core = C.create_string_buffer(self.size)
-        self.lib.sks_core_copy(core, template)
+        self.lib.plant_core_copy(core, template)
         xdot, snap = (D * NX)(), (D * 72)()
         u = (D * 16)(*(list(controls) + [0.0] * (16 - len(controls))))
         xs = (D * NX)(*x)
         for _ in range(settle):
-            code = self.lib.sks_core_eval(core, xs, u, xdot, snap)
+            code = self.lib.plant_core_eval(core, xs, u, xdot, snap)
             if code:
                 break
         return code, np.array(xdot[:]), np.array(snap[:]), core, u
@@ -126,12 +126,12 @@ def residual(core, template, z, airspeed, height, bank):
     code0, xdot0, _, _, _ = core.eval(template, state(z, [0.0] * 5, airspeed, height, bank), u)
     code1, xdot1, _, _, _ = core.eval(template, state(z, [1.0] * 5, airspeed, height, bank), u)
     if code0 or code1:
-        raise RuntimeError(f'sks_core_eval returned {code0 or code1}')
+        raise RuntimeError(f'plant_core_eval returned {code0 or code1}')
     slope = xdot1[13:18] - xdot0[13:18]
     actuators = -xdot0[13:18] / slope
     code, xdot, snap, _, _ = core.eval(template, state(z, actuators, airspeed, height, bank), u)
     if code != 0:
-        raise RuntimeError(f'sks_core_eval returned {code}')
+        raise RuntimeError(f'plant_core_eval returned {code}')
     f = np.concatenate([xdot[3:6], xdot[10:13] * 10.0, [snap[S_VNED + 2]]])
     return f, snap, actuators, float(np.max(np.abs(xdot[13:18])))
 
@@ -187,7 +187,7 @@ def drop(core, trim_result, seconds=20.0):
     snap = (D * 72)()
     rows = [first]
     for _ in range(int(round(seconds / DT)) - 1):
-        if core.lib.sks_core_step(live, u, snap) != 0:
+        if core.lib.plant_core_step(live, u, snap) != 0:
             break
         rows.append(np.array(snap[:]))
     rows = np.array(rows)

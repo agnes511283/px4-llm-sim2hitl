@@ -1,4 +1,4 @@
-"""ULog replay through PX4's own fixed-wing controllers (ROADMAP batch 4h); run by run_sitl.py --replay.
+"""ULog replay through PX4's own fixed-wing controllers; run by run_sitl.py --replay.
 
   python3 sitl/run_sitl.py --replay <flight.ulg> --out <dir> [--speed 5]
 

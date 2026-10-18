@@ -1,4 +1,4 @@
-"""Stabilized roll/pitch/yaw stick steps after takeoff, then AUTO_LOITER (ROADMAP batch 4i).
+"""Stabilized roll/pitch/yaw stick steps after takeoff, then AUTO_LOITER.
 
 The sequence comes from sitl/scenarios/stabilized_steps_hitl.json, read when the script is loaded, so the
 HITL flight and its SITL preview use the same base sticks, settle time and steps. The pilot already flies

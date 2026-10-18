@@ -4,9 +4,9 @@ Every value can be set with an environment variable; when something cannot be fo
 one to set. Verified on Ubuntu 24.04 x86-64 (gcc, MATLAB R2026b); on another platform check that these
 answers fit before building.
 
-  SKYSURFER_MATLAB_ROOT  MATLAB installation folder (default: from `matlab` on PATH)
+  SIM2HITL_MATLAB_ROOT  MATLAB installation folder (default: from `matlab` on PATH)
   CC                     C compiler command (default: cc)
-  SKYSURFER_CACHE        folder for build caches and runtime state (default: the platform's user cache)
+  SIM2HITL_CACHE        folder for build caches and runtime state (default: the platform's user cache)
 """
 import os
 import shutil
@@ -23,12 +23,12 @@ def lib(name):
 
 
 def matlab_root():
-    if os.environ.get('SKYSURFER_MATLAB_ROOT'):
-        return Path(os.environ['SKYSURFER_MATLAB_ROOT'])
+    if os.environ.get('SIM2HITL_MATLAB_ROOT'):
+        return Path(os.environ['SIM2HITL_MATLAB_ROOT'])
     exe = shutil.which('matlab')
     if exe:
         return Path(exe).resolve().parents[1]
-    raise RuntimeError('MATLAB not found: put matlab on PATH or set SKYSURFER_MATLAB_ROOT')
+    raise RuntimeError('MATLAB not found: put matlab on PATH or set SIM2HITL_MATLAB_ROOT')
 
 
 def cc():
@@ -54,16 +54,16 @@ def model_constants(cache):
 
 
 def model_defines(cache):
-    """Compiler defines that carry model constants into C Truth (plant/truth/sks_plant.c)."""
+    """Compiler defines that carry model constants into C Truth (plant/truth/plant_truth.c)."""
     mass, _ = model_constants(cache)
-    return [f'-DSKS_MASS_KG={mass!r}']
+    return [f'-DPLANT_MASS_KG={mass!r}']
 
 
 def cache_root():
-    if os.environ.get('SKYSURFER_CACHE'):
-        return Path(os.environ['SKYSURFER_CACHE'])
+    if os.environ.get('SIM2HITL_CACHE'):
+        return Path(os.environ['SIM2HITL_CACHE'])
     if sys.platform == 'darwin':
-        return Path.home() / 'Library' / 'Caches' / 'SkySurfer'
+        return Path.home() / 'Library' / 'Caches' / 'px4-llm-sim2hitl'
     if sys.platform == 'win32':
-        return Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / 'SkySurfer'
-    return Path(os.environ.get('XDG_CACHE_HOME') or Path.home() / '.cache') / 'SkySurfer'
+        return Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / 'px4-llm-sim2hitl'
+    return Path(os.environ.get('XDG_CACHE_HOME') or Path.home() / '.cache') / 'px4-llm-sim2hitl'

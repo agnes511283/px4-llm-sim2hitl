@@ -97,7 +97,7 @@ def compile_library(cache,fp):
   match=re.search(r'^'+key+r'\s*=\s*(.*)$',make,re.M);defines+=match.group(1).split() if match else []
  if '-DMULTI_INSTANCE_CODE=1' not in defines:raise RuntimeError('Generated core is not reusable')
  sources=[gen/x for x in ['SkySurfer_Core.c','SkySurfer_Core_data.c','rtGetInf.c','rtGetNaN.c','rt_nonfinite.c']]
- sources+=[PLANT/'core/sks_core.c',PLANT/'truth/sks_plant.c',PLANT/'sensors/sks_sensors.c',PLANT/'sensors/sks_wmm.c',PLANT/'sensors/sks_wmm_coeffs.c',RUNTIME/'aircraft/skysurfer/adapter.c']
+ sources+=[PLANT/'core/plant_core.c',PLANT/'truth/plant_truth.c',PLANT/'sensors/plant_sensors.c',PLANT/'sensors/plant_wmm.c',PLANT/'sensors/plant_wmm_coeffs.c',RUNTIME/'aircraft/skysurfer/adapter.c']
  generated={str(p.relative_to(gen)):digest(p) for p in gen.glob('*') if p.suffix in ['.c','.h']}
  includes=[]
  for inc in [RUNTIME/'interface',PLANT/'include',PLANT/'sensors',gen,matlab/'extern/include',matlab/'simulink/include',matlab/'rtw/c/src',matlab/'rtw/c/ert']:includes+=['-I',str(inc)]

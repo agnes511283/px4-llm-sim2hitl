@@ -1,11 +1,11 @@
-# sks_template：把自己的算法放進 PX4 的一個例子
+# guidance_template：把自己的算法放進 PX4 的一個例子
 
 **這只是例子，讓人有個概念。** 真正要怎麼接，請 AI 在第 1 段先讀 PX4 原始碼，再和使用者討論方案（見 [AGENTS](../../../AGENTS.md) 第 1 段）。這裡示範的只是其中一種：在 OFFBOARD 模式裡，換掉固定翼控制鏈最上層的「導引」。
 
 ## 這個例子做什麼
 
 - **接法**：模組編進韌體，自己發 OFFBOARD 訊號（`offboard_control_mode.velocity = true`），不需要外接任務電腦。PX4 進入 OFFBOARD 後，只把「導引」交給這個模組；高度與速度（`fw_lat_lon_control`）、姿態、角速度、控制分配都還是 PX4 原生的。
-- **算法**（`SksTemplate::guidance()`，換成你的就改這一段）：進入 OFFBOARD 時記下當下的航向與高度；15 秒後航向目標 +30°，35 秒後高度目標 +10 m（先直飛 15 秒，讓前一個模式（HITL 是傾斜的盤旋）的影響消失）。側向加速度 = 地速 × 0.2 × 航向誤差（傾角限 20°），高度交給 PX4 的 TECS，空速用預設值。
+- **算法**（`GuidanceTemplate::guidance()`，換成你的就改這一段）：進入 OFFBOARD 時記下當下的航向與高度；15 秒後航向目標 +30°，35 秒後高度目標 +10 m（先直飛 15 秒，讓前一個模式（HITL 是傾斜的盤旋）的影響消失）。側向加速度 = 地速 × 0.2 × 航向誤差（傾角限 20°），高度交給 PX4 的 TECS，空速用預設值。
 - **出事時**：位置資料無效或太舊，就停發 OFFBOARD 訊號，PX4 自己的「OFFBOARD 失聯保護」接手（`COM_OF_LOSS_T`、`COM_OBL_RC_ACT`）。沒有這個模組在跑時，PX4 根本不讓你切進 OFFBOARD。
 
 ## 驗收（這個例子自己的標準）
@@ -21,7 +21,7 @@
 
 ## 照著做一個自己的模組
 
-1. 複製 `modules/src/sks_template/` 成新名字，改掉檔名、類別名稱、`CMakeLists.txt` 的 `MODULE`／`MAIN`；在 `sitl/px4_external/src/` 照 `sks_template/` 加一個同樣的包裝，並列進那裡的 `CMakeLists.txt`。
+1. 複製 `modules/src/guidance_template/` 成新名字，改掉檔名、類別名稱、`CMakeLists.txt` 的 `MODULE`／`MAIN`；在 `sitl/px4_external/src/` 照 `guidance_template/` 加一個同樣的包裝，並列進那裡的 `CMakeLists.txt`。
 2. 改 `guidance()`（或依第 1 段討論的接法，改成要換的那一層）。
 3. SITL：照 `sitl/scenarios/template_offboard.json` 寫自己的情境，`sitl/build_sitl.py` → `sitl/run_sitl.py --scenario ...` → 自己的判定程式（照 `analysis/template_check.py`）。
 4. 部署配方：照 `deploy/02_template/` 複製一份，`firmware/firmware.json` 的 `recipe.modules` 換成新模組，`sd/etc/extras.txt` 寫啟動指令，`hitl.json` 指定起飛後的動作（`hitl/commands/`）與判定程式。

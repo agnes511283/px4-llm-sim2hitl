@@ -1,5 +1,5 @@
 /**
- * sks_template: an example of one way to put your own algorithm into PX4 (see README.md and AGENTS.md, stage 1).
+ * guidance_template: an example of one way to put your own algorithm into PX4 (see README.md and AGENTS.md, stage 1).
  *
  * It replaces only the top of the fixed-wing control chain (guidance) while the vehicle is in OFFBOARD:
  *   - it publishes offboard_control_mode itself (velocity = true), the same uORB message that MAVLink or ROS 2
@@ -29,7 +29,7 @@
 
 using namespace time_literals;
 
-class SksTemplate : public ModuleBase<SksTemplate>, public px4::ScheduledWorkItem
+class GuidanceTemplate : public ModuleBase<GuidanceTemplate>, public px4::ScheduledWorkItem
 {
 public:
 	static constexpr hrt_abstime PERIOD = 40_ms;              // 25 Hz
@@ -41,8 +41,8 @@ public:
 	static constexpr float ALTITUDE_STEP_M = 10.f;
 	static constexpr float ALTITUDE_STEP_AT = 35.f;           // [s] after entering OFFBOARD
 
-	SksTemplate();
-	~SksTemplate() override = default;
+	GuidanceTemplate();
+	~GuidanceTemplate() override = default;
 
 	static int task_spawn(int argc, char *argv[]);
 	static int custom_command(int argc, char *argv[]);

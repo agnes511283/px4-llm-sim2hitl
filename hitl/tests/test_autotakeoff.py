@@ -6,8 +6,8 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock
 
-path = Path(__file__).resolve().parents[1] / 'autotakeoff/FW_SkySurfer_HIL_AutoTakeoff.py'
-spec = importlib.util.spec_from_file_location('skysurfer_pilot', path)
+path = Path(__file__).resolve().parents[1] / 'autotakeoff/autotakeoff.py'
+spec = importlib.util.spec_from_file_location('autotakeoff_pilot', path)
 pilot = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pilot)
 

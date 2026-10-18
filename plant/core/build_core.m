@@ -14,7 +14,7 @@ function cacheRoot = build_core()
 % (reuse_policy_gate.m; result in results/reuse_policy.json). Source file hashes are recorded by
 % update.py, so this builder needs no Java.
 %
-% The cache folder is SKYSURFER_CACHE, or the platform's user cache + SkySurfer (same rule as
+% The cache folder is SIM2HITL_CACHE, or the platform's user cache + px4-llm-sim2hitl (same rule as
 % plant/core/toolchain.py). Code is generated for a Linux x86-64 host (where the plant runs).
 coreDir = fileparts(mfilename('fullpath'));
 projectRoot = fileparts(fileparts(coreDir));
@@ -168,16 +168,16 @@ end
 
 function base = core_cache_base()
 % Same rule as plant/core/toolchain.py cache_root().
-base = getenv('SKYSURFER_CACHE');
+base = getenv('SIM2HITL_CACHE');
 if ~isempty(base), return, end
 if ismac
-    base = fullfile(getenv('HOME'), 'Library', 'Caches', 'SkySurfer');
+    base = fullfile(getenv('HOME'), 'Library', 'Caches', 'px4-llm-sim2hitl');
 elseif ispc
-    base = fullfile(getenv('LOCALAPPDATA'), 'SkySurfer');
+    base = fullfile(getenv('LOCALAPPDATA'), 'px4-llm-sim2hitl');
 else
     xdg = getenv('XDG_CACHE_HOME');
     if isempty(xdg), xdg = fullfile(getenv('HOME'), '.cache'); end
-    base = fullfile(xdg, 'SkySurfer');
+    base = fullfile(xdg, 'px4-llm-sim2hitl');
 end
 end
 

@@ -2,7 +2,7 @@
 
 A mixin of Core (core.py): it uses Core's link, gate (_param_txn_gate), FC identity (_fc_version,
 _param_txn_identify), reboot (recover) and App Nap guard (_transfer).
-Contract: docs/ARCHITECTURE.md (FC operations).
+FC operations through the single owner.
 
 PX4 runs /fs/microsd/etc/extras.txt at the end of its boot (ROMFS init.d/rcS, FEXTRAS): that is how a custom
 module outside the PX4 tree starts without changing the tree. sd-put / sd-rm change only the boot files named in
@@ -18,7 +18,7 @@ from .errors import PreconditionError, OperationError
 SD_ROOT = '/fs/microsd'
 SD_BOOT_DIR = '/fs/microsd/etc'
 SD_WRITABLE = ['extras.txt']  # boot files sd-put / sd-rm may change (rcS FEXTRAS); config.txt, rc.txt are not
-SD_TEMP = '/fs/microsd/etc/sks_put.tmp'  # an 8.3 name: written and checked here first, then renamed
+SD_TEMP = '/fs/microsd/etc/sim2hitl.tmp'  # an 8.3 name: written and checked here first, then renamed
 SD_PUT_MAX = 16 * 1024
 SD_GET_MAX = 256 * 1024
 SD_LIST_MAX = 500  # entries of one directory

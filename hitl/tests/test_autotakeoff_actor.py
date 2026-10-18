@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock
 
-source=Path(__file__).resolve().parents[1]/'autotakeoff/FW_SkySurfer_HIL_AutoTakeoff.py'
+source=Path(__file__).resolve().parents[1]/'autotakeoff/autotakeoff.py'
 spec=importlib.util.spec_from_file_location('autotakeoff_actor',source)
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 

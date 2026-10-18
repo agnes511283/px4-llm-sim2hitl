@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run FW_SkySurfer_HIL_AutoTakeoff.py against a fake PX4 and a point-mass aircraft.
+"""Run autotakeoff.py against a fake PX4 and a point-mass aircraft.
 
 No bridge, serial port, model or flight controller is used: this process plays
 the bridge agent port. It checks the script's sequence and hand-overs, not the
@@ -20,7 +20,7 @@ import time
 os.environ.setdefault('MAVLINK20', '1')
 from pymavlink.dialects.v20 import common as mav
 
-SCRIPT = Path(__file__).resolve().parents[1]/'autotakeoff/FW_SkySurfer_HIL_AutoTakeoff.py'
+SCRIPT = Path(__file__).resolve().parents[1]/'autotakeoff/autotakeoff.py'
 MASS, WEIGHT, THRUST, WING, RHO = 1.5, 14.7, 14., .3056, 1.225
 
 

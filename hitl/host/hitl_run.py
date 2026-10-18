@@ -1,6 +1,6 @@
 """One traceable automatic HITL run (hitl-run): identity and parameters before, the fixed test-takeoff-hold,
 identity, parameters, FC log and data after, and manifest.json with a verdict that a flight PASS cannot
-override (BEHAVIOR_CONTRACT 7e)."""
+override."""
 
 import contextlib
 import hashlib
@@ -42,7 +42,7 @@ def combine(verdicts):
 
 
 def checker(project):
-    spec = importlib.util.spec_from_file_location('skysurfer_check_params', Path(project) / 'deploy/check_params.py')
+    spec = importlib.util.spec_from_file_location('check_params', Path(project) / 'deploy/check_params.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -128,7 +128,7 @@ def run_hitl(runtime, args):
     run.mkdir(parents=True)
     started = time.monotonic()
     after = getattr(args, 'after', None) or 'after_takeoff_loiter'
-    pilot_files = ['hitl/scenarios/ground.json', 'hitl/autotakeoff/FW_SkySurfer_HIL_AutoTakeoff.py',
+    pilot_files = ['hitl/scenarios/ground.json', 'hitl/autotakeoff/autotakeoff.py',
                    f'hitl/commands/{after}.py']
     manifest = {
         'schema_version': 1,

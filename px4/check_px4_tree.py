@@ -2,10 +2,10 @@
 """Check that this machine's PX4 source tree matches px4/px4_lock.json.
 
 The PX4 tree is kept outside the project. Its location is per machine and is found in this order:
-  --path PATH, then $SKYSURFER_PX4_ROOT, then the local config file
-  (macOS: ~/Library/Application Support/SkySurfer/px4_root,
-   Linux: ~/.config/SkySurfer/px4_root,
-   Windows: %LOCALAPPDATA%\\SkySurfer\\px4_root).
+  --path PATH, then $SIM2HITL_PX4_ROOT, then the local config file
+  (macOS: ~/Library/Application Support/px4-llm-sim2hitl/px4_root,
+   Linux: ~/.config/px4-llm-sim2hitl/px4_root,
+   Windows: %LOCALAPPDATA%\\px4-llm-sim2hitl\\px4_root).
 If none of them is set: use the user's tree if they have one, otherwise download the locked tag outside the
 project (git clone --branch <tag> --recurse-submodules <repository>), check it with --path and --remember.
 Other scripts get the location from px4_root().
@@ -34,15 +34,15 @@ def config_file():
         base = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config')
     else:
         base = Path.home() / 'Library' / 'Application Support'
-    return base / 'SkySurfer' / 'px4_root'
+    return base / 'px4-llm-sim2hitl' / 'px4_root'
 
 
 def locate(explicit):
     if explicit:
         return Path(explicit).expanduser(), '--path'
-    env = os.environ.get('SKYSURFER_PX4_ROOT')
+    env = os.environ.get('SIM2HITL_PX4_ROOT')
     if env:
-        return Path(env).expanduser(), 'SKYSURFER_PX4_ROOT'
+        return Path(env).expanduser(), 'SIM2HITL_PX4_ROOT'
     cfg = config_file()
     if cfg.is_file():
         text = cfg.read_text(encoding='utf-8').strip()
@@ -52,7 +52,7 @@ def locate(explicit):
 
 
 def px4_root():
-    """The PX4 tree of this machine (SKYSURFER_PX4_ROOT or the local config file)."""
+    """The PX4 tree of this machine (SIM2HITL_PX4_ROOT or the local config file)."""
     root, _ = locate(None)
     if root is None:
         raise SystemExit('PX4 tree location not set: run px4/check_px4_tree.py --path <tree> --remember')

@@ -42,7 +42,7 @@ class RunbridgeFakeTests(unittest.TestCase):
         self.config={'synthetic_flight':True,'routes':self.routes,'event_log':str(self.folder/'fc_events.jsonl')}
         self.write_config()
         self.common=['--fake-fc','--fake-state-dir',str(self.state)]
-        self.env={**os.environ,'SKYSURFER_PYTHON':sys.executable,'PYTHONDONTWRITEBYTECODE':'1'}
+        self.env={**os.environ,'SIM2HITL_PYTHON':sys.executable,'PYTHONDONTWRITEBYTECODE':'1'}
         self.console=(self.folder/'host.log').open('w')
         self.host=subprocess.Popen([str(ENTRY),'bridge',*self.common,'--fake-config',str(self.config_path),'--log-dir',str(self.folder/'logs'),'--duration','90'],cwd=self.folder,env=self.env,stdout=self.console,stderr=subprocess.STDOUT)
         self.wait(lambda:self.status().get('ready_to_start_model'),8)
@@ -132,7 +132,7 @@ class RunbridgeFakeTests(unittest.TestCase):
         result=self.cli('recover',expected=3);self.assertIn('timeout',result['operation']['error'])
         self.assertEqual(self.command_ids(),[400]);self.assertFalse(self.status()['control_gate']['enabled'])
     def test_recovery_completes_with_forwarded_qgc_traffic(self):
-        # Everything is forwarded during recover too (BEHAVIOR_CONTRACT 5); parameter reads and writes
+        # Everything is forwarded during recover too; parameter reads and writes
         # do not disturb it. An arm or mode command sent during recover would reach the FC and can make
         # recover fail; that is documented, not tested.
         self.cli('model-start')
@@ -258,7 +258,7 @@ class RunbridgeFakeTests(unittest.TestCase):
         again=self.cli('param-plan','--out',str(self.folder/'plan2'))['operation']['result']
         self.assertEqual(again['writes'],[])
     def test_sd_card_cli(self):
-        extras='/fs/microsd/etc/extras.txt';local=self.folder/'extras.txt';local.write_bytes(b'sks_template start\n')
+        extras='/fs/microsd/etc/extras.txt';local=self.folder/'extras.txt';local.write_bytes(b'guidance_template start\n')
         self.assertEqual(self.cli('sd-list','--sd-path','/fs/microsd')['operation']['result']['entries'],[{'type':'dir','name':'log'}])
         self.cli('sd-put','--sd-path',extras,'--out',str(self.folder/'p'),expected=4)  # --file is required
         self.cli('sd-put','--file',str(local),'--sd-path','/fs/microsd/etc/rc.txt','--out',str(self.folder/'p'),expected=4)
@@ -266,7 +266,7 @@ class RunbridgeFakeTests(unittest.TestCase):
         self.assertEqual((put['verdict'],put['changed']),('PASS',True))
         self.assertIn(246,self.command_ids())  # rebooted, then read back
         got=self.cli('sd-get','--sd-path',extras,'--out',str(self.folder/'g'))['operation']['result']
-        self.assertEqual(Path(got['file']).read_bytes(),b'sks_template start\n')
+        self.assertEqual(Path(got['file']).read_bytes(),b'guidance_template start\n')
         gone=self.cli('sd-rm','--sd-path',extras,'--out',str(self.folder/'r'))['operation']['result']
         self.assertEqual((gone['verdict'],gone['changed']),('PASS',True))
         self.assertEqual(self.cli('sd-list')['operation']['result']['entries'],[])
@@ -315,7 +315,7 @@ class RunbridgeFakeTests(unittest.TestCase):
         self.assertEqual(summary['ending_source'],'result.json after_recovery')
 
     def hitl_run(self,*args,expected,timeout=120,during_flight=None):
-        """hitl-run (BEHAVIOR_CONTRACT 7e) into self.folder/'runs': (manifest, run directory). during_flight() is
+        """hitl-run into self.folder/'runs': (manifest, run directory). during_flight() is
         called once the flight has started (after the readback before it)."""
         process=subprocess.Popen([str(ENTRY),'hitl-run',*self.common,'--out',str(self.folder/'runs'),*args],cwd=self.folder,
                                  env=self.env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)

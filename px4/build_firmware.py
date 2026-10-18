@@ -9,7 +9,7 @@ The recipe is deploy/<name>/firmware/firmware.json "recipe":
    "modules": ["<module folder in modules/src>", ...]}
 
 The user's PX4 tree (px4/check_px4_tree.py) is never changed. Builds run in a build tree next to it
-(<tree>-build, or SKYSURFER_PX4_BUILD_TREE), copied from it once and reset to the locked commit before every
+(<tree>-build, or SIM2HITL_PX4_BUILD_TREE), copied from it once and reset to the locked commit before every
 build. Each patch is committed in its repository with `git am`, committer = author and committer date = author
 date, so the same patches give the same commits: the firmware then reports a NuttX hash (AUTOPILOT_VERSION
 os_custom_version) that tells it apart from the native one, and deploy/check_params.py compares it.
@@ -38,7 +38,15 @@ import check_px4_tree  # noqa: E402
 import toolchain  # noqa: E402
 
 LOCK = json.loads((ROOT / 'px4' / 'px4_lock.json').read_text())
+# Fixed on purpose: the patch commits (and so the NuttX hash the FC reports) depend on this identity. Changing it
+# changes the expected hash of every recipe with a patch.
 COMMITTER = ['-c', 'user.name=SkySurfer build', '-c', 'user.email=build@skysurfer.invalid']
+
+
+def portable(text, source, tree):
+    """A recorded path or command without this machine's folders."""
+    return (str(text).replace(str(tree), '<PX4 build tree>').replace(str(source), '<PX4 tree>')
+            .replace(str(Path.home()), '~'))
 
 
 def sha256(path):
@@ -54,7 +62,7 @@ def git(tree, *args, env=None):
 
 def build_tree(source):
     """The build tree, reset to the locked commit with clean submodules (the user's tree is the source)."""
-    tree = Path(os.environ.get('SKYSURFER_PX4_BUILD_TREE') or str(source) + '-build')
+    tree = Path(os.environ.get('SIM2HITL_PX4_BUILD_TREE') or str(source) + '-build')
     if not tree.exists():
         # One copy of the user's tree (objects included, no network); its build outputs are left out.
         subprocess.run(['rsync', '-a', '--exclude=/build/', f'{source}/', f'{tree}/'], check=True)
@@ -156,12 +164,13 @@ def main():
         'image_maxsize': px4['image_maxsize'], 'flash_used_percent': round(100 * px4['image_size'] / px4['image_maxsize'], 2),
     }
     info['build'] = {
-        'command': ' '.join(cmd), 'build_tree': str(tree), 'output_dir': str(outdir), 'patches': applied,
+        'command': portable(' '.join(cmd), source, tree), 'build_tree': '<PX4 build tree>',
+        'output_dir': portable(outdir, source, tree), 'patches': applied,
         'modules': {name: {p.name: sha256(p) for p in sorted((ROOT / 'modules' / 'src' / name).glob('*')) if p.is_file()}
                     for name in modules},
         'toolchain': subprocess.run(['arm-none-eabi-gcc', '--version'], capture_output=True, text=True).stdout.splitlines()[0],
         'built_at_utc': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'seconds': seconds,
-        'log': str(log),
+        'log': portable(log, source, tree),
     }
     info['flashed'] = None
     info_path.write_text(json.dumps(info, indent=2, ensure_ascii=False) + '\n')

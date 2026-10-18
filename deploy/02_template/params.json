@@ -7,7 +7,7 @@
     "by": "user",
     "note": "values kept as on the FC (ROADMAP decision 14): set 16 confirmed by the user; after the GPT review (2026-10-16) 5 of them moved to boot (set by PX4 boot scripts), values unchanged"
   },
-  "note": "HITL recipe of the sks_template example: 01_sdfix (native PX4 + NuttX SD-card read fix) plus the module modules/src/sks_template, started by sd/etc/extras.txt. Same parameters as 00_native.",
+  "note": "HITL recipe of the guidance_template example: 01_sdfix (native PX4 + NuttX SD-card read fix) plus the module modules/src/guidance_template, started by sd/etc/extras.txt. Same parameters as 00_native.",
   "firmware": "firmware/firmware.json",
   "firmware_params": {
     "file": "firmware/parameters.json.xz",

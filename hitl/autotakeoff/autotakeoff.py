@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""FW_SkySurfer HIL: scripted pilot for takeoff and level flight.
+"""HIL scripted pilot for takeoff and level flight.
 
 Connects to the HIL bridge agent port and flies like the QGC joystick does:
 MANUAL_CONTROL in Stabilized. Sequence: Stabilized, arm, takeoff throttle,

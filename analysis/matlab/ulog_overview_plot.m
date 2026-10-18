@@ -1,10 +1,10 @@
-function sks_ulog_plot(ulgPath, outPng, titleText)
-%SKS_ULOG_PLOT  Overview plot of one SkySurfer ULog (SITL or the FC's HITL log): course, altitude with the TECS
+function ulog_overview_plot(ulgPath, outPng, titleText)
+%ULOG_OVERVIEW_PLOT  Overview plot of one ULog (SITL or the FC's HITL log): course, altitude with the TECS
 %setpoint, roll with the lateral-acceleration setpoint, airspeed with the TECS airspeed setpoint, and the time in
 %OFFBOARD shaded. An example to start from: copy it and plot what your module needs.
 %
-%   sks_ulog_plot('<flight>.ulg')                    % opens a figure
-%   sks_ulog_plot('<flight>.ulg', 'overview.png')    % writes the picture (no window)
+%   ulog_overview_plot('<flight>.ulg')                    % opens a figure
+%   ulog_overview_plot('<flight>.ulg', 'overview.png')    % writes the picture (no window)
 %
 % Needs MATLAB with UAV Toolbox (ulogreader); no Java. Without UAV Toolbox, export the topics to CSV with
 % analysis/ulog_export.py and read them with readtable. Topics missing from a log are left out of the plot.

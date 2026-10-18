@@ -10,9 +10,9 @@
     "note": "The FC firmware is built from this lock per deploy recipe (px4/build_firmware.py); deploy/00_native keeps a prebuilt native image. Each recipe's deploy/<recipe>/firmware/firmware.json records the identity the FC reports (embedded) and the last flash (flashed). At handover the FC runs deploy/01_sdfix, flashed 2026-10-18 07:22 UTC by ./runbridge deploy-test --flash."
   },
   "local_path": {
-    "env": "SKYSURFER_PX4_ROOT",
-    "linux_config": "~/.config/SkySurfer/px4_root ($XDG_CONFIG_HOME/SkySurfer/px4_root when XDG_CONFIG_HOME is set)",
-    "macos_config": "~/Library/Application Support/SkySurfer/px4_root",
-    "windows_config": "%LOCALAPPDATA%\\SkySurfer\\px4_root"
+    "env": "SIM2HITL_PX4_ROOT",
+    "linux_config": "~/.config/px4-llm-sim2hitl/px4_root ($XDG_CONFIG_HOME/px4-llm-sim2hitl/px4_root when XDG_CONFIG_HOME is set)",
+    "macos_config": "~/Library/Application Support/px4-llm-sim2hitl/px4_root",
+    "windows_config": "%LOCALAPPDATA%\\px4-llm-sim2hitl\\px4_root"
   }
 }

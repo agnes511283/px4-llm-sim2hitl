@@ -11,17 +11,17 @@ Checks (results in <cache>/results/core_validation.json, exit code 0 only when t
   finite      blocking: every reference case runs to the end with finite values
   instances   two instances stepped interleaved give bit-identical results to separate runs
               (bit equality compares the raw bytes, so +0.0 and -0.0 differ)
-  copy        sks_core_copy mid-run, both copies continue bit-identically to an uninterrupted run
+  copy        plant_core_copy mid-run, both copies continue bit-identically to an uninterrupted run
   reinit      re-initialising an instance reproduces the first run bit-identically
-  state_eval  API >= 1.1: sks_core_get_state then sks_core_eval with the next controls gives the same
-              snapshot and next state as sks_core_step, bit for bit; a different state written by
-              sks_core_eval is the one the output and the integration use; xdot is finite; and xdot is the
+  state_eval  API >= 1.1: plant_core_get_state then plant_core_eval with the next controls gives the same
+              snapshot and next state as plant_core_step, bit for bit; a different state written by
+              plant_core_eval is the one the output and the integration use; xdot is finite; and xdot is the
               right derivative, checked against signals the same step outputs under their own names
               (independent of the xdot vector): position rate = NED velocity, body velocity rate = body
               acceleration, body rate rate = angular acceleration, quaternion rate = 0.5 * Omega(p, q, r) q
               from x, and each of the five controls moves exactly its own actuator state derivative
               (controls[0..4] -> x[15], x[14], x[16], x[17], x[13]); the actuator and gust derivatives
-              also agree with the state change of one ordinary sks_core_step (library-internal
+              also agree with the state change of one ordinary plant_core_step (library-internal
               integration, not the returned vector) within 20 % (+1e-9); at two operating points (the
               rudder doublet and the banked heading case, mid-run)
 """
@@ -40,7 +40,7 @@ sys.path.insert(0, str(CORE))
 import toolchain  # noqa: E402
 TOLERANCE = 1e-9  # absolute, after scaling by max(1, |reference|)
 
-# CoreSnapshot index -> reference raw index (docs/MODEL_INTERFACE.md section 6).
+# CoreSnapshot index -> reference raw index (positions as in hitl/aircraft/skysurfer/adapter.c fill_raw()).
 PAIRS = {
     'position_ned': ([0, 1, 2], [22, 23, 24]),
     'quaternion': ([6, 7, 8, 9], [6, 7, 8, 9]),
@@ -64,14 +64,14 @@ class Initial(C.Structure):
 class Core:
     def __init__(self, path):
         self.lib = C.CDLL(str(path))
-        self.lib.sks_core_size.restype = C.c_size_t
-        self.lib.sks_core_api_version.restype = C.c_uint32
-        self.lib.sks_core_init.argtypes = [C.c_void_p, C.POINTER(Initial)]
-        self.lib.sks_core_step.argtypes = [C.c_void_p, C.POINTER(C.c_double), C.POINTER(C.c_double)]
-        self.lib.sks_core_copy.argtypes = [C.c_void_p, C.c_void_p]
-        self.lib.sks_core_get_state.argtypes = [C.c_void_p, C.POINTER(C.c_double)]
-        self.lib.sks_core_eval.argtypes = [C.c_void_p] + [C.POINTER(C.c_double)] * 4
-        self.size = self.lib.sks_core_size()
+        self.lib.plant_core_size.restype = C.c_size_t
+        self.lib.plant_core_api_version.restype = C.c_uint32
+        self.lib.plant_core_init.argtypes = [C.c_void_p, C.POINTER(Initial)]
+        self.lib.plant_core_step.argtypes = [C.c_void_p, C.POINTER(C.c_double), C.POINTER(C.c_double)]
+        self.lib.plant_core_copy.argtypes = [C.c_void_p, C.c_void_p]
+        self.lib.plant_core_get_state.argtypes = [C.c_void_p, C.POINTER(C.c_double)]
+        self.lib.plant_core_eval.argtypes = [C.c_void_p] + [C.POINTER(C.c_double)] * 4
+        self.size = self.lib.plant_core_size()
 
     def new(self):
         return C.create_string_buffer(self.size)
@@ -81,18 +81,18 @@ class Core:
         ic.velocity_body_m_s[:] = case['velocity']
         ic.height_m = case['height']
         ic.euler_deg[:] = case['euler']
-        self.check(self.lib.sks_core_init(instance, C.byref(ic)))
+        self.check(self.lib.plant_core_init(instance, C.byref(ic)))
 
     def step(self, instance, controls):
         u = (C.c_double * 16)(*controls)
         y = (C.c_double * 72)()
-        self.check(self.lib.sks_core_step(instance, u, y))
+        self.check(self.lib.plant_core_step(instance, u, y))
         return np.frombuffer(y, dtype=np.float64).copy()
 
     @staticmethod
     def check(code):
         if code:
-            raise RuntimeError(f'sks_core returned {code}')
+            raise RuntimeError(f'plant_core returned {code}')
 
 
 def bit_equal(a, b):
@@ -114,15 +114,15 @@ def run(core, case, controls, instance=None):
     return np.array([core.step(instance, u) for u in controls])
 
 
-# controls[0..4] (left aileron, right aileron, elevator, rudder, throttle) -> actuator state in x (sks_core.h:
+# controls[0..4] (left aileron, right aileron, elevator, rudder, throttle) -> actuator state in x (plant_core.h:
 # x[13..17] = throttle, right aileron, left aileron, elevator, rudder).
 ACTUATOR_STATE = {0: 15, 1: 14, 2: 16, 3: 17, 4: 13}
 GUST_STATES = (18, 19, 20)
-DT_S = 0.004  # SKS_CORE_DT_S
+DT_S = 0.004  # PLANT_CORE_DT_S
 
 
 def derivative_oracle(core, src, x, controls, xdot, y):
-    """xdot of sks_core_eval against the step's named output signals (sks_core.h snapshot layout)."""
+    """xdot of plant_core_eval against the step's named output signals (plant_core.h snapshot layout)."""
     def close(a, b):
         return float(np.max(np.abs(np.asarray(a) - np.asarray(b)) / (1.0 + np.abs(np.asarray(b)))))
 
@@ -136,10 +136,10 @@ def derivative_oracle(core, src, x, controls, xdot, y):
     def step_rate(u):
         # The library's own integration of one ordinary step: (x_next - x) / dt, independent of xdot.
         dst = core.new()
-        core.check(core.lib.sks_core_copy(dst, src))
+        core.check(core.lib.plant_core_copy(dst, src))
         core.step(dst, u)
         nxt = (C.c_double * 21)()
-        core.check(core.lib.sks_core_get_state(dst, nxt))
+        core.check(core.lib.plant_core_get_state(dst, nxt))
         return (np.array(nxt[:]) - xs) / DT_S
 
     def rate_error(value, rate):
@@ -153,9 +153,9 @@ def derivative_oracle(core, src, x, controls, xdot, y):
         u = list(controls)
         u[control] += -0.1 if u[control] > 0.5 else 0.1
         dst = core.new()
-        core.check(core.lib.sks_core_copy(dst, src))
+        core.check(core.lib.plant_core_copy(dst, src))
         out, snap = (C.c_double * 21)(), (C.c_double * 72)()
-        core.check(core.lib.sks_core_eval(dst, x, (C.c_double * 16)(*u), out, snap))
+        core.check(core.lib.plant_core_eval(dst, x, (C.c_double * 16)(*u), out, snap))
         changed = [k for k in range(13, 18) if np.array(out[:])[k] != xdot[k]]
         moved[str(control)] = changed
         actuator_errors.append(rate_error(out[state], step_rate(u)[state]))
@@ -176,7 +176,7 @@ def main():
     ref = load_reference_module()
     data = np.load(PLANT / 'reference' / 'data' / 'reference.npz')
     manifest = json.loads((PLANT / 'reference' / 'data' / 'manifest.json').read_text())
-    result = {'library': str(library), 'api_version': hex(core.lib.sks_core_api_version()), 'instance_bytes': core.size,
+    result = {'library': str(library), 'api_version': hex(core.lib.plant_core_api_version()), 'instance_bytes': core.size,
               'reference_build_id': manifest['model_build_id'], 'tolerance': TOLERANCE, 'cases': {}}
     snapshots, worst, all_finite = {}, 0.0, True
     for case in ref.CASES:
@@ -222,7 +222,7 @@ def main():
     core.init(src, c_case)
     first = [core.step(src, c_u[k]) for k in range(split)]
     dst = core.new()
-    core.check(core.lib.sks_core_copy(dst, src))
+    core.check(core.lib.plant_core_copy(dst, src))
     rest_src = [core.step(src, c_u[k]) for k in range(split, len(c_u))]
     rest_dst = [core.step(dst, c_u[k]) for k in range(split, len(c_u))]
     full = snapshots[c_case['name']]
@@ -240,25 +240,25 @@ def main():
     for k in range(split):
         core.step(src, c_u[k])
     x = (C.c_double * nx)()
-    core.check(core.lib.sks_core_get_state(src, x))
+    core.check(core.lib.plant_core_get_state(src, x))
     stepped, evaluated, moved = core.new(), core.new(), core.new()
     for dst in (stepped, evaluated, moved):
-        core.check(core.lib.sks_core_copy(dst, src))
+        core.check(core.lib.plant_core_copy(dst, src))
     u = (C.c_double * 16)(*c_u[split])
     y_step, y_eval, y_moved = (C.c_double * 72)(), (C.c_double * 72)(), (C.c_double * 72)()
     xdot, xdot_moved = (C.c_double * nx)(), (C.c_double * nx)()
-    core.check(core.lib.sks_core_step(stepped, u, y_step))
-    core.check(core.lib.sks_core_eval(evaluated, x, u, xdot, y_eval))
+    core.check(core.lib.plant_core_step(stepped, u, y_step))
+    core.check(core.lib.plant_core_eval(evaluated, x, u, xdot, y_eval))
     x_moved = (C.c_double * nx)(*x)
     x_moved[3] += 1.0  # body u + 1 m/s
-    core.check(core.lib.sks_core_eval(moved, x_moved, u, xdot_moved, y_moved))
+    core.check(core.lib.plant_core_eval(moved, x_moved, u, xdot_moved, y_moved))
     next_step, next_eval = (C.c_double * nx)(), (C.c_double * nx)()
-    core.check(core.lib.sks_core_get_state(stepped, next_step))
-    core.check(core.lib.sks_core_get_state(evaluated, next_eval))
+    core.check(core.lib.plant_core_get_state(stepped, next_step))
+    core.check(core.lib.plant_core_get_state(evaluated, next_eval))
     same = bytes(y_step) == bytes(y_eval) and bytes(next_step) == bytes(next_eval)
     applied = y_moved[3] == x_moved[3] and y_moved[3] != y_eval[3]
     finite = bool(np.isfinite(np.array(xdot[:])).all() and np.isfinite(np.array(xdot_moved[:])).all())
-    version = core.lib.sks_core_api_version()
+    version = core.lib.plant_core_api_version()
     oracle = derivative_oracle(core, src, x, c_u[split], np.array(xdot[:]), np.array(y_eval[:]))
     # A second operating point with non-zero rates and bank: the banked heading case, mid-run.
     d_case = ref.CASES[12]
@@ -268,10 +268,10 @@ def main():
     for k in range(len(d_u) // 2):
         core.step(d_src, d_u[k])
     d_x, d_xdot, d_y = (C.c_double * nx)(), (C.c_double * nx)(), (C.c_double * 72)()
-    core.check(core.lib.sks_core_get_state(d_src, d_x))
+    core.check(core.lib.plant_core_get_state(d_src, d_x))
     d_eval = core.new()
-    core.check(core.lib.sks_core_copy(d_eval, d_src))
-    core.check(core.lib.sks_core_eval(d_eval, d_x, (C.c_double * 16)(*d_u[len(d_u) // 2]), d_xdot, d_y))
+    core.check(core.lib.plant_core_copy(d_eval, d_src))
+    core.check(core.lib.plant_core_eval(d_eval, d_x, (C.c_double * 16)(*d_u[len(d_u) // 2]), d_xdot, d_y))
     oracle_2 = derivative_oracle(core, d_src, d_x, d_u[len(d_u) // 2], np.array(d_xdot[:]), np.array(d_y[:]))
     oracle_2['case'] = d_case['name']
     result['state_eval'] = {'status': 'PASS' if same and applied and finite and version >= 0x00010100

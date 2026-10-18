@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Step-response metrics of a stick-step scenario, shared by SITL and HITL.
 
-  <SkySurfer venv python> -B analysis/response.py \
+  <venv python> -B analysis/response.py \
       --trace <run>/instance_0/trace.csv --scenario sitl/scenarios/stabilized_steps.json [--out metrics.json]
 
-trace.csv columns (sitl/px4_external/src/sks_sim): t_s counted from the first plant step, attitude and body
+trace.csv columns (sitl/px4_external/src/plant_sim): t_s counted from the first plant step, attitude and body
 rates from the plant truth, the sticks and the five controls. The step times of the scenario count from the
 end of settle_s.
 
@@ -34,7 +34,7 @@ otherwise the step is valid = false with its problems listed, and the exit code 
 HITL: --hitl-log <flight log dir> instead of --trace converts <log>/host/wire.bin with
 analysis/hitl_trace.py (step times measured from the sent sticks) and writes hitl_trace.csv and
 hitl_scenario.json next to --out (required), then analyses those:
-  <SkySurfer venv python> -B analysis/response.py --hitl-log <L> --scenario sitl/scenarios/stabilized_steps_hitl.json --out <dir>/metrics.json
+  <venv python> -B analysis/response.py --hitl-log <L> --scenario sitl/scenarios/stabilized_steps_hitl.json --out <dir>/metrics.json
 """
 import argparse
 import csv

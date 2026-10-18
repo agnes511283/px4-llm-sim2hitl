@@ -44,7 +44,7 @@ def validate(actions):
                 raise ValueError('Wait.seconds must be finite and positive')
         elif isinstance(action, Mode):
             # 6 = OFFBOARD: PX4 enters it only while a source sends the offboard signal (a module of modules/, e.g.
-            # sks_template) and leaves it through its own offboard-loss failsafe when the signal stops.
+            # guidance_template) and leaves it through its own offboard-loss failsafe when the signal stops.
             if (type(action.main_mode) is not int or action.main_mode not in (1, 2, 3, 4, 5, 6, 7, 8)
                     or type(action.sub_mode) is not int or not 0 <= action.sub_mode <= 255
                     or not positive(action.timeout)):

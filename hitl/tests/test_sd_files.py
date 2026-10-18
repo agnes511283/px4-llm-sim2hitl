@@ -18,7 +18,7 @@ from host import mavftp, sd_files
 from pymavlink.dialects.v20 import common as mav
 
 EXTRAS='/fs/microsd/etc/extras.txt'
-HELLO=b'# SkySurfer test\nsks_template start\n'
+HELLO=b'# sim2hitl test\nguidance_template start\n'
 LONG=b''.join(b'echo line %03d of a boot file longer than one FTP piece\n'%i for i in range(30))
 
 def wait(predicate,seconds=3):

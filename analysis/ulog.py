@@ -1,4 +1,4 @@
-"""Minimal ULog reader (PX4 logger file format; ROADMAP batch 4h). numpy only, no pyulog.
+"""Minimal ULog reader (PX4 logger file format). numpy only, no pyulog.
 
   log = ulog.read(path)
   log.topics[('vehicle_attitude', 0)]   -> numpy structured array, one row per logged sample

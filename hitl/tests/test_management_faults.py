@@ -620,7 +620,7 @@ class ManagementFaultTests(unittest.TestCase):
         self.core._receive(mav.MAVLink_command_ack_message(400,0).pack(writer),time.monotonic())
         with self.assertRaisesRegex(RuntimeError,'connection changed'):self.core._wait(lambda:True,.1,'timeout')
     def test_gate_forwards_everything_while_controls_disabled(self):
-        # HIL drives no hardware: QGC and agent traffic reaches the FC in every state (BEHAVIOR_CONTRACT 5).
+        # HIL drives no hardware: QGC and agent traffic reaches the FC in every state.
         self.core.start()
         receiver=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);receiver.bind(('127.0.0.1',0));receiver.setblocking(False)
         sender=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)

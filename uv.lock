@@ -104,7 +104,7 @@ wheels = [
 ]
 
 [[package]]
-name = "skysurfer"
+name = "px4-llm-sim2hitl"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

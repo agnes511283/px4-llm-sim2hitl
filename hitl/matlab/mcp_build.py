@@ -23,7 +23,7 @@ def generate(runtime):
     return r['result']
   raise RuntimeError('MATLAB MCP build timeout')
  try:
-  request(1,'initialize',{'protocolVersion':'2024-11-05','capabilities':{},'clientInfo':{'name':'SkySurfer-update','version':'1.0'}})
+  request(1,'initialize',{'protocolVersion':'2024-11-05','capabilities':{},'clientInfo':{'name':'px4-llm-sim2hitl-update','version':'1.0'}})
   proc.stdin.write(json.dumps({'jsonrpc':'2.0','method':'notifications/initialized'})+'\n');proc.stdin.flush()
   tools=request(2,'tools/list',{})['tools'];tool=next(t for t in tools if t['name']=='evaluate_matlab_code')
   props=tool['inputSchema']['properties'];path=str(Path(runtime).parent/'plant'/'core').replace("'","''")

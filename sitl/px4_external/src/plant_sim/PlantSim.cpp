@@ -1,4 +1,4 @@
-#include "SksSim.hpp"
+#include "PlantSim.hpp"
 
 #include <px4_platform_common/getopt.h>
 #include <px4_platform_common/log.h>
@@ -18,13 +18,13 @@ static uint64_t wall_us()
 	return (uint64_t)t.tv_sec * 1000000ULL + (uint64_t)t.tv_usec;
 }
 
-SksSim::SksSim(float duration_s, const char *output_dir, const char *scenario_path) : _duration_s(duration_s)
+PlantSim::PlantSim(float duration_s, const char *output_dir, const char *scenario_path) : _duration_s(duration_s)
 {
 	snprintf(_output_dir, sizeof(_output_dir), "%s", output_dir);
 	snprintf(_scenario_path, sizeof(_scenario_path), "%s", scenario_path);
 }
 
-SksSim::~SksSim()
+PlantSim::~PlantSim()
 {
 	free(_plant);
 	free(_sensors);
@@ -39,7 +39,7 @@ SksSim::~SksSim()
 //   ic <height_agl_m> <u> <v> <w m/s body> <roll> <pitch> <yaw deg> <lat> <lon deg>
 //   base <roll> <pitch> <yaw> <throttle>          sticks held for the whole run
 //   step <start_s> <end_s> <roll> <pitch> <yaw> <throttle>   added to base while start <= t < end
-bool SksSim::load_scenario()
+bool PlantSim::load_scenario()
 {
 	FILE *f = fopen(_scenario_path, "r");
 
@@ -102,7 +102,7 @@ bool SksSim::load_scenario()
 	return have_ic;
 }
 
-SksSim::Sticks SksSim::scenario_sticks(float t) const
+PlantSim::Sticks PlantSim::scenario_sticks(float t) const
 {
 	Sticks s = _base;
 
@@ -118,7 +118,7 @@ SksSim::Sticks SksSim::scenario_sticks(float t) const
 	return s;
 }
 
-void SksSim::advance_clock()
+void PlantSim::advance_clock()
 {
 	_sim_time_us += kStepUs;
 	struct timespec ts;
@@ -126,7 +126,7 @@ void SksSim::advance_clock()
 	px4_clock_settime(CLOCK_MONOTONIC, &ts);
 }
 
-void SksSim::read_controls(bool armed)
+void PlantSim::read_controls(bool armed)
 {
 	actuator_outputs_s out;
 
@@ -152,7 +152,7 @@ void SksSim::read_controls(bool armed)
 	}
 }
 
-void SksSim::publish_stub(hrt_abstime now, const Sticks &sticks, bool armed)
+void PlantSim::publish_stub(hrt_abstime now, const Sticks &sticks, bool armed)
 {
 	if (armed && _armed_time == 0) {
 		_armed_time = now;
@@ -208,7 +208,7 @@ void SksSim::publish_stub(hrt_abstime now, const Sticks &sticks, bool armed)
 	_land_detected_pub.publish(land);
 }
 
-void SksSim::publish_truth(hrt_abstime now, const SksTruth &t, const SksSensorOutput &s)
+void PlantSim::publish_truth(hrt_abstime now, const PlantTruth &t, const PlantSensorOutput &s)
 {
 	_px4_accel.update(now, (float)s.accel_m_s2[0], (float)s.accel_m_s2[1], (float)s.accel_m_s2[2]);
 	_px4_gyro.update(now, (float)s.gyro_rad_s[0], (float)s.gyro_rad_s[1], (float)s.gyro_rad_s[2]);
@@ -286,10 +286,10 @@ void SksSim::publish_truth(hrt_abstime now, const SksTruth &t, const SksSensorOu
 	_air_data_pub.publish(air);
 }
 
-void SksSim::run()
+void PlantSim::run()
 {
-	_plant = (SksPlant *)malloc(sks_plant_size());
-	_sensors = (SksSensors *)malloc(sks_sensors_size());
+	_plant = (Plant *)malloc(plant_size());
+	_sensors = (PlantSensors *)malloc(plant_sensors_size());
 
 	// Air start from the scenario (decision 8), fixed sensor seed as in the HIL adapter.
 	if (!load_scenario()) {
@@ -297,14 +297,14 @@ void SksSim::run()
 		return;
 	}
 
-	SksInitialConditions ic = _ic;
+	PlantInitialConditions ic = _ic;
 	ic.seed = 1;
 	_origin_lat_deg = ic.latitude_deg;
 	_origin_lon_deg = ic.longitude_deg;
-	SksSensorConfig config;
-	sks_sensors_default_config(&config);
+	PlantSensorConfig config;
+	plant_sensors_default_config(&config);
 
-	if (!_plant || !_sensors || sks_plant_init(_plant, &ic) != SKS_OK || sks_sensors_init(_sensors, &config, ic.seed) != SKS_OK) {
+	if (!_plant || !_sensors || plant_init(_plant, &ic) != PLANT_OK || plant_sensors_init(_sensors, &config, ic.seed) != PLANT_OK) {
 		PX4_ERR("plant initialisation failed");
 		return;
 	}
@@ -322,9 +322,9 @@ void SksSim::run()
 	_px4_gyro.set_temperature(25.f);
 	_sim_time_us = 0; // this module owns the PX4 clock (lockstep), as simulator_sih does
 
-	SksPlantInput input{};
-	SksTruth truth{};
-	SksSensorOutput sensors{};
+	PlantInput input{};
+	PlantTruth truth{};
+	PlantSensorOutput sensors{};
 	// Rounded: a float division truncated 60 s to 14,999 steps.
 	const uint64_t total_steps = (uint64_t)llround((double)_duration_s * 1e6 / (double)kStepUs);
 	uint64_t wall_start = 0;
@@ -333,8 +333,8 @@ void SksSim::run()
 
 	// The plant is held at its initial state (truth and IMU of t_0 republished) during the disarmed start-up
 	// and until PX4 produces the first armed actuator output; then every step advances the plant.
-	sks_plant_step(_plant, &input, &truth);
-	sks_sensors_step(_sensors, &truth, &sensors);
+	plant_step(_plant, &input, &truth);
+	plant_sensors_step(_sensors, &truth, &sensors);
 
 	while (!should_exit() && _steps < total_steps) {
 		advance_clock();
@@ -353,7 +353,7 @@ void SksSim::run()
 			input.command.rudder = _controls[3];
 			input.command.throttle = _controls[4];
 
-			if (sks_plant_step(_plant, &input, &truth) != SKS_OK || sks_sensors_step(_sensors, &truth, &sensors) != SKS_OK) {
+			if (plant_step(_plant, &input, &truth) != PLANT_OK || plant_sensors_step(_sensors, &truth, &sensors) != PLANT_OK) {
 				PX4_ERR("plant diverged at step %llu", (unsigned long long)_steps);
 				break;
 			}
@@ -391,7 +391,7 @@ void SksSim::run()
 	const uint64_t wall_end = wall_us();
 	const double wall_s = wall_start ? (wall_end - wall_start) * 1e-6 : 0.0;
 	const double sim_s = _steps * kStepUs * 1e-6;
-	PX4_INFO("SKS_SIM_RESULT steps=%llu sim_s=%.3f wall_s=%.3f realtime_factor=%.2f warmup_steps=%llu",
+	PX4_INFO("PLANT_SIM_RESULT steps=%llu sim_s=%.3f wall_s=%.3f realtime_factor=%.2f warmup_steps=%llu",
 		 (unsigned long long)_steps, sim_s, wall_s, wall_s > 0 ? sim_s / wall_s : 0.0, (unsigned long long)warmup);
 	snprintf(path, sizeof(path), "%s/summary.json", _output_dir);
 	FILE *summary = fopen(path, "w");
@@ -418,15 +418,15 @@ void SksSim::run()
 	}
 }
 
-int SksSim::print_status()
+int PlantSim::print_status()
 {
 	PX4_INFO("steps %llu, sim time %.3f s", (unsigned long long)_steps, _steps * kStepUs * 1e-6);
 	return 0;
 }
 
-int SksSim::task_spawn(int argc, char *argv[])
+int PlantSim::task_spawn(int argc, char *argv[])
 {
-	_task_id = px4_task_spawn_cmd("sks_sim", SCHED_DEFAULT, SCHED_PRIORITY_MAX, 4096, (px4_main_t)&run_trampoline,
+	_task_id = px4_task_spawn_cmd("plant_sim", SCHED_DEFAULT, SCHED_PRIORITY_MAX, 4096, (px4_main_t)&run_trampoline,
 				      (char *const *)argv);
 
 	if (_task_id < 0) {
@@ -437,7 +437,7 @@ int SksSim::task_spawn(int argc, char *argv[])
 	return 0;
 }
 
-SksSim *SksSim::instantiate(int argc, char *argv[])
+PlantSim *PlantSim::instantiate(int argc, char *argv[])
 {
 	float duration = 20.f;
 	const char *output = ".";
@@ -459,22 +459,22 @@ SksSim *SksSim::instantiate(int argc, char *argv[])
 		}
 	}
 
-	return new SksSim(duration, output, scenario);
+	return new PlantSim(duration, output, scenario);
 }
 
-int SksSim::custom_command(int argc, char *argv[])
+int PlantSim::custom_command(int argc, char *argv[])
 {
 	return print_usage("unknown command");
 }
 
-int SksSim::print_usage(const char *reason)
+int PlantSim::print_usage(const char *reason)
 {
 	if (reason) {
 		PX4_WARN("%s", reason);
 	}
 
-	PRINT_MODULE_DESCRIPTION("SkySurfer plant (core + C Truth + C sensors) in lockstep inside PX4; see sitl/README.md.");
-	PRINT_MODULE_USAGE_NAME("sks_sim", "simulation");
+	PRINT_MODULE_DESCRIPTION("Aircraft plant (core + C Truth + C sensors) in lockstep inside PX4; see sitl/README.md.");
+	PRINT_MODULE_USAGE_NAME("plant_sim", "simulation");
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_PARAM_FLOAT('d', 20.f, 0.f, 1e6f, "Simulated duration after the first actuator output [s]", true);
 	PRINT_MODULE_USAGE_PARAM_STRING('o', ".", nullptr, "Output directory (trace.csv, summary.json)", true);
@@ -483,7 +483,7 @@ int SksSim::print_usage(const char *reason)
 	return 0;
 }
 
-extern "C" __EXPORT int sks_sim_main(int argc, char *argv[])
+extern "C" __EXPORT int plant_sim_main(int argc, char *argv[])
 {
-	return SksSim::main(argc, argv);
+	return PlantSim::main(argc, argv);
 }

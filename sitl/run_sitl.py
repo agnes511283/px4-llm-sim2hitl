@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Run the SkySurfer SITL: minimal PX4 with the sks_sim plant module (sitl/README.md).
+"""Run the SITL: minimal PX4 with the plant_sim plant module (sitl/README.md).
 
-  <SkySurfer venv python> -B sitl/run_sitl.py \
+  <venv python> -B sitl/run_sitl.py \
       --out <new folder> [--scenario sitl/scenarios/stabilized_steps.json] \
       [--duration S] [--instances N]
 
@@ -14,8 +14,8 @@ throttle stick from the trim throttle, and in Stabilized a base pitch stick that
 hitl_overrides.params): <instance>/log/<date>/*.ulg, the input of sitl/replay.py's self-test.
 --logger-topics FILE (with --ulog) replaces that profile by PX4's custom topic list (lines "topic interval_ms
 instance", copied to <instance>/etc/logging/logger_topics.txt), e.g. every input at full rate.
---start CMD (repeatable) starts one more PX4 command after the mode's modules and before sks_sim, e.g.
---start "sks_template start" for a module of modules/src (a scenario's "start" list adds to these; see
+--start CMD (repeatable) starts one more PX4 command after the mode's modules and before plant_sim, e.g.
+--start "guidance_template start" for a module of modules/src (a scenario's "start" list adds to these; see
 sitl/scenarios/template_offboard.json); the A/B baseline is the same run without it.
 --replay ULOG instead replays a ULog through PX4's own controllers (sitl/replay.py, needs
 `python3 sitl/build_sitl.py --replay`) and compares the recomputed outputs with the logged ones
@@ -27,8 +27,8 @@ plus HITL overrides), translated for SITL: outputs on PWM_MAIN_FUNC instead of H
 IMU device ids, SYS_HITL=0, FC sensor calibration dropped. Prints one JSON line with every instance's
 real-time factor and the aggregate.
 
-The PX4 build is <PX4 tree>/build/px4_sitl_default_skysurfer (python3 sitl/build_sitl.py); the tree location
-comes from px4/check_px4_tree.py (SKYSURFER_PX4_ROOT or the local config file).
+The PX4 build is <PX4 tree>/build/px4_sitl_default_sim2hitl (python3 sitl/build_sitl.py); the tree location
+comes from px4/check_px4_tree.py (SIM2HITL_PX4_ROOT or the local config file).
 """
 import argparse
 import json
@@ -49,8 +49,8 @@ from check_px4_tree import px4_root  # noqa: E402
 # Parameters that belong to the physical FC or to modules this SITL does not run.
 EXCLUDED_PREFIXES = ('CAL_', 'UAVCAN_', 'RC', 'MAV_', 'SER_', 'BAT', 'EKF2_', 'SDLOG_', 'DSHOT_', 'UXRCE_',
                      'HIL_ACT_', 'PWM_', 'SYS_HITL', 'SYS_AUTOSTART', 'SYS_AUTOCONFIG', 'SYS_USB_AUTO')
-SIM_IMU_ID = 1310988  # DRV_IMU_DEVTYPE_SIM, bus 1, address 1 (sks_sim's PX4Accelerometer / PX4Gyroscope)
-# PX4 modules per mode, started before sks_sim: only what the mode needs, no EKF2 (sitl/README.md).
+SIM_IMU_ID = 1310988  # DRV_IMU_DEVTYPE_SIM, bus 1, address 1 (plant_sim's PX4Accelerometer / PX4Gyroscope)
+# PX4 modules per mode, started before plant_sim: only what the mode needs, no EKF2 (sitl/README.md).
 COMMON = ['sensors start', 'pwm_out_sim start -m sim', 'control_allocator start', 'fw_rate_control start']
 MODULES = {'acro': COMMON, 'stabilized': COMMON + ['fw_att_control start'],
            # OFFBOARD (velocity): PX4's own altitude/speed control under a guidance module started by "start"
@@ -100,16 +100,16 @@ def startup_script(params_file, mode, duration, out, ulog=False, start=()):
     lines += MODULES[mode]
     lines += list(start)  # --start: custom modules, after the mode's PX4 modules
     # Last, so every PX4 work queue exists before the simulated clock starts (reproducible lockstep).
-    lines.append(f'sks_sim start -d {duration} -o {out} -s {out}/scenario.txt')
+    lines.append(f'plant_sim start -d {duration} -o {out} -s {out}/scenario.txt')
     if ulog:
-        # After sks_sim so its topics (airspeed_validated...) exist: the logger only takes optional topics that
+        # After plant_sim so its topics (airspeed_validated...) exist: the logger only takes optional topics that
         # are advertised when it starts. -f: from start until shutdown; -p: one write per angular-velocity sample.
         lines.append('logger start -f -t -b 1000 -p vehicle_angular_velocity')
     return '\n'.join(lines) + '\n'
 
 
 def scenario_text(scenario, params):
-    """The scenario JSON as the line records sks_sim reads (SksSim::load_scenario)."""
+    """The scenario JSON as the line records plant_sim reads (PlantSim::load_scenario)."""
     initial = scenario['initial']
     airspeed = initial['airspeed_m_s']
     alpha_deg, throttle = 0.0, 0.0
@@ -174,7 +174,7 @@ def main():
                         help="record a ULog with the HITL logging profile (default; --no-ulog to skip)")
     parser.add_argument('--logger-topics', type=Path, help='custom logger topic list instead of the profile')
     parser.add_argument('--start', action='append', default=[], metavar='CMD',
-                        help='one more PX4 command before sks_sim, e.g. "sks_template start" (repeatable)')
+                        help='one more PX4 command before plant_sim, e.g. "guidance_template start" (repeatable)')
     parser.add_argument('--replay', type=Path, metavar='ULOG', help='replay this ULog through the PX4 controllers')
     parser.add_argument('--speed', type=float, default=5.0, help='--replay speed factor (self-test: 5 = 1, 10 slightly worse)')
     parser.add_argument('--tolerance', type=float, default=1e-3, help='--replay: report differences above this')
@@ -182,7 +182,7 @@ def main():
     if args.replay:
         return replay_main(args)
     px4_tree = px4_root()
-    px4 = px4_tree / 'build' / 'px4_sitl_default_skysurfer' / 'bin' / 'px4'
+    px4 = px4_tree / 'build' / 'px4_sitl_default_sim2hitl' / 'bin' / 'px4'
     params = sitl_params()
     if args.ulog:
         params['SDLOG_PROFILE'] = read_params(NATIVE / 'hitl_overrides.params')['SDLOG_PROFILE']
@@ -190,7 +190,7 @@ def main():
     duration = args.duration or scenario.get('settle_s', 0.0) + scenario['duration_s']
     text, trim_result = scenario_text(scenario, params)
     env = dict(os.environ, PATH=f'{px4.parent}:{os.environ.get("PATH", "")}')
-    # The start-up script waits for the PX4 server, launches are staggered, and an instance whose sks_sim has
+    # The start-up script waits for the PX4 server, launches are staggered, and an instance whose plant_sim has
     # not started (no trace.csv) within --startup-timeout s or that exited without a summary is restarted
     # (at most --retries times; counted in the report). px4.log is block-buffered, so it is not polled.
 
@@ -199,7 +199,7 @@ def main():
         work.mkdir(parents=True, exist_ok=True)
         for name in ('summary.json', 'trace.csv'):
             (work / name).unlink(missing_ok=True)
-        script = work / 'sks_rcS'
+        script = work / 'sitl_rcS'
         (work / 'sitl_params.bson').write_bytes(params_bson(params))
         (work / 'scenario.txt').write_text(text)
         if args.logger_topics:

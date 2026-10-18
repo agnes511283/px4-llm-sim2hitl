@@ -505,7 +505,7 @@ class Core(SdFiles):
                     continue
                 with self.route_lock:
                     # Everything from QGC and the agent is forwarded, whether or not the model runs
-                    # (HIL drives no hardware; BEHAVIOR_CONTRACT section 5). The only rerouting is the
+                    # (HIL drives no hardware). The only rerouting is the
                     # stick handover: QGC sticks go to the agent while the managed pilot is flying.
                     helpers = getattr(self.transport, 'helpers', None)
                     if helpers and self.external_controls_enabled:
@@ -1262,7 +1262,7 @@ class Core(SdFiles):
         """deploy/check_params.py, loaded from the project (the same judgement the user runs offline)."""
         import importlib.util
 
-        spec = importlib.util.spec_from_file_location('skysurfer_check_params', self.project / 'deploy/check_params.py')
+        spec = importlib.util.spec_from_file_location('check_params', self.project / 'deploy/check_params.py')
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
@@ -2161,7 +2161,7 @@ class Core(SdFiles):
         args = []
         for name, value in self.profile['automation'].items():
             args += ['--' + name.replace('_', '-'), str(value)]
-        entry = str(self.project / 'hitl/autotakeoff/FW_SkySurfer_HIL_AutoTakeoff.py')
+        entry = str(self.project / 'hitl/autotakeoff/autotakeoff.py')
         base = [
             sys.executable,
             '-B',

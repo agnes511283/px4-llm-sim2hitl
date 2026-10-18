@@ -14,7 +14,7 @@ def main(argv=None):
             [
                 sys.executable,
                 '-B',
-                str(RUNTIME / 'autotakeoff/FW_SkySurfer_HIL_AutoTakeoff.py'),
+                str(RUNTIME / 'autotakeoff/autotakeoff.py'),
                 'takeoff',
                 '--help',
             ]

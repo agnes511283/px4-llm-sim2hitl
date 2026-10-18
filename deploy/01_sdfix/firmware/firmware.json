@@ -46,8 +46,8 @@
   },
   "build": {
     "command": "make px4_fmu-v6c_default BUILD_DIR_SUFFIX=_01_sdfix",
-    "build_tree": "/home/iec/px4/PX4-Autopilot-build",
-    "output_dir": "/home/iec/px4/PX4-Autopilot-build/build/px4_fmu-v6c_default_01_sdfix",
+    "build_tree": "<PX4 build tree>",
+    "output_dir": "<PX4 build tree>/build/px4_fmu-v6c_default_01_sdfix",
     "patches": [
       {
         "file": "px4/patches/nuttx_82d12852_stm32h7_sdmmc_rx_invalidate.patch",
@@ -60,13 +60,13 @@
     "toolchain": "arm-none-eabi-gcc (15:13.2.rel1-2) 13.2.1 20231009",
     "built_at_utc": "2026-10-17T19:21:36Z",
     "seconds": 12.4,
-    "log": "/home/iec/.cache/SkySurfer/firmware/01_sdfix/build_20261018_032124.log"
+    "log": "~/.cache/px4-llm-sim2hitl/firmware/01_sdfix/build_20261018_032124.log"
   },
   "flashed": {
     "status": "PASS",
     "at_utc": "2026-10-18T07:22:01Z",
     "port": "/dev/ttyACM0",
-    "tool": "/home/iec/px4/PX4-Autopilot/Tools/px_uploader.py --port /dev/ttyACM0 px4_fmu-v6c_default.px4",
+    "tool": "<PX4 tree>/Tools/px_uploader.py --port /dev/ttyACM0 px4_fmu-v6c_default.px4",
     "attempts": 1,
     "after": {
       "flight_sw_version": 17891583,
@@ -74,6 +74,6 @@
       "os_hash_prefix": "8d3ed2a2177267cb",
       "board_version": 56
     },
-    "evidence": "/home/iec/.cache/SkySurfer/deploy_runs/run_20261018_072113Z_0fe09c8e/flash"
+    "evidence": "~/.cache/px4-llm-sim2hitl/deploy_runs/run_20261018_072113Z_0fe09c8e/flash"
   }
 }

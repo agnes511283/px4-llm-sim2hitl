@@ -2,7 +2,7 @@
 ## Makefile generated for component 'SkySurfer_Core'. 
 ## 
 ## Makefile     : SkySurfer_Core.mk
-## Generated on : Sun Oct 18 01:46:36 2026
+## Generated on : Sun Oct 18 16:10:05 2026
 ## Final product: $(RELATIVE_PATH_TO_ANCHOR)/SkySurfer_Core
 ## Product type : executable
 ## 
@@ -21,7 +21,7 @@ MAKEFILE                  = SkySurfer_Core.mk
 MATLAB_ROOT               = /home/iec/MATLAB/R2026b
 MATLAB_BIN                = /home/iec/MATLAB/R2026b/bin
 MATLAB_ARCH_BIN           = $(MATLAB_BIN)/glnxa64
-START_DIR                 = /home/iec/.cache/SkySurfer/core_20261018_014533_173/codegen
+START_DIR                 = /home/iec/.cache/px4-llm-sim2hitl/core_20261018_160937_303/codegen
 SOLVER                    = 
 SOLVER_OBJ                = 
 CLASSIC_INTERFACE         = 0

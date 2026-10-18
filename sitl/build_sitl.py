@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Build the SITL PX4 variant (PX4 + sks_sim) in its own build directory (sitl/README.md).
+"""Build the SITL PX4 variant (PX4 + plant_sim) in its own build directory (sitl/README.md).
 
   python3 sitl/build_sitl.py [--plant-lib PATH]
   python3 sitl/build_sitl.py --replay
 
 --replay builds PX4's own replay variant instead (`make px4_sitl_replay`, output in
 <PX4 tree>/build/px4_sitl_replay): the default SITL board plus uORB publisher rules, used by sitl/replay.py
-for the ULog replay (ROADMAP batch 4h). It has no sks_sim and needs no plant library.
+for the ULog replay. It has no plant_sim and needs no plant library.
 
 1. Locates the PX4 source tree and checks it against px4/px4_lock.json (px4/check_px4_tree.py must PASS).
 2. Picks the plant library: --plant-lib, or the cache of the active model release (its build.json records
    its plant library, published in the release next to the HIL library). A development build
    may point --plant-lib at a trial cache without publishing a release.
-3. Runs `make px4_sitl_default EXTERNAL_MODULES_LOCATION=sitl/px4_external BUILD_DIR_SUFFIX=_skysurfer`
-   in the PX4 tree (incremental; output in <PX4 tree>/build/px4_sitl_default_skysurfer, git-ignored).
+3. Runs `make px4_sitl_default EXTERNAL_MODULES_LOCATION=sitl/px4_external BUILD_DIR_SUFFIX=_sim2hitl`
+   in the PX4 tree (incremental; output in <PX4 tree>/build/px4_sitl_default_sim2hitl, git-ignored).
    It never edits the PX4 tree's sources, and never touches build/px4_sitl_default.
 
 Prints one JSON line (tree, plant library and its SHA-256, exit code, log path).
@@ -67,7 +67,7 @@ def main():
         raise SystemExit(f'plant library not found: {plant}')
     log = LOGS / f'sitl_build_{time.strftime("%Y%m%d_%H%M%S")}.log'
     cmd = ['make', 'px4_sitl_default', f'EXTERNAL_MODULES_LOCATION={ROOT / "sitl" / "px4_external"}',
-           'BUILD_DIR_SUFFIX=_skysurfer', f'CMAKE_ARGS=-DSKS_PLANT_LIB={plant}']
+           'BUILD_DIR_SUFFIX=_sim2hitl', f'CMAKE_ARGS=-DPLANT_LIB={plant}']
     with open(log, 'w') as out:
         code = subprocess.run(cmd, cwd=tree, stdout=out, stderr=subprocess.STDOUT).returncode
     print(json.dumps({'status': 'PASS' if code == 0 else 'FAIL', 'tree': str(tree), 'plant_lib': str(plant),

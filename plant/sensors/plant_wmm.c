@@ -1,16 +1,16 @@
 /* World Magnetic Model field evaluation (WMM technical report, sections 1.2-1.3). */
-#include "sks_wmm.h"
+#include "plant_wmm.h"
 
 #include <math.h>
 
-#define N SKS_WMM_DEGREE
+#define N PLANT_WMM_DEGREE
 
 static const double kPi = 3.14159265358979323846;
 static const double kWgs84A = 6378.137;               /* km */
 static const double kWgs84F = 1.0 / 298.257223563;
 static const double kGeomagneticRadius = 6371.2;      /* km */
 
-void sks_wmm_field_ned(double latitude_deg, double longitude_deg, double height_m, double decimal_year,
+void plant_wmm_field_ned(double latitude_deg, double longitude_deg, double height_m, double decimal_year,
                        double field_ned_nt[3]) {
   const double deg = kPi / 180.0;
   const double e2 = kWgs84F * (2.0 - kWgs84F);
@@ -25,9 +25,9 @@ void sks_wmm_field_ned(double latitude_deg, double longitude_deg, double height_
 
   /* Time-adjusted Gauss coefficients. */
   double g[N + 1][N + 1] = {{0}}, hh[N + 1][N + 1] = {{0}};
-  const double dt = decimal_year - sks_wmm_epoch;
-  for (int k = 0; k < SKS_WMM_COEFF_COUNT; k++) {
-    const SksWmmCoeff *c = &sks_wmm_coeffs[k];
+  const double dt = decimal_year - plant_wmm_epoch;
+  for (int k = 0; k < PLANT_WMM_COEFF_COUNT; k++) {
+    const PlantWmmCoeff *c = &plant_wmm_coeffs[k];
     g[c->n][c->m] = c->g + dt * c->gdot;
     hh[c->n][c->m] = c->h + dt * c->hdot;
   }

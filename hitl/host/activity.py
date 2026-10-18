@@ -52,7 +52,7 @@ class MacActivity:
         reason = self.send_string(
             self.objc.objc_getClass(b'NSString'),
             self.objc.sel_registerName(b'stringWithUTF8String:'),
-            b'SkySurfer HIL 4ms model and GUI operations',
+            b'px4-llm-sim2hitl HIL 4 ms model',
         )
         token = self.begin(
             self.process,

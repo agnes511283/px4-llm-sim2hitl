@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Judge one OFFBOARD run of the sks_template example from its ULog (SITL and HITL alike).
+"""Judge one OFFBOARD run of the guidance_template example from its ULog (SITL and HITL alike).
 
-  <SkySurfer venv python> -B analysis/template_check.py <flight.ulg> [--out metrics.json]
+  <venv python> -B analysis/template_check.py <flight.ulg> [--out metrics.json]
 
 From entering OFFBOARD (vehicle_status.nav_state): the course should turn by COURSE_STEP after COURSE_AT and the
-altitude rise by ALTITUDE_STEP after ALTITUDE_AT (modules/src/sks_template). Each step is measured from the steady
+altitude rise by ALTITUDE_STEP after ALTITUDE_AT (modules/src/guidance_template). Each step is measured from the steady
 value in the second before it (the altitude from the TECS altitude setpoint then, the module's own target), and
 the bank from the first step on, so the mode flown before OFFBOARD (in HITL a
 banked loiter) does not count. Course = atan2(vy, vx) and
 altitude = -z + ref_alt of vehicle_local_position (truth in SITL, the FC's EKF in HITL). Reported per step:
 the change at the end of its window, rise time 10->90 %, overshoot, settling time into a 5 % band; plus the
 largest bank and the airspeed range while in OFFBOARD. The pass limits below are the example's own (written in
-modules/src/sks_template/README.md); a new module writes its own.
+modules/src/guidance_template/README.md); a new module writes its own.
 """
 import argparse
 import json

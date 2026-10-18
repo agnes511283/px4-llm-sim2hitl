@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT))
 from commands.sequence import CommandSequence, Mode, Sticks, Wait, load_script, validate
 import commands.sequence as sequence_module
 
-spec = importlib.util.spec_from_file_location('command_pilot', ROOT/'autotakeoff/FW_SkySurfer_HIL_AutoTakeoff.py')
+spec = importlib.util.spec_from_file_location('command_pilot', ROOT/'autotakeoff/autotakeoff.py')
 pilot = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pilot)
 

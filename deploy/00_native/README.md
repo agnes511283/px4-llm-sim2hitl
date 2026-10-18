@@ -25,7 +25,7 @@
 | `boot` | STM32H7 板子架構預設（`EKF2_MULTI_IMU`、`SENS_IMU_MODE`、`MC_AT_EN`、`UAVCAN_ENABLE`）與 `rcS` 在 HITL 時設的 `GPS_1_CONFIG=0` | 不寫，只核對 |
 | `verify_only` | `SYS_AUTOSTART` | 不寫，只核對 |
 | `set` | 專案要寫的 11 個：HITL 8 個（`SYS_HITL`、`HIL_ACT_FUNC1..5`、`HIL_ACT_REV`、`SDLOG_PROFILE`）＋`MAV_1_CONFIG`、`MAV_1_FLOW_CTRL`、`SENS_EN_THERMAL`（FC 上原有、沒有開機腳本設、來源不明，照 FC 現值保留） | **只寫這些** |
-| `fc_owned` | 這台 FC 與其安裝的參數（校正、空速管型號、操作者遙控器的 RC 校正與通道對應、板子安裝、電源模組、裝置 ID、計數器、學到的磁偏角）：11 條規則，解析出的 499 個名字存在檔內 | 值不寫不比，但一定要讀到 |
+| `fc_owned` | 每台 FC 自己與其安裝的參數（校正、空速管型號、操作者遙控器的 RC 校正與通道對應、板子安裝、電源模組、裝置 ID、計數器、學到的磁偏角）：11 條規則，解析出的 499 個名字存在檔內 | 值不寫不比，但一定要讀到 |
 
 - 其他參數一律應等於 `firmware/parameters.json.xz` 的預設值。FC 上不要手動改參數：改了，核對會在 `not_default` 列出並判 FAIL；要改就改 `params.json` 再部署。`not_default` 只是報告，不是寫入清單。
 - **讀回**（要先開 owner：`./runbridge bridge`）：`./runbridge param-readback --release deploy/<配方> --out DIR`。PX4 的參數清單只送「有在用」的參數，沒在用的仍可用名字讀寫；完整讀回 = 清單＋依韌體的參數名單用名字補讀（程式：`hitl/host/core.py` 的 `param_readback`）。

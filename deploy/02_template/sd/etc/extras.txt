@@ -1,1 +1,1 @@
-sks_template start
+guidance_template start

@@ -1,19 +1,19 @@
-#include "SksTemplate.hpp"
+#include "GuidanceTemplate.hpp"
 
 #include <lib/geo/geo.h>
 #include <lib/mathlib/mathlib.h>
 #include <lib/matrix/matrix/math.hpp>
 #include <px4_platform_common/log.h>
 
-SksTemplate::SksTemplate() : ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::nav_and_controllers) {}
+GuidanceTemplate::GuidanceTemplate() : ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::nav_and_controllers) {}
 
-bool SksTemplate::init()
+bool GuidanceTemplate::init()
 {
 	ScheduleOnInterval(PERIOD);
 	return true;
 }
 
-void SksTemplate::guidance(float seconds_in_offboard, float course, float ground_speed, float &lateral_accel,
+void GuidanceTemplate::guidance(float seconds_in_offboard, float course, float ground_speed, float &lateral_accel,
 			   float &altitude_amsl)
 {
 	// --- the algorithm (replace this) -------------------------------------------------------------------------
@@ -25,7 +25,7 @@ void SksTemplate::guidance(float seconds_in_offboard, float course, float ground
 	// -----------------------------------------------------------------------------------------------------------
 }
 
-void SksTemplate::Run()
+void GuidanceTemplate::Run()
 {
 	if (should_exit()) {
 		ScheduleClear();
@@ -47,7 +47,7 @@ void SksTemplate::Run()
 	if (!position_ok) {
 		// No offboard signal: PX4 will not enter OFFBOARD, and leaves it through its offboard-loss failsafe.
 		if (_active) {
-			PX4_WARN("sks_template: local position not valid, offboard signal stopped");
+			PX4_WARN("guidance_template: local position not valid, offboard signal stopped");
 		}
 
 		_active = false;
@@ -66,7 +66,7 @@ void SksTemplate::Run()
 
 	if (_nav_state != vehicle_status_s::NAVIGATION_STATE_OFFBOARD) {
 		if (_active) {
-			PX4_INFO("sks_template: left OFFBOARD after %.1f s", (double)((now - _entered) * 1e-6));
+			PX4_INFO("guidance_template: left OFFBOARD after %.1f s", (double)((now - _entered) * 1e-6));
 		}
 
 		_active = false;
@@ -79,7 +79,7 @@ void SksTemplate::Run()
 		_course0 = course;
 		_altitude0 = altitude;
 		_entries++;
-		PX4_INFO("sks_template: OFFBOARD entered, course %.1f deg, altitude %.1f m", (double)math::degrees(course),
+		PX4_INFO("guidance_template: OFFBOARD entered, course %.1f deg, altitude %.1f m", (double)math::degrees(course),
 			 (double)altitude);
 	}
 
@@ -104,9 +104,9 @@ void SksTemplate::Run()
 	_longitudinal_pub.publish(longitudinal);
 }
 
-int SksTemplate::task_spawn(int argc, char *argv[])
+int GuidanceTemplate::task_spawn(int argc, char *argv[])
 {
-	SksTemplate *instance = new SksTemplate();
+	GuidanceTemplate *instance = new GuidanceTemplate();
 
 	if (instance) {
 		_object.store(instance);
@@ -126,19 +126,19 @@ int SksTemplate::task_spawn(int argc, char *argv[])
 	return PX4_ERROR;
 }
 
-int SksTemplate::print_status()
+int GuidanceTemplate::print_status()
 {
 	PX4_INFO("%s, OFFBOARD entries %u, course target %.1f deg, altitude target %.1f m", _active ? "active" : "idle",
 		 (unsigned)_entries, (double)math::degrees(_course_target), (double)_altitude_target);
 	return 0;
 }
 
-int SksTemplate::custom_command(int argc, char *argv[])
+int GuidanceTemplate::custom_command(int argc, char *argv[])
 {
 	return print_usage("unknown command");
 }
 
-int SksTemplate::print_usage(const char *reason)
+int GuidanceTemplate::print_usage(const char *reason)
 {
 	if (reason) {
 		PX4_WARN("%s\n", reason);
@@ -147,17 +147,17 @@ int SksTemplate::print_usage(const char *reason)
 	PRINT_MODULE_DESCRIPTION(
 		R"DESCR_STR(
 ### Description
-SkySurfer template: guidance in OFFBOARD from inside the firmware (course P law -> lateral acceleration, altitude
-hold); PX4's own altitude/speed, attitude and rate control below. Example only; see modules/src/sks_template/README.md.
+Example module: guidance in OFFBOARD from inside the firmware (course P law -> lateral acceleration, altitude
+hold); PX4's own altitude/speed, attitude and rate control below. Example only; see modules/src/guidance_template/README.md.
 )DESCR_STR");
 
-	PRINT_MODULE_USAGE_NAME("sks_template", "template");
+	PRINT_MODULE_USAGE_NAME("guidance_template", "template");
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 	return 0;
 }
 
-extern "C" __EXPORT int sks_template_main(int argc, char *argv[])
+extern "C" __EXPORT int guidance_template_main(int argc, char *argv[])
 {
-	return SksTemplate::main(argc, argv);
+	return GuidanceTemplate::main(argc, argv);
 }

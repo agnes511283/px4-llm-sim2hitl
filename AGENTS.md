@@ -1,4 +1,4 @@
-# SkySurfer：給 AI 的工作規則
+# px4-llm-sim2hitl：給 AI 的工作規則
 
 專案是什麼、流程、環境準備與指令見 [README](README.md)。本檔只寫 AI 怎麼工作。
 
@@ -15,7 +15,7 @@ AI 先查好現況、提出建議，只跟人確認**目標、選擇與成功條
 1. **先聽**：想做什麼、要飛什麼情境、怎樣算成功。
 2. **1.1 飛機模型與配平**：是哪一架飛機、和 SkySurfer 差在哪裡（外型、重量、重心、慣量、氣動、舵面配置）。舵面配置不同時（例如飛翼、V 尾），現在固定的五路輸入（左副翼、右副翼、升降舵、方向舵、油門）要跟著改。改完：重新產碼、四道檢查、配平與放手測試（`sitl/trim.py`）。刻意改了模型後，「對錄製參考資料的比對」本來就會不同（它只報告、不擋）；確認同次 Simulink 對照通過後，再重錄參考資料。
 3. **1.2 算法、部署與驗收**：
-   - **先讀鎖定版本的 PX4 原始碼，再和使用者討論接法**：依使用者要開發的東西，整理 PX4 現在的控制鏈（固定翼大致是：導引／模式管理 → 高度與速度 → 姿態 → 角速度 → 控制分配）、模式與相關模組，找出這次可行的方案；每個方案用白話說明要不要改 PX4 原始碼、能不能切回原生、失效保護誰負責、Flash 空間、SITL 要模擬哪些部分。可能的例子：OFFBOARD（交出去幾層由旗標決定，模組也能在韌體內自己發 OFFBOARD 訊號，不一定要外接任務電腦）、用專案的 patch 機制修改或拿掉原生模組、PX4 的外部模式。**這些只是例子，不是只有這幾種**；方案由使用者選，AI 依原始碼查證可行後才開始。`modules/src/sks_template` 是其中一種接法的範例，只用來讓人有概念；
+   - **先讀鎖定版本的 PX4 原始碼，再和使用者討論接法**：依使用者要開發的東西，整理 PX4 現在的控制鏈（固定翼大致是：導引／模式管理 → 高度與速度 → 姿態 → 角速度 → 控制分配）、模式與相關模組，找出這次可行的方案；每個方案用白話說明要不要改 PX4 原始碼、能不能切回原生、失效保護誰負責、Flash 空間、SITL 要模擬哪些部分。可能的例子：OFFBOARD（交出去幾層由旗標決定，模組也能在韌體內自己發 OFFBOARD 訊號，不一定要外接任務電腦）、用專案的 patch 機制修改或拿掉原生模組、PX4 的外部模式。**這些只是例子，不是只有這幾種**；方案由使用者選，AI 依原始碼查證可行後才開始。`modules/src/guidance_template` 是其中一種接法的範例，只用來讓人有概念；
    - 預想 SITL 與 HITL 會碰到的問題：SITL 用真值、不經 EKF；HITL 編進客製韌體、用 FC 上 EKF 的估測；和現有飛行模式怎麼共存；Flash 空間（原生韌體已用約 98 %）；
    - 談好：用哪塊飛控、HITL 是否已設好；新算法何時接手、怎麼退出、失效時怎麼回到原生；用什麼動作證明它真的有作用；
    - **「怎麼部署」是第 3 段一條龍的前提**；
@@ -26,6 +26,8 @@ AI 先查好現況、提出建議，只跟人確認**目標、選擇與成功條
 **建議先做「最小打通」**：開發位置確定後（例如只做導引），先不寫正式算法，而是架好開發框架，用一個極簡的版本（例如把 PX4 原本的導引換成一個很簡單的測試）走完 SITL → 編韌體 → 燒錄 → HITL 一次，並記錄下來。之後每次修改都交給自動化（第 2 段的指令與第 3 段的 `deploy-test`），不必每次重新摸索接法，可以省下很多 token。把這個建議告訴使用者，由使用者決定要不要做。
 
 **建議人隨著開發慢慢建立自己的自動化**：同一件事手動做了兩三次（例如一段飛行動作、一種判定、一串檢查），就建議把它變成專案裡的指令或腳本，放在現有的位置（起飛後動作放 `hitl/commands/`、判定放 `analysis/`、配方的 `hitl.json` 指定要跑哪些），之後一個指令跑完、AI 只讀結果。越用越省 token，也越不容易出錯。只在真的重複時才建議，不預先做；由人決定要不要做。
+
+**建議人把這包本地化**：這包是給大家用的通用套件。拿它開始自己的專案時（例如 fork 一份），建議人把它改成自己的：自己的飛機（模型、`hitl/aircraft/<飛機>/`、名稱）、自己機器的路徑與設定（環境變數 `SIM2HITL_*` 或設定檔）、自己的飛控與配方、自己的驗收標準與自動化腳本，並寫進專案文件。之後的 AI 讀文件就知道，不必每次重新查，省 token。由人決定要不要做、做到哪裡。
 
 **建議使用者用 ULog 看結果**：SITL、HITL、實機都產生 ULog，AI 用 Python 自動判定，人用 MATLAB 畫圖檢查；好處與工具見 [analysis README](analysis/README.md) 的「ULog 工具包」，向使用者說明後由他決定。
 
@@ -69,7 +71,7 @@ AI 先查好現況、提出建議，只跟人確認**目標、選擇與成功條
 | `sitl/`、`modules/` | `sitl/build_sitl.py` → `sitl/run_sitl.py` → `analysis/response.py` |
 | 韌體、參數、開機檔（`deploy/<配方>/`、`modules/`、`px4/patches/`） | 第 3 段：`./runbridge deploy-test --release deploy/<配方>` 先看計畫（只讀），再由人選 `--flash`（必要時先編韌體、燒錄）或 `--reuse`（沿用 FC 上的韌體）；只編韌體：`./runbridge build-firmware --release deploy/<配方>` |
 
-離線測試與負載（`PY` = venv 的 python，例如 `~/.local/share/SkySurfer/venv/bin/python`）：
+離線測試與負載（`PY` = venv 的 python，例如 `~/.local/share/px4-llm-sim2hitl/venv/bin/python`）：
 
 ```sh
 for f in hitl/tests/test_*.py deploy/test_*.py; do echo "== $f"; "$PY" -B "$f" 2>&1 | tail -1; done
@@ -82,9 +84,9 @@ for f in hitl/tests/test_*.py deploy/test_*.py; do echo "== $f"; "$PY" -B "$f" 2
 |---|---|
 | `model/` | 飛機模型來源；`generated/` 是轉好的 C 與 Simulink 參考結果 |
 | `plant/` | plant 核心包裝、C 真值、C 感測器、各自的檢查程式、錄製的參考資料 |
-| `sitl/` | 精簡 PX4 的 plant 模組 `sks_sim`、情境、配平、ULog 重播 |
-| `modules/` | 自己的 PX4 模組（同一份原始碼編進 SITL 與韌體；`sks_template` 是範例，見它的 README「照著做一個自己的模組」）。韌體只編配方 `recipe.modules` 列的模組；SITL 要在 `sitl/px4_external/src/` 加包裝並列進那裡的 `CMakeLists.txt` |
+| `sitl/` | 精簡 PX4 的 plant 模組 `plant_sim`、情境、配平、ULog 重播 |
+| `modules/` | 自己的 PX4 模組（同一份原始碼編進 SITL 與韌體；`guidance_template` 是範例，見它的 README「照著做一個自己的模組」）。韌體只編配方 `recipe.modules` 列的模組；SITL 要在 `sitl/px4_external/src/` 加包裝並列進那裡的 `CMakeLists.txt` |
 | `hitl/` | runtime（owner、worker、`hitl-run`）、起飛與起飛後動作腳本、`flight_test.json`（預設飛行與判定）、模型 release |
-| `deploy/` | 部署配方：`00_native`（原生韌體＋參數，可隨時刷回）、`01_sdfix`（原生＋記憶卡修正 patch，交接時 FC 上是它）、`02_template`（01＋範例模組 `sks_template`＋開機檔＋`hitl.json` 指定的起飛後動作與判定）；自建配方的 `firmware/firmware.json` 的 `recipe` 寫要套的 patch 與 `modules/` 的模組，`px4/build_firmware.py` 在 PX4 原始碼樹旁的建置樹編譯（原樹不動），patch 以固定作者與日期 commit，FC 回報的 NuttX hash 因此可預期、可核對 |
+| `deploy/` | 部署配方：`00_native`（原生韌體＋參數，可隨時刷回）、`01_sdfix`（原生＋記憶卡修正 patch，交接時 FC 上是它）、`02_template`（01＋範例模組 `guidance_template`＋開機檔＋`hitl.json` 指定的起飛後動作與判定）；自建配方的 `firmware/firmware.json` 的 `recipe` 寫要套的 patch 與 `modules/` 的模組，`px4/build_firmware.py` 在 PX4 原始碼樹旁的建置樹編譯（原樹不動），patch 以固定作者與日期 commit，FC 回報的 NuttX hash 因此可預期、可核對 |
 | `px4/` | PX4 版本鎖、原始碼樹核對、修正 patch |
 | `analysis/` | 響應指標、ULog 讀檔與嚴格解析、重播比對 |

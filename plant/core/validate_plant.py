@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Validate libskysurfer_plant (shared library): C Truth (SksPlant) and C sensors (SksSensors).
+"""Validate libskysurfer_plant (shared library): C Truth (Plant) and C sensors (PlantSensors).
 
-  ~/.local/share/SkySurfer/venv/bin/python -B plant/core/validate_plant.py \
-      --cache ~/.cache/SkySurfer/build_<timestamp>
+  ~/.local/share/px4-llm-sim2hitl/venv/bin/python -B plant/core/validate_plant.py \
+      --cache ~/.cache/px4-llm-sim2hitl/build_<timestamp>
 
 The build cache is the one ./runbridge update-model lays out (hitl/update.py), which also runs this check.
 
@@ -14,14 +14,14 @@ Checks (results in <cache>/results/plant_validation.json; exit code 0 only when 
                change makes it differ)
   consistency  |F_gravity| = mass*g; specific force = (aero + thrust + ground) / mass
   rejects      non-zero initial rates, site_msl and wind are refused
-  plant_state  two plants interleaved, sks_plant_copy mid-run: bit-identical
+  plant_state  two plants interleaved, plant_copy mid-run: bit-identical
   geo          flat-earth LLA and wrapping against MATLAB flat2lla (plant/truth/flat2lla_test_vectors.json)
   wmm          C WMM against MATLAB wrldmagm (plant/sensors/wmm_test_vectors.json)
   ideal        noise off: every sensor output field equals its ideal value; GPS every 25 steps, held
   boundaries   GPS fixes stay legal near +-180 deg and the poles; courses stay in [0, 2*pi) / [0, 360)
   noise        noise on: per-channel standard deviation and mean match the configuration
   vibration    vibration on with throttle: standard deviation = sqrt(chip^2 + vibration^2)
-  rng          same seed reproduces, another seed differs, sks_sensors_copy continues identically
+  rng          same seed reproduces, another seed differs, plant_sensors_copy continues identically
 """
 import argparse
 import ctypes as C
@@ -84,8 +84,8 @@ class Output(C.Structure):
                 ('gps_updated', C.c_uint32)]
 
 
-STRUCTS = {'SksInitialConditions': Initial, 'SksPlantInput': Input, 'SksTruth': Truth,
-           'SksSensorConfig': Config, 'SksSensorOutput': Output}
+STRUCTS = {'PlantInitialConditions': Initial, 'PlantInput': Input, 'PlantTruth': Truth,
+           'PlantSensorConfig': Config, 'PlantSensorOutput': Output}
 
 
 def compile_and_run(source):
@@ -104,7 +104,7 @@ def check_layout():
         lines.append(f'printf("{n} sizeof %zu\\n", sizeof({n}));')
         for f in cls._fields_:
             lines.append(f'printf("{n} {f[0]} %zu\\n", offsetof({n}, {f[0]}));')
-    out = compile_and_run('#include <stddef.h>\n#include <stdio.h>\n#include "sks_sensors.h"\nint main(void){' +
+    out = compile_and_run('#include <stddef.h>\n#include <stdio.h>\n#include "plant_sensors.h"\nint main(void){' +
                           ''.join(lines) + 'return 0;}')
     c = {(a, b): int(v) for a, b, v in (line.split() for line in out.splitlines())}
     mismatches = []
@@ -122,27 +122,27 @@ def check_layout():
 class Lib:
     def __init__(self, path):
         lib = self.lib = C.CDLL(str(path))
-        for name in ('sks_plant_size', 'sks_sensors_size'):
+        for name in ('plant_size', 'plant_sensors_size'):
             getattr(lib, name).restype = C.c_size_t
-        lib.sks_plant_init.argtypes = [C.c_void_p, C.POINTER(Initial)]
-        lib.sks_plant_step.argtypes = [C.c_void_p, C.POINTER(Input), C.POINTER(Truth)]
-        lib.sks_plant_copy.argtypes = [C.c_void_p, C.c_void_p]
-        lib.sks_sensors_default_config.argtypes = [C.POINTER(Config)]
-        lib.sks_sensors_init.argtypes = [C.c_void_p, C.POINTER(Config), C.c_uint32]
-        lib.sks_sensors_step.argtypes = [C.c_void_p, C.POINTER(Truth), C.POINTER(Output)]
-        lib.sks_sensors_copy.argtypes = [C.c_void_p, C.c_void_p]
-        lib.sks_sensors_magnetic_field_ned.argtypes = [C.POINTER(Config), C.c_double, C.c_double, C.c_double, C.POINTER(C.c_double)]
-        lib.sks_wmm_field_ned.argtypes = [C.c_double] * 4 + [C.POINTER(C.c_double)]
+        lib.plant_init.argtypes = [C.c_void_p, C.POINTER(Initial)]
+        lib.plant_step.argtypes = [C.c_void_p, C.POINTER(Input), C.POINTER(Truth)]
+        lib.plant_copy.argtypes = [C.c_void_p, C.c_void_p]
+        lib.plant_sensors_default_config.argtypes = [C.POINTER(Config)]
+        lib.plant_sensors_init.argtypes = [C.c_void_p, C.POINTER(Config), C.c_uint32]
+        lib.plant_sensors_step.argtypes = [C.c_void_p, C.POINTER(Truth), C.POINTER(Output)]
+        lib.plant_sensors_copy.argtypes = [C.c_void_p, C.c_void_p]
+        lib.plant_sensors_magnetic_field_ned.argtypes = [C.POINTER(Config), C.c_double, C.c_double, C.c_double, C.POINTER(C.c_double)]
+        lib.plant_wmm_field_ned.argtypes = [C.c_double] * 4 + [C.POINTER(C.c_double)]
 
     def plant(self):
-        return C.create_string_buffer(self.lib.sks_plant_size())
+        return C.create_string_buffer(self.lib.plant_size())
 
     def sensors(self):
-        return C.create_string_buffer(self.lib.sks_sensors_size())
+        return C.create_string_buffer(self.lib.plant_sensors_size())
 
     def config(self, **overrides):
         c = Config()
-        self.lib.sks_sensors_default_config(C.byref(c))
+        self.lib.plant_sensors_default_config(C.byref(c))
         for k, v in overrides.items():
             setattr(c, k, v)
         return c
@@ -160,13 +160,13 @@ def initial_for(case, ref):
 
 def run_plant(lib, ic, controls, plant=None):
     plant = plant or lib.plant()
-    code = lib.lib.sks_plant_init(plant, C.byref(ic))
+    code = lib.lib.plant_init(plant, C.byref(ic))
     assert code == 0, code
     truths = []
     for u in controls:
         inp, t = Input(), Truth()
         inp.command[:] = list(u[:5])
-        code = lib.lib.sks_plant_step(plant, C.byref(inp), C.byref(t))
+        code = lib.lib.plant_step(plant, C.byref(inp), C.byref(t))
         assert code == 0, code
         truths.append(bytes(t))
     return truths
@@ -206,7 +206,7 @@ def load_reference_module():
 
 
 def check_truth(lib, ref, data):
-    pairs = {  # SksTruth field -> reference raw index, transform
+    pairs = {  # PlantTruth field -> reference raw index, transform
         'position_ned_m': ([22, 23, 24], None), 'velocity_ned_m_s': ([15, 16, 17], None),
         'quaternion_nb': ([6, 7, 8, 9], None), 'rates_body_rad_s': ([28, 29, 30], None),
         'angular_accel_body_rad_s2': ([5, 13, 14], None), 'specific_force_body_m_s2': ([31, 32, 33], None),
@@ -246,12 +246,12 @@ def check_rejects(lib, ref):
                           ('site_msl', lambda ic: setattr(ic, 'site_msl_m', 10.0))):
         ic = initial_for(base, ref)
         change(ic)
-        results[label] = lib.lib.sks_plant_init(lib.plant(), C.byref(ic))
+        results[label] = lib.lib.plant_init(lib.plant(), C.byref(ic))
     plant = lib.plant()
-    lib.lib.sks_plant_init(plant, C.byref(initial_for(base, ref)))
+    lib.lib.plant_init(plant, C.byref(initial_for(base, ref)))
     inp = Input()
     inp.wind_ned_m_s[0] = 1.0
-    results['wind'] = lib.lib.sks_plant_step(plant, C.byref(inp), C.byref(Truth()))
+    results['wind'] = lib.lib.plant_step(plant, C.byref(inp), C.byref(Truth()))
     return {'status': 'PASS' if all(v == 4 for v in results.values()) else 'FAIL', 'codes': results}
 
 
@@ -259,34 +259,34 @@ def check_plant_state(lib, ref, data, truths_by_case):
     a, b = ref.CASES[4], ref.CASES[12]
     ua, ub = data[a['name'] + '__controls'], data[b['name'] + '__controls']
     pa, pb = lib.plant(), lib.plant()
-    lib.lib.sks_plant_init(pa, C.byref(initial_for(a, ref)))
-    lib.lib.sks_plant_init(pb, C.byref(initial_for(b, ref)))
+    lib.lib.plant_init(pa, C.byref(initial_for(a, ref)))
+    lib.lib.plant_init(pb, C.byref(initial_for(b, ref)))
     ya, yb = [], []
     for k in range(min(len(ua), len(ub))):
         for plant, u, out in ((pa, ua[k], ya), (pb, ub[k], yb)):
             inp, t = Input(), Truth()
             inp.command[:] = list(u[:5])
-            lib.lib.sks_plant_step(plant, C.byref(inp), C.byref(t))
+            lib.lib.plant_step(plant, C.byref(inp), C.byref(t))
             out.append(bytes(t))
     inter = ya == truths_by_case[a['name']][:len(ya)] and yb == truths_by_case[b['name']][:len(yb)]
     c = ref.CASES[7]
     uc = data[c['name'] + '__controls']
     src = lib.plant()
-    lib.lib.sks_plant_init(src, C.byref(initial_for(c, ref)))
+    lib.lib.plant_init(src, C.byref(initial_for(c, ref)))
     split, first = len(uc) // 2, []
     for k in range(split):
         inp, t = Input(), Truth()
         inp.command[:] = list(uc[k][:5])
-        lib.lib.sks_plant_step(src, C.byref(inp), C.byref(t))
+        lib.lib.plant_step(src, C.byref(inp), C.byref(t))
         first.append(bytes(t))
     dst = lib.plant()
-    lib.lib.sks_plant_copy(dst, src)
+    lib.lib.plant_copy(dst, src)
     rest = {0: [], 1: []}
     for k in range(split, len(uc)):
         for i, plant in enumerate((src, dst)):
             inp, t = Input(), Truth()
             inp.command[:] = list(uc[k][:5])
-            lib.lib.sks_plant_step(plant, C.byref(inp), C.byref(t))
+            lib.lib.plant_step(plant, C.byref(inp), C.byref(t))
             rest[i].append(bytes(t))
     full = truths_by_case[c['name']]
     copy_ok = first + rest[0] == full and rest[1] == full[split:]
@@ -298,7 +298,7 @@ def check_wmm(lib):
     diffs = []
     for v in vectors:
         out = D3()
-        lib.lib.sks_wmm_field_ned(v['latitude_deg'], v['longitude_deg'], v['height_m'], v['decimal_year'], out)
+        lib.lib.plant_wmm_field_ned(v['latitude_deg'], v['longitude_deg'], v['height_m'], v['decimal_year'], out)
         diffs.append(np.array(out[:]) - np.array(v['field_ned_nt']))
     worst = worst_abs(diffs)
     return {'status': 'PASS' if worst <= 1e-3 else 'FAIL', 'vectors': len(vectors), 'max_abs_nt': worst}
@@ -307,9 +307,9 @@ def check_wmm(lib):
 def check_geo():
     vectors = json.loads((PLANT / 'truth' / 'flat2lla_test_vectors.json').read_text())['vectors']
     rows = ','.join(f'{{{v["north_m"]!r},{v["east_m"]!r},{v["lat0_deg"]!r},{v["lon0_deg"]!r}}}' for v in vectors)
-    out = compile_and_run('#include <stdio.h>\n#include "sks_geo.h"\nstatic const double v[][4]={' + rows +
+    out = compile_and_run('#include <stdio.h>\n#include "plant_geo.h"\nstatic const double v[][4]={' + rows +
                           '};int main(void){for(size_t k=0;k<sizeof v/sizeof v[0];k++){double a,b;'
-                          'sks_geo_flat_to_lla(v[k][0],v[k][1],v[k][2],v[k][3],&a,&b);printf("%.17g %.17g\\n",a,b);}'
+                          'plant_geo_flat_to_lla(v[k][0],v[k][1],v[k][2],v[k][3],&a,&b);printf("%.17g %.17g\\n",a,b);}'
                           'return 0;}')
     got = np.array([[float(x) for x in line.split()] for line in out.splitlines()])
     want = np.array([[v['lat_deg'], v['lon_deg']] for v in vectors])
@@ -336,11 +336,11 @@ def ned_to_body(q, v):
 
 def run_sensors(lib, config, truths, seed=1, sensors=None):
     sensors = sensors or lib.sensors()
-    assert lib.lib.sks_sensors_init(sensors, C.byref(config), seed) == 0
+    assert lib.lib.plant_sensors_init(sensors, C.byref(config), seed) == 0
     outs = []
     for b in truths:
         t, o = Truth.from_buffer_copy(b), Output()
-        assert lib.lib.sks_sensors_step(sensors, C.byref(t), C.byref(o)) == 0
+        assert lib.lib.plant_sensors_step(sensors, C.byref(t), C.byref(o)) == 0
         outs.append(bytes(o))
     return outs
 
@@ -370,7 +370,7 @@ def check_ideal(lib, truths):
     mag = []
     for x in t:
         b = D3()
-        lib.lib.sks_sensors_magnetic_field_ned(C.byref(cfg), x.latitude_deg, x.longitude_deg, x.altitude_msl_m, b)
+        lib.lib.plant_sensors_magnetic_field_ned(C.byref(cfg), x.latitude_deg, x.longitude_deg, x.altitude_msl_m, b)
         mag.append(ned_to_body(list(x.quaternion_nb), np.array(b[:])))
     err['mag'] = worst_abs(field(outs, 'magnetic_ut') - np.array(mag))
     fixes = np.arange(len(outs)) // 25 * 25
@@ -447,7 +447,7 @@ def check_noise(lib, n=100000):
     t = Truth.from_buffer_copy(truths[0])
     root = math.sqrt(1 / (2 * cfg.dt_s))
     b = D3()
-    lib.lib.sks_sensors_magnetic_field_ned(C.byref(cfg), t.latitude_deg, t.longitude_deg, t.altitude_msl_m, b)
+    lib.lib.plant_sensors_magnetic_field_ned(C.byref(cfg), t.latitude_deg, t.longitude_deg, t.altitude_msl_m, b)
     res = {}
     res['accel'] = sigma_check(field(outs, 'accel_m_s2'), np.array(t.specific_force_body_m_s2[:]),
                                np.array(cfg.accel_noise_density[:]) * root)
@@ -491,19 +491,19 @@ def check_rng(lib, truths):
     a, b, c = run_sensors(lib, cfg, truths, seed=11), run_sensors(lib, cfg, truths, seed=11), run_sensors(lib, cfg, truths, seed=12)
     split = len(truths) // 2
     src = lib.sensors()
-    assert lib.lib.sks_sensors_init(src, C.byref(cfg), 11) == 0
+    assert lib.lib.plant_sensors_init(src, C.byref(cfg), 11) == 0
     first = []
     for x in truths[:split]:
         o = Output()
-        lib.lib.sks_sensors_step(src, C.byref(Truth.from_buffer_copy(x)), C.byref(o))
+        lib.lib.plant_sensors_step(src, C.byref(Truth.from_buffer_copy(x)), C.byref(o))
         first.append(bytes(o))
     dst = lib.sensors()
-    lib.lib.sks_sensors_copy(dst, src)
+    lib.lib.plant_sensors_copy(dst, src)
     rest = {0: [], 1: []}
     for x in truths[split:]:
         for i, s in enumerate((src, dst)):
             o = Output()
-            lib.lib.sks_sensors_step(s, C.byref(Truth.from_buffer_copy(x)), C.byref(o))
+            lib.lib.plant_sensors_step(s, C.byref(Truth.from_buffer_copy(x)), C.byref(o))
             rest[i].append(bytes(o))
     result = {'same_seed_identical': a == b, 'other_seed_differs': a != c,
               'copy_continues': first + rest[0] == a and rest[1] == a[split:]}

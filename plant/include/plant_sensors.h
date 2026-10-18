@@ -1,15 +1,15 @@
-#ifndef SKS_SENSORS_H
-#define SKS_SENSORS_H
+#ifndef PLANT_SENSORS_H
+#define PLANT_SENSORS_H
 /*
- * SkySurfer C sensors: SksTruth in -> IMU, magnetometer, barometer, differential pressure, GPS.
+ * C sensors: PlantTruth in -> IMU, magnetometer, barometer, differential pressure, GPS.
  *
  * Conventions
- *   - One SksSensors per aircraft (allocate sks_sensors_size() bytes); no globals. The random
+ *   - One PlantSensors per aircraft (allocate plant_sensors_size() bytes); no globals. The random
  *     generator (PCG32) lives in the instance, so the same seed and inputs give the same output.
- *   - Call sks_sensors_step() once per plant step with the truth of that step. IMU, barometer and
+ *   - Call plant_sensors_step() once per plant step with the truth of that step. IMU, barometer and
  *     differential pressure update every step; GPS every gps_decimation steps starting at step 0,
  *     and holds the last fix between updates.
- *   - Output units follow the HIL ABI canonical output (docs/MODEL_INTERFACE.md section 5):
+ *   - Output units follow the HIL ABI canonical output (hitl/interface/hil_model_api.h):
  *     accel m/s^2, gyro rad/s, magnetic field uT (body FRD), pressures Pa, GPS deg / MSL m / NED m/s.
  *   - White noise; the IMU noise is given as a density and converted to a per-sample standard
  *     deviation sigma = density * sqrt(1 / (2 * dt)). No bias, no scale error, no latency.
@@ -23,7 +23,7 @@
 extern "C" {
 #endif
 
-#define SKS_SENSORS_API_VERSION 0x00010000u
+#define PLANT_SENSORS_API_VERSION 0x00010000u
 
 typedef struct {
   double dt_s;                       /* plant step (0.004) */
@@ -42,7 +42,7 @@ typedef struct {
   uint32_t reserved;
   double vibration_accel_m_s2[3];    /* per sample */
   double vibration_gyro_rad_s[3];    /* per sample */
-} SksSensorConfig;
+} PlantSensorConfig;
 
 typedef struct {
   double time_s;
@@ -59,22 +59,22 @@ typedef struct {
   double gps_sample_time_s;
   uint32_t imu_updated;              /* always 1 */
   uint32_t gps_updated;              /* 1 on the steps where a new fix was produced */
-} SksSensorOutput;
+} PlantSensorOutput;
 
-typedef struct SksSensors SksSensors;
+typedef struct PlantSensors PlantSensors;
 
-uint32_t sks_sensors_api_version(void);
-size_t sks_sensors_size(void);
+uint32_t plant_sensors_api_version(void);
+size_t plant_sensors_size(void);
 
-/* Defaults decided on 2026-10-15 (docs/ROADMAP.md decision 15). */
-void sks_sensors_default_config(SksSensorConfig *config);
+/* Defaults decided on 2026-10-15. */
+void plant_sensors_default_config(PlantSensorConfig *config);
 
-int32_t sks_sensors_init(SksSensors *sensors, const SksSensorConfig *config, uint32_t seed);
-int32_t sks_sensors_step(SksSensors *sensors, const SksTruth *truth, SksSensorOutput *output);
-int32_t sks_sensors_copy(SksSensors *dst, const SksSensors *src);
+int32_t plant_sensors_init(PlantSensors *sensors, const PlantSensorConfig *config, uint32_t seed);
+int32_t plant_sensors_step(PlantSensors *sensors, const PlantTruth *truth, PlantSensorOutput *output);
+int32_t plant_sensors_copy(PlantSensors *dst, const PlantSensors *src);
 
 /* Ideal magnetic field in NED (uT) used by the magnetometer, for checks. */
-void sks_sensors_magnetic_field_ned(const SksSensorConfig *config, double latitude_deg, double longitude_deg,
+void plant_sensors_magnetic_field_ned(const PlantSensorConfig *config, double latitude_deg, double longitude_deg,
                                     double height_m, double field_ned_ut[3]);
 
 #ifdef __cplusplus

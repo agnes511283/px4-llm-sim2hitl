@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# SkySurfer entry: ./runbridge <action> [options]   (./runbridge --help lists the actions)
+# px4-llm-sim2hitl entry: ./runbridge <action> [options]   (./runbridge --help lists the actions)
 #   ./runbridge --setup            create the Python environment (uv, from uv.lock)
 #   ./runbridge --check-python     check that environment
 #   ./runbridge update-model ...   model release (hitl/update.py: --generate, --rollback, --fc-only)
-# The venv lives outside the project: SKYSURFER_VENV, else the platform's user data folder + SkySurfer/venv.
-# SKYSURFER_PYTHON overrides the interpreter.
+# The venv lives outside the project: SIM2HITL_VENV, else the platform's user data folder + px4-llm-sim2hitl/venv.
+# SIM2HITL_PYTHON overrides the interpreter.
 set -euo pipefail
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ $OSTYPE == darwin* ]]; then
-  venv_default="$HOME/Library/Application Support/SkySurfer/venv"
+  venv_default="$HOME/Library/Application Support/px4-llm-sim2hitl/venv"
 else
-  venv_default="${XDG_DATA_HOME:-$HOME/.local/share}/SkySurfer/venv"
+  venv_default="${XDG_DATA_HOME:-$HOME/.local/share}/px4-llm-sim2hitl/venv"
 fi
-export UV_PROJECT_ENVIRONMENT=${SKYSURFER_VENV:-$venv_default}
-py=${SKYSURFER_PYTHON:-$UV_PROJECT_ENVIRONMENT/bin/python}
+export UV_PROJECT_ENVIRONMENT=${SIM2HITL_VENV:-$venv_default}
+py=${SIM2HITL_PYTHON:-$UV_PROJECT_ENVIRONMENT/bin/python}
 if [[ ${1:-} == --setup ]]; then
   command -v uv >/dev/null || { echo "uv not found: install it first (https://docs.astral.sh/uv/)" >&2; exit 4; }
   exec uv sync --frozen --project "$script_dir"

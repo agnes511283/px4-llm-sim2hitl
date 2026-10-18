@@ -28,8 +28,8 @@ python3 px4/check_px4_tree.py --path <專案外的路徑> --remember
 依序從這三處取得：
 
 1. 指令參數 `--path`（只有 `check_px4_tree.py` 有）
-2. 環境變數 `SKYSURFER_PX4_ROOT`
-3. 本機設定檔（只有一行路徑）：Linux 是 `~/.config/SkySurfer/px4_root`（有設 `XDG_CONFIG_HOME` 時是 `$XDG_CONFIG_HOME/SkySurfer/px4_root`）。程式裡另有 macOS `~/Library/Application Support/SkySurfer/px4_root`、Windows `%LOCALAPPDATA%\SkySurfer\px4_root`，沒有驗證過。
+2. 環境變數 `SIM2HITL_PX4_ROOT`
+3. 本機設定檔（只有一行路徑）：Linux 是 `~/.config/px4-llm-sim2hitl/px4_root`（有設 `XDG_CONFIG_HOME` 時是 `$XDG_CONFIG_HOME/px4-llm-sim2hitl/px4_root`）。程式裡另有 macOS `~/Library/Application Support/px4-llm-sim2hitl/px4_root`、Windows `%LOCALAPPDATA%\SkySurfer\px4_root`，沒有驗證過。
 
 ```bash
 python3 px4/check_px4_tree.py
@@ -50,7 +50,7 @@ python3 px4/check_px4_tree.py --path <路徑> --remember
 ## 規則
 
 - 不直接改使用者的 PX4 原始碼樹。自己的模組放 `modules/src/`（SITL 的包裝在 `sitl/px4_external/`），用 PX4 的 `EXTERNAL_MODULES_LOCATION` 編進去；必須改 PX4 原有的檔案時，做成 patch 放 `px4/patches/`，由配方的 `firmware/firmware.json` 的 `recipe.patches` 指定。
-- 樹裡的 `build/` 是建置產物（SITL 編在 `build/px4_sitl_default_skysurfer`），git 忽略，不影響核對。
+- 樹裡的 `build/` 是建置產物（SITL 編在 `build/px4_sitl_default_sim2hitl`），git 忽略，不影響核對。
 
 ## 編 FC 韌體
 
@@ -59,9 +59,9 @@ python3 px4/check_px4_tree.py --path <路徑> --remember
 ```
 
 - 讀配方 `deploy/<配方>/firmware/firmware.json` 的 `recipe`：`make_target`、`patches`、`modules`（`modules/src/` 裡的資料夾名）。沒有 `recipe` 的配方不編：`deploy/00_native` 保存的是現成的原生韌體。
-- 在原始碼樹**旁邊的建置樹**編譯：`<樹>-build`（或環境變數 `SKYSURFER_PX4_BUILD_TREE`）。第一次用 `rsync` 從原樹複製一份（不需要網路），之後每次編譯前重設到鎖定的 commit。使用者的原樹不動。
+- 在原始碼樹**旁邊的建置樹**編譯：`<樹>-build`（或環境變數 `SIM2HITL_PX4_BUILD_TREE`）。第一次用 `rsync` 從原樹複製一份（不需要網路），之後每次編譯前重設到鎖定的 commit。使用者的原樹不動。
 - patch 用 `git am` commit 在建置樹對應的 repo 裡，作者與日期取自 patch 檔，committer 固定、commit 日期等於作者日期，所以同樣的 patch 永遠得到同樣的 commit。FC 回報的 NuttX hash 因此可預期，`deploy-test` 與 `deploy/check_params.py` 用它核對 FC 上是哪個配方。
-- 產物（`.px4`、`parameters.json.xz`）寫到配方的 `firmware/`（不進 git，見 `.gitignore`）；身分（`embedded`）、flash 用量與建置紀錄寫進 `firmware.json`，參數名單的 SHA-256 寫進配方的 `params.json`。建置 log 在 `~/.cache/SkySurfer/firmware/<配方>/`。
+- 產物（`.px4`、`parameters.json.xz`）寫到配方的 `firmware/`（不進 git，見 `.gitignore`）；身分（`embedded`）、flash 用量與建置紀錄寫進 `firmware.json`，參數名單的 SHA-256 寫進配方的 `params.json`。建置 log 在 `~/.cache/px4-llm-sim2hitl/firmware/<配方>/`。
 - 通常不必單獨編：`./runbridge deploy-test --release deploy/<配方> --flash` 在沒有編好的檔、或 patch、模組改了的時候會自己編。
 
 ## 換 PX4 版本

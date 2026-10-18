@@ -1,8 +1,8 @@
 /* SkySurfer HIL model ABI (hil_model_api.h) on top of the plant core, C Truth and C sensors
- * (plant/include/skysurfer_plant.h, sks_sensors.h). One instance; calls are serialized by the host. */
+ * (plant/include/skysurfer_plant.h, plant_sensors.h). One instance; calls are serialized by the host. */
 #include "hil_model_api.h"
 #include "skysurfer_plant.h"
-#include "sks_sensors.h"
+#include "plant_sensors.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,11 +17,11 @@
 #ifndef HIL_BUILD_ID
 #define HIL_BUILD_ID "unidentified"
 #endif
-/* seed_policy 0: the fixed default seed of the sensor noise (docs/ROADMAP.md decision 16). */
+/* seed_policy 0: the fixed default seed of the sensor noise (reproducible runs). */
 #define HIL_DEFAULT_SEED 1u
 static const double kPi=3.14159265358979323846, kG0=9.80665;
-static SksPlant *plant=NULL;
-static SksSensors *sensors=NULL;
+static Plant *plant=NULL;
+static PlantSensors *sensors=NULL;
 static int active=0;
 static uint64_t next_step=0;
 static double held_controls[16], geoid_separation;
@@ -52,16 +52,16 @@ static int32_t initialize(const HilInitialConditions *i) {
   if(!isfinite(i->height_m)||i->height_m<0||i->height_m>10000||!isfinite(i->latitude_deg)||fabs(i->latitude_deg)>90||!isfinite(i->longitude_deg)||fabs(i->longitude_deg)>180||!isfinite(i->geoid_separation_m)) return fail(4,"Invalid initial conditions");
   for(int k=0;k<3;k++) if(!isfinite(i->body_velocity_m_s[k])||!isfinite(i->euler_deg[k])||fabs(i->body_velocity_m_s[k])>200) return fail(4,"Invalid velocity or Euler angles");
   if(fabs(i->euler_deg[0])>180||fabs(i->euler_deg[1])>80||fabs(i->euler_deg[2])>360) return fail(4,"Euler initial condition outside supported range");
-  if(!plant) plant=malloc(sks_plant_size());
-  if(!sensors) sensors=malloc(sks_sensors_size());
+  if(!plant) plant=malloc(plant_size());
+  if(!sensors) sensors=malloc(plant_sensors_size());
   if(!plant||!sensors) return fail(5,"Out of memory");
-  SksInitialConditions ic;memset(&ic,0,sizeof(ic));
+  PlantInitialConditions ic;memset(&ic,0,sizeof(ic));
   ic.height_agl_m=i->height_m;ic.latitude_deg=i->latitude_deg;ic.longitude_deg=i->longitude_deg;ic.seed=HIL_DEFAULT_SEED;
   for(int k=0;k<3;k++) {ic.velocity_body_m_s[k]=i->body_velocity_m_s[k];ic.euler_rad[k]=i->euler_deg[k]*(kPi/180.0);}
   active=0;
-  if(sks_plant_init(plant,&ic)!=SKS_OK) return fail(4,"Plant rejected the initial conditions");
-  SksSensorConfig config;sks_sensors_default_config(&config);
-  if(sks_sensors_init(sensors,&config,ic.seed)!=SKS_OK) return fail(4,"Sensors rejected the configuration");
+  if(plant_init(plant,&ic)!=PLANT_OK) return fail(4,"Plant rejected the initial conditions");
+  PlantSensorConfig config;plant_sensors_default_config(&config);
+  if(plant_sensors_init(sensors,&config,ic.seed)!=PLANT_OK) return fail(4,"Sensors rejected the configuration");
   geoid_separation=i->geoid_separation_m;
   memset(held_controls,0,sizeof(held_controls));next_step=0;
   active=1;last_error[0]=0;return 0;
@@ -69,10 +69,10 @@ static int32_t initialize(const HilInitialConditions *i) {
 int32_t hil_model_initialize(const HilInitialConditions *i) {if(active) return fail(2,"Already initialized; use reset after host stops stepping");return initialize(i);}
 int32_t hil_model_reset(const HilInitialConditions *i) {return initialize(i);}
 int32_t hil_model_terminate(void) {active=0;free(plant);free(sensors);plant=NULL;sensors=NULL;return 0;}
-/* raw_source[58]: positions and units of docs/MODEL_INTERFACE.md section 6; Truth fields from the
+/* raw_source[58]: positions and units of the recorded reference (plant/reference); Truth fields from the
  * C Truth with the P8 corrections (true airspeed, horizontal ground speed, G = -f_z / g), sensor
  * fields in the source units (gauss, hPa, deg*1e7, mm, cm/s, cdeg). */
-static void fill_raw(const SksTruth *t,const SksSensorOutput *s,double *r) {
+static void fill_raw(const PlantTruth *t,const PlantSensorOutput *s,double *r) {
   const double deg=180.0/kPi;
   r[0]=t->surface_deflection_rad[1]*deg;r[1]=t->surface_deflection_rad[0]*deg;r[2]=t->surface_deflection_rad[2]*deg;
   r[3]=t->throttle_actual;r[4]=t->surface_deflection_rad[3]*deg;
@@ -100,14 +100,14 @@ int32_t hil_model_step(const HilModelInput *i,HilModelOutput *o) {
     for(int k=0;k<16;k++) if(!isfinite(i->controls[k])) return fail(4,"Nonfinite controls");
     memcpy(held_controls,i->controls,sizeof(held_controls));
   }
-  SksPlantInput in;memset(&in,0,sizeof(in));
+  PlantInput in;memset(&in,0,sizeof(in));
   in.command.aileron_left=held_controls[0];in.command.aileron_right=held_controls[1];in.command.elevator=held_controls[2];
   in.command.rudder=held_controls[3];in.command.throttle=held_controls[4];
-  SksTruth t;SksSensorOutput s;
-  int32_t code=sks_plant_step(plant,&in,&t);
-  if(code==SKS_ERR_DIVERGED) {active=0;return fail(3,"Plant returned nonfinite data; reset required");}
-  if(code!=SKS_OK) {active=0;return fail(2,"Plant step failed; reset required");}
-  if(sks_sensors_step(sensors,&t,&s)!=SKS_OK) {active=0;return fail(2,"Sensor step failed; reset required");}
+  PlantTruth t;PlantSensorOutput s;
+  int32_t code=plant_step(plant,&in,&t);
+  if(code==PLANT_ERR_DIVERGED) {active=0;return fail(3,"Plant returned nonfinite data; reset required");}
+  if(code!=PLANT_OK) {active=0;return fail(2,"Plant step failed; reset required");}
+  if(plant_sensors_step(sensors,&t,&s)!=PLANT_OK) {active=0;return fail(2,"Sensor step failed; reset required");}
   memset(o,0,sizeof(*o));o->abi_version=HIL_ABI_VERSION;o->struct_size=sizeof(*o);o->model_time_ns=next_step*4000000;
   fill_raw(&t,&s,o->raw_source);
   for(int k=0;k<HIL_RAW_COUNT;k++) if(!isfinite(o->raw_source[k])) {active=0;return fail(3,"Plant returned nonfinite data; reset required");}

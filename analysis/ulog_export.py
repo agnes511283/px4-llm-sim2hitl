@@ -2,7 +2,7 @@
 """Export a ULog (SITL or the FC's) to CSV files, one per topic, plus the parameters and log messages: for MATLAB
 without UAV Toolbox (readtable), spreadsheets or any plotting tool. numpy only (analysis/ulog.py).
 
-  <SkySurfer venv python> -B analysis/ulog_export.py <flight.ulg> <new folder> [--topics a,b,...] [--list]
+  <venv python> -B analysis/ulog_export.py <flight.ulg> <new folder> [--topics a,b,...] [--list]
 
 --list prints the topics with their sample counts and fields (nothing written). Without --topics every topic is
 written. Columns: time_s (since the log start), then every field; arrays become name_0, name_1, ...; nested

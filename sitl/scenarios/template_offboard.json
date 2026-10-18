@@ -1,6 +1,6 @@
 {
   "name": "template_offboard",
-  "description": "The sks_template example (modules/src/sks_template): OFFBOARD from the start, the module holds the entry course and altitude, turns the course by 30 deg after 15 s and climbs 10 m after 35 s; PX4's own altitude/speed, attitude and rate control below it. Judged by analysis/template_check.py on the ULog.",
+  "description": "The guidance_template example (modules/src/guidance_template): OFFBOARD from the start, the module holds the entry course and altitude, turns the course by 30 deg after 15 s and climbs 10 m after 35 s; PX4's own altitude/speed, attitude and rate control below it. Judged by analysis/template_check.py on the ULog.",
   "mode": "offboard",
   "settle_s": 0.0,
   "duration_s": 70.0,
@@ -12,6 +12,6 @@
     "longitude_deg": 120.31096929726908
   },
   "trim": true,
-  "start": ["sks_template start"],
+  "start": ["guidance_template start"],
   "steps": []
 }

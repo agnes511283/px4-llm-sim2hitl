@@ -1,4 +1,4 @@
-"""Compare the controller outputs of a ULog with their replay (ROADMAP batch 4h; run_sitl.py --replay).
+"""Compare the controller outputs of a ULog with their replay (run_sitl.py --replay).
 
 Outputs (fw_att_control, fw_rate_control, control_allocator) and the fields compared are in OUTPUTS. A
 recomputed sample is paired with the logged one by timestamp_sample when the topic has it, otherwise by the

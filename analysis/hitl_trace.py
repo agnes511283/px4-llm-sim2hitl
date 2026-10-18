@@ -1,14 +1,14 @@
-"""HITL wire.bin -> trace.csv in the SITL column layout (ROADMAP batch 4i); used by response.py --hitl-log.
+"""HITL wire.bin -> trace.csv in the SITL column layout; used by response.py --hitl-log.
 
 The runtime logs no plant truth, so the trace comes from the MAVLink traffic in <log>/host/wire.bin
-(docs/ARCHITECTURE.md, HITL logs; all channel stamps are native ns):
+(all channel stamps are native ns):
   channel 1 (FC RX): ATTITUDE (EKF2 attitude, filtered body rates; 100 Hz), LOCAL_POSITION_NED (height = -z),
                      VFR_HUD (calibrated airspeed), HIL_ACTUATOR_CONTROLS (controls[0..4]).
   channel 4 (written to the FC): MANUAL_CONTROL, the sticks actually sent.
 Rows are on the ATTITUDE samples; sticks and controls are the latest value, airspeed and height interpolated
 (NaN before the first or after the last sample of a source, never back-filled); the report gives each
 source's largest gap after the sequence start.
-Columns as sitl/px4_external/src/sks_sim trace.csv, except: attitude and rates are PX4's estimate (SITL:
+Columns as sitl/px4_external/src/plant_sim trace.csv, except: attitude and rates are PX4's estimate (SITL:
 plant truth), tas_m_s holds CAS (about 0.5 % below TAS at 100 m) and height_m is EKF2 height over its origin.
 
 The step times are measured, not assumed: the pilot's command sequence advances on 50 Hz ticks, so each

@@ -16,7 +16,7 @@
 - **簡單、輕量、同一份來源**：每件事只放一個地方；能沿用現有程式與檢查就沿用；不為了可能用不到的情況預先加東西。
 - **AI 講白話**：技術細節由 AI 查、AI 處理；只有目標、選擇與成功條件問人。
 - **第 1 段最重要**：AI 先讀鎖定版本的 PX4 原始碼，把可行的接法用白話攤開和人討論，由人選；再建議先做「最小打通」，讓整條路先通、記錄下來，之後的修改交給自動化。
-- **第 3 段一條龍**：編譯 → 燒錄 → 身分核對 → 參數 → 開機檔 → HITL → 飛控記錄，一個指令跑完；開始前先告訴人 FC 上現在是什麼，由人選刷新或沿用。
+- **第 3 段一條龍**：編譯 → 燒錄 → 身分核對 → 參數 → 開機檔 → HITL → 飛控記錄，一個指令跑完；開始前先告訴人 FC 上現在是什麼，然後一律重新燒錄（只改外部模組時，FC 回報的版本編號可能不變，分不出新舊）。
 - **自動化跟著開發慢慢長出來**：同一件事做了兩三次，AI 就建議把它變成專案裡的指令或腳本，由人決定；越用越省 token。
 - **環境不寫死、驗收標準寫死**：路徑、編譯器、MATLAB、PX4 原始碼樹自動找、可指定，換平台時請 AI 查官方文件；量尺（版本鎖、檢查容差、4 ms、負載門檻）不隨環境改。
 - **不分權限等級**：每段結束時問「下一步 1／2／3」，段內不逐項詢問；但 runtime 的安全檢查（FC 身分、未解鎖、讀回、恢復）不可繞過，見 AGENTS 第 3 節。
@@ -57,8 +57,8 @@
 ./runbridge status                    # owner 狀態
 ./runbridge takeoff --altitude 100 --after template_offboard   # 3.1：模型在地面運行時自動起飛 → Hold → OFFBOARD（範本，FC 要是 02_template）→ Hold（QGC 的選單切不到固定翼的 Offboard）
 ./runbridge deploy-test --release deploy/<配方>           # 第 3 段：只看計畫（FC 上現在是什麼、會做什麼）
-./runbridge deploy-test --release deploy/<配方> --flash   # 必要時編韌體 → 燒錄 → 參數 → 開機檔 → hitl-run
-./runbridge deploy-test --release deploy/<配方> --reuse   # FC 已經是這個配方的韌體：參數 → 開機檔 → hitl-run
+./runbridge deploy-test --release deploy/<配方> --flash   # 平常用這個：必要時編韌體 → 燒錄 → 參數 → 開機檔 → hitl-run
+./runbridge deploy-test --release deploy/<配方> --reuse   # 只在人明確要求時：沿用 FC 上的韌體，參數 → 開機檔 → hitl-run
 ```
 
 ## 已知問題

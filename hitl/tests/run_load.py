@@ -2,7 +2,7 @@
 fake PTY FC; never opens hardware. The windowless form of the former GUI load harness (run_gui_load.py); the
 pass conditions are the same minus the window's own (Qt timer gaps, GUI threads).
 
-  <HIL venv python> -B hitl/tests/run_load.py <new empty folder> [--duration 600]
+  <HIL venv python> -B hitl/tests/run_load.py <new empty folder> [--duration 300]   (600 when 300 looks doubtful)
 """
 import argparse,collections,ctypes,json,socket,sys,threading,time
 from pathlib import Path
@@ -13,7 +13,7 @@ from host.transport import FakePTY
 from host.ipc import Endpoint,request
 
 def main():
- parser=argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter);parser.add_argument('output',type=Path);parser.add_argument('--duration',type=float,default=600);parser.add_argument('--peer-mode',choices=['thread','process'],default='thread');parser.add_argument('--gil-pause-at',type=float);parser.add_argument('--gil-pause-ms',type=int,default=350);args=parser.parse_args()
+ parser=argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter);parser.add_argument('output',type=Path);parser.add_argument('--duration',type=float,default=300);parser.add_argument('--peer-mode',choices=['thread','process'],default='thread');parser.add_argument('--gil-pause-at',type=float);parser.add_argument('--gil-pause-ms',type=int,default=350);args=parser.parse_args()
  if not 1<=args.duration<=1800:parser.error('duration must be 1..1800 seconds')
  out=args.output;out.mkdir(parents=True,exist_ok=False)
  sockets=[];ports=[]

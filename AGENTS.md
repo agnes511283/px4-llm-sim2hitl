@@ -20,6 +20,7 @@ AI 先查好現況、提出建議，只跟人確認**目標、選擇與成功條
    - 談好：用哪塊飛控、HITL 是否已設好；新算法何時接手、怎麼退出、失效時怎麼回到原生；用什麼動作證明它真的有作用；
    - **「怎麼部署」是第 3 段一條龍的前提**；
    - 寫成模組 README 的一頁規格：目標、接法、SITL 與 HITL 各自的驗收指標。兩邊估測來源不同，比的是表現與差距，不要求逐點相同。
+   - **每一項要求兩邊都要量**，沒量到就寫「沒測」，不能當通過。判通過／不通過只用**事先和人講好的規則**；沒講好的只把 SITL 與 HITL 的數字並排列出差異，由人判斷，AI 不自己訂門檻、不評價。總結分開寫「流程跑完」和「各項要求」，不要用一個 PASS 代表全部。比較時寫明 SITL 是真值、HITL 是 FC 的 EKF 估測，以及兩邊的取樣時間。
 
 不替使用者預先決定客製方式；把要想的問題提出來，依 PX4 原始碼給建議。
 
@@ -42,12 +43,15 @@ AI 先查好現況、提出建議，只跟人確認**目標、選擇與成功條
   - 即時排程權限：照 README「環境準備」的長期設定，重開機（或完全登出）一次才生效。生效前只能臨時給：請人執行 `sudo prlimit --pid <AI 程序的 PID> --rtprio=10:10`，再用 `ulimit -r` 確認。
   - AI 工具的允許清單：碰飛控的 `runbridge takeoff`（解鎖起飛）與 `runbridge deploy-test`（刷機、參數、開機檔、HITL）會被 AI 工具的自動權限檢查擋下；AI 不能自己改權限設定（也會被擋），請人加一次。Claude Code 是在 `~/.claude/settings.json` 的 `permissions.allow` 加 `Bash(<專案絕對路徑>/runbridge takeoff *)` 與 `Bash(<專案絕對路徑>/runbridge deploy-test *)`；AI 執行時也用同樣的絕對路徑開頭，不包在 `cd … &&` 或 `timeout` 裡，規則才對得上。
   - 設好之後，人說「刷」「飛」就好；AI 每次寫入 FC 前仍先說一聲，第 3 節的安全檢查照舊。
+  - 要跑時間敏感的測試（負載、HITL）前，AI 先查 `ulimit -r`：有權限就直接跑，跟人說一聲；沒有就給人上面的指令。
 
 ## 3. 安全底線（不可繞過）
 
 - **寫入對象與內容要確定**：寫參數、開機檔、燒錄前確認 FC 身分、未解鎖；寫入後讀回。不確定是否成功就停，不繼續到解鎖。
 - **恢復與單一 owner 不能繞過**：不刪恢復記號（`recovery.json`）、寫參數交易記號（`param_deploy.json`）、`owner.lock`、`host.json`；不用重開程式或換資料夾繞過未完成的恢復。runtime 的狀態資料夾跟著程式所在的路徑，換資料夾或換電腦前，先在原處恢復並關閉 owner。
 - **只做隔離實體動力的 HITL**：HITL 時螺旋槳已拆或電調不供電，第一次使用前請人確認。3.2 出場檢查完成前，自動流程不關 HITL（`SYS_HITL`）、不測實體致動器。
+- **任務自己的實機測試**：優先用 `hitl-run`（配方的 `hitl.json` 指定起飛後動作 `after` 與判定 `check`）。非自己寫不可時，要做到和 `hitl-run` 一樣的三件事，並在報告裡和飛行結果分開寫：飛控記錄的編號比飛行前最新的那筆新（否則不算本次，就算下載兩次相同、解析也過）；測試中臨時改的參數最後還原並讀回；標準 `recover` 完成（未解鎖、`SYS_HITL` 為預期值、沒有待恢復）。
+- **失敗要留證據**：測試或實機流程失敗時，保留那次的 console、wire、timing、status 與資料夾，告訴人在哪裡，再分析原因；修好後的新結果另外存，不覆蓋舊的失敗。
 - 不用 `rm -rf` 大量刪除。
 - 遠端操作時，現場沒人能重插 USB 或斷電：刷機或恢復卡在需要人手時就停下來等。
 
@@ -67,16 +71,16 @@ AI 先查好現況、提出建議，只跟人確認**目標、選擇與成功條
 |---|---|
 | 飛機模型（`model/`） | `./runbridge update-model --generate`（MATLAB）→ `./runbridge update-model` → 配平；刻意改了模型就照第 1.1 段重錄參考資料 |
 | `plant/` 的 C、`hitl/` 的 `native/`、`interface/`、`aircraft/`、`update.py` | `./runbridge update-model`（四道檢查）→ 離線測試 |
-| `hitl/host/` 等 runtime 程式 | 離線測試；影響時序時加跑 600 s 負載 |
+| `hitl/host/` 等 runtime 程式 | 離線測試；影響時序時加跑 300 s 負載（背景跑，不接飛控）：先查 `ulimit -r`，有權限就直接跑並告訴人，沒有就給人第 2 節的指令；結果有疑慮再跑 600 s。報告寫實際跑了幾秒 |
 | `sitl/`、`modules/` | `sitl/build_sitl.py` → `sitl/run_sitl.py` → `analysis/response.py` |
-| 韌體、參數、開機檔（`deploy/<配方>/`、`modules/`、`px4/patches/`） | 第 3 段：`./runbridge deploy-test --release deploy/<配方>` 先看計畫（只讀），再由人選 `--flash`（必要時先編韌體、燒錄）或 `--reuse`（沿用 FC 上的韌體）；只編韌體：`./runbridge build-firmware --release deploy/<配方>` |
+| 韌體、參數、開機檔（`deploy/<配方>/`、`modules/`、`px4/patches/`） | 第 3 段：**一律重新燒錄** `./runbridge deploy-test --release deploy/<配方> --flash`（必要時先編韌體 → 燒錄 → 身分核對 → 參數 → 開機檔 → hitl-run）；燒錄前告訴人 FC 上現在是什麼（不加旗標就是只看計畫）。只改外部模組時 FC 回報的版本編號可能不變、分不出新舊，所以不沿用 FC 上的韌體；`--reuse` 只在人明確要求時用。只編韌體：`./runbridge build-firmware --release deploy/<配方>` |
 | `README.md`（中文，權威） | 同一次 commit 更新英文翻譯 `README.en.md`，並把它開頭記的 README.md SHA-256 換成新的（`sha256sum README.md`）；來不及翻譯時，在 `README.en.md` 開頭標明落後。英文只是翻譯，兩者不一致時以中文為準；其他文件只有中文 |
 
 離線測試與負載（`PY` = venv 的 python，例如 `~/.local/share/px4-llm-sim2hitl/venv/bin/python`）：
 
 ```sh
 for f in hitl/tests/test_*.py deploy/test_*.py; do echo "== $f"; "$PY" -B "$f" 2>&1 | tail -1; done
-"$PY" -B hitl/tests/run_load.py <新的空資料夾> --duration 600
+"$PY" -B hitl/tests/run_load.py <新的空資料夾> --duration 300   # 有疑慮再 600
 ```
 
 ## 6. 在哪裡

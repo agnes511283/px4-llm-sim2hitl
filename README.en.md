@@ -2,7 +2,7 @@
 
 [繁體中文](README.md) | **English**
 
-> **This is a translation.** The authoritative README is [README.md](README.md) (Traditional Chinese); where the two differ, follow README.md. Translated from README.md with SHA-256 `31e2e5762b630a809f752b870ad5f18d28678b2a593ea21c550fd91e430ce5ea`: if `sha256sum README.md` prints something else, this translation is behind. The AI rules ([AGENTS.md](AGENTS.md)) and the folder READMEs are in Traditional Chinese only; an AI agent reads them without trouble.
+> **This is a translation.** The authoritative README is [README.md](README.md) (Traditional Chinese); where the two differ, follow README.md. Translated from README.md with SHA-256 `d973e8c6057c3a595feaa4e60fd71fd7c768094499a35133a0fcd05c81a8dae2`: if `sha256sum README.md` prints something else, this translation is behind. The AI rules ([AGENTS.md](AGENTS.md)) and the folder READMEs are in Traditional Chinese only; an AI agent reads them without trouble.
 
 Flight-control development kit: MATLAB/Simulink aircraft model → C → SITL (minimal PX4) → custom PX4 firmware → HITL on a real flight controller (Pixhawk). When you develop with an AI, its working rules are in [AGENTS.md](AGENTS.md).
 
@@ -16,7 +16,7 @@ Flight-control development kit: MATLAB/Simulink aircraft model → C → SITL (m
 - **Simple, light, one source**: everything lives in one place; reuse existing programs and checks; add nothing for cases that may never come.
 - **The AI speaks plainly**: the AI looks up and handles the technical details; it asks the human only about goals, choices and success criteria.
 - **Stage 1 matters most**: the AI first reads the PX4 source of the locked version, lays out the feasible ways to plug in in plain words, and the human chooses; then it suggests a "minimal end-to-end run" first, so the whole path works and is recorded, and later changes go through the automation.
-- **Stage 3 in one go**: build → flash → identity check → parameters → boot file → HITL → flight log, in one command; before starting, tell the human what is on the FC now and let them choose to reflash or reuse.
+- **Stage 3 in one go**: build → flash → identity check → parameters → boot file → HITL → flight log, in one command; before starting, tell the human what is on the FC now, then always flash again (when only an external module changed, the version hashes the FC reports may stay the same, so old and new cannot be told apart).
 - **Automation grows with the development**: when the same thing has been done two or three times, the AI suggests turning it into a command or script in the project, and the human decides; fewer tokens the more it is used.
 - **Environment not hard-coded, pass criteria hard-coded**: paths, compiler, MATLAB and the PX4 source tree are found automatically and can be set; when changing platform, ask the AI to check the official docs. The yardsticks (version lock, check tolerances, 4 ms, load thresholds) do not change with the environment.
 - **No permission levels**: at the end of each stage ask "next step 1/2/3"; no item-by-item questions within a stage. The runtime safety checks (FC identity, disarmed, read-back, recovery) cannot be bypassed; see AGENTS section 3.
@@ -57,8 +57,8 @@ Verified on **Ubuntu 24.04 x86-64** only. Each item below says "why" and "how it
 ./runbridge status                    # owner status
 ./runbridge takeoff --altitude 100 --after template_offboard   # 3.1: with the model running on the ground, automatic takeoff -> Hold -> OFFBOARD (the template; the FC must run 02_template) -> Hold (QGC's menu cannot switch a fixed-wing to Offboard)
 ./runbridge deploy-test --release deploy/<recipe>           # stage 3: plan only (what is on the FC now, what would be done)
-./runbridge deploy-test --release deploy/<recipe> --flash   # build if needed -> flash -> parameters -> boot file -> hitl-run
-./runbridge deploy-test --release deploy/<recipe> --reuse   # the FC already runs this recipe's firmware: parameters -> boot file -> hitl-run
+./runbridge deploy-test --release deploy/<recipe> --flash   # the usual one: build if needed -> flash -> parameters -> boot file -> hitl-run
+./runbridge deploy-test --release deploy/<recipe> --reuse   # only when the human asks for it: keep the FC's firmware, parameters -> boot file -> hitl-run
 ```
 
 ## Known issues

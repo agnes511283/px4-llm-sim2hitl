@@ -23,7 +23,7 @@ plant_sim（本資料夾的 PX4 out-of-tree 模組）
 PX4 模組（Stabilized）：sensors、pwm_out_sim、control_allocator、fw_rate_control、fw_att_control
 ```
 
-**SITL 沒驗到的事**：因為沒有 Commander，解鎖檢查、OFFBOARD 怎麼進入與退出、失聯保護（例如 `COM_OF_LOSS_T`）在 SITL 都沒有驗證；SITL 的導引表現 PASS 不能延伸成這些也沒問題，這些要在實體 FC 的 HITL 量。
+**SITL 沒驗到的事**：因為沒有 Commander，解鎖檢查、OFFBOARD 怎麼進入與退出、失聯保護（例如 `COM_OF_LOSS_T`）在 SITL 都沒有驗證；SITL 的導引表現 PASS 不能延伸成這些也沒問題，這些要在實體 FC 的 HITL 量。外接電腦送來的 MAVLink 也沒有經過 PX4 的接收：SITL 的 Offboard 是模組直接發布設定值，所以「`SET_ATTITUDE_TARGET` 的遮罩怎麼解讀」這類事 SITL 也驗不到。例：PX4 v1.17 固定翼的角速度模式，偏航角速度標成「忽略」會變成 NaN，`fw_rate_control` 看到任何一軸不是有限值，三軸都只輸出配平值（`FixedwingRateControl.cpp`），等於放手。
 
 目前有三種模式（`run_sitl.py` 的 `MODULES`；`plant_sim` 的模式旗標照 PX4 `commander/ModeUtil/control_mode.cpp`）：
 
@@ -71,7 +71,7 @@ PX4 模組（Stabilized）：sensors、pwm_out_sim、control_allocator、fw_rate
 - **起始**（`PlantSim.hpp` 註解）：(1) 用真實時間跑到 `pwm_out_sim` 開始輸出（所有 work queue 都已建立；更早就 lockstep 會 deadlock）；(2) lockstep、disarmed、plant 固定在初值 100 步（輸出模組只在 disarmed 時套用 `PWM_MAIN_FUNC`）；(3) arm，收到第一筆 armed 輸出後 plant 才開始推進；「armed 輸出」是時間戳不早於 armed stub 發布時間的那一筆（更早的是 disarmed 時算的）。步數＝`duration` / 4 ms 四捨五入。
 - **情境檔**（`scenarios/*.json`）：`mode`（`stabilized`／`acro`／`offboard`）、`initial`（高度、空速、航向、經緯度）、`trim`、`settle_s`、`duration_s`、`steps`（`start_s`／`end_s` 從 settle 結束起算，`roll`／`pitch`／`yaw`／`throttle` 搖桿增量）、可選 `base`、`base_sticks`、`start`（要多啟動的 PX4 指令，和 `--start` 合併）、`wind`（風；格式與提醒在 `plant/wind.py`，說明在 [plant README](../plant/README.md)「風」；提醒印在畫面並寫進 `run.json` 的 `wind_reminders`；例子 `wind_steady.json`、`wind_low_altitude.json`）。`run_sitl.py` 把它轉成 `plant_sim` 讀的 `scenario.txt`（格式見 `PlantSim::load_scenario`）。
 - **配平**（`trim.py`，見下一節）：空中起始用平飛配平的攻角＝俯仰與油門；油門搖桿＝2×油門−1；Stabilized 另加基準俯仰搖桿，讓設定值等於配平俯仰。SITL 起始只帶入高度、速度、姿態（`PlantInitialConditions` 不含角速度與致動器狀態），所以轉彎配平還不能當 SITL 起始。
-- **settle_s**：PX4 的角速度積分器從 0 開始，而配平需要升降舵 0.4（FC 的 `TRIM_PITCH=0`），所以起始後俯仰先掉到約 −6°，約 40 s 回到配平（俯仰差 < 0.25°）；收斂後的升降舵 0.396 與離線配平一致。參考情境先 settle 40 s 再做階躍。
+- **settle_s**：PX4 的角速度積分器從 0 開始，而配平需要升降舵 0.4（FC 的 `TRIM_PITCH=0`），所以起始後俯仰先掉到約 −6°，約 40 s 回到配平（俯仰差 < 0.25°）；收斂後的升降舵 0.396 與離線配平一致。參考情境先 settle 40 s 再做階躍。量反應前先看 `response.py` 的 `pre_slope_per_s`（階躍前 1 s 的斜率）：不接近 0 就代表還沒穩，那一段的數字不能拿來量反應。
 - **參考情境 `stabilized_steps`**：settle 40 s 後，3–6 s roll 搖桿 0.5、9–11 s pitch 0.3、14–16 s yaw 0.5。指標用 [analysis/response.py](../analysis/response.py) 算。參考值（Ubuntu 2026-10-18，與舊機器的紀錄相同）：roll 尾窗平均 +22.32°（設定 22.5°）、上升 0.316 s、安定 0.456 s；pitch 尾窗平均 −3.39°（絕對設定值 −5.25°）、上升 1.06 s、未安定；yaw 角速度峰值 7.81 °/s（0.22 s）。
 - **`base_sticks`**：絕對的基準桿量（`manual_control_setpoint` 值），取代配平算出的基準；這時 `trim` 只決定空中起始狀態。`base` 是疊加的偏移。
 - **HITL 版 `stabilized_steps_hitl`**：同一組階躍與基準桿量（15 m/s 平飛配平，取到 MANUAL_CONTROL 的 1/1000：pitch −0.125、油門 −0.77），但 HITL 是從起飛後的巡航（約 25 m/s）進入，所以 settle 60 s。在 SITL 跑就是那趟 HITL 的預演（25 m/s 平飛配平起始）；舊機器上量到約 50 s 回到 15 m/s、高度掉約 16 m、階躍指標和參考情境差 ≤ 0.02°／0.02 s。HITL 由 `hitl/commands/stabilized_steps.py` 飛（起飛後動作 `--after stabilized_steps`）。
@@ -126,6 +126,7 @@ PX4 模組（Stabilized）：sensors、pwm_out_sim、control_allocator、fw_rate
   - 輸入全速記錄（自訂清單，含空速）：力矩差中位數 1.4e-5、p99 3.8e-4；超過 1e-3 的只有 7 筆，都在搖桿階躍的邊緣（同一時間戳的搖桿與姿態，重播時發布順序和原本不同，差一個樣本）。
   - **`SDLOG_PROFILE=17`（空速只記 5 Hz）**：中位數 6.0e-4、p99 5.5e-3，約 21 % 的樣本超過 1e-3。這是 `FW_ARSP_SCALE_EN=1`（增益隨空速縮放）時空速在兩筆之間被保持造成的。要把 FC 重播的差壓到 1e-4 等級，FC 的 SD 卡要放自訂清單（`etc/logging/logger_topics.txt`）讓空速全速記錄。
   - 速度：5 倍和 1 倍結果相同（60 s log 約 28 s）；10 倍中位數略大（7.7e-5）。預設 5 倍。
+- **自己把 PX4 的程式搬到別處、要逐位元對得上時**：PX4 用 `-freciprocal-math` 編（`cmake/px4_add_common_flags.cmake`），除以常數會被換成乘倒數，照著寫才會一位不差；控制分配的增益是 PX4 用 float 算反矩陣的結果，不一定剛好是 1（一個雙副翼機型實測副翼 ±1.00000024、馬達 0.99999994）。
 
 ## 已知限制與判讀
 

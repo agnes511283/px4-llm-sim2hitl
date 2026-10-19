@@ -58,6 +58,39 @@ class PilotTests(unittest.TestCase):
                 self.assertEqual(t.state, 'released')
                 self.assertFalse(t.streaming)
 
+    def test_mode_changes_once_flying_keep_the_sticks(self):
+        """cruise -> OFFBOARD -> AUTO_LOITER -> OFFBOARD -> AUTO_LOITER -> Stabilized -> Position, RTL, OFFBOARD:
+        MANUAL_CONTROL goes on all the time (in HITL these sticks are PX4's RC; a gap trips the RC-loss failsafe)"""
+        t = self.flight()
+        t.vehicle.armed, t.vehicle.cas, t.vehicle.height = True, 18., 100.
+        t.airborne, t.streaming, t.state = True, True, 'cruise'
+        v = t.vehicle
+        sent = lambda: sum(1 for c in t.link.send.call_args_list if c.args[0].get_type() == 'MANUAL_CONTROL')
+        for mode, sub, state in ((pilot.OFFBOARD, 0, 'cruise'), (4, 3, 'loiter'), (pilot.OFFBOARD, 0, 'loiter'),
+                                 (4, 3, 'loiter'), (pilot.STABILIZED, 0, 'cruise'), (3, 0, 'loiter'), (4, 5, 'loiter'),
+                                 (pilot.OFFBOARD, 0, 'loiter')):
+            v.mode, v.sub_mode = mode, sub
+            before = sent()
+            t.step(10., .02)
+            t.step(10., .02)
+            self.assertEqual(t.state, state, (mode, sub))
+            self.assertTrue(t.streaming)
+            self.assertEqual(sent(), before + 2)
+            if state == 'loiter':
+                self.assertEqual(t.sticks, [0, 0, round(1000 * .35), 0])
+        t.stop, t.stop_reason = True, 'stop-takeoff'                # an explicit stop still hands back
+        t.step(10., .02)
+        self.assertEqual(t.state, 'released')
+        self.assertFalse(t.streaming)
+
+    def test_mode_change_during_the_takeoff_still_stops(self):
+        t = self.flight()
+        t.vehicle.armed, t.vehicle.cas, t.vehicle.height = True, 14., 20.
+        t.airborne, t.streaming, t.state = True, True, 'climb'
+        t.vehicle.mode, t.vehicle.sub_mode = 4, 3
+        t.step(10., .02)
+        self.assertEqual(t.state, 'released')
+
     def test_ground_to_cruise_and_default_offboard_behavior(self):
         t = self.flight()
         t.step(10., .02)

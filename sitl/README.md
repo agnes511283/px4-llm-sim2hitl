@@ -55,8 +55,8 @@ PX4 模組（Stabilized）：sensors、pwm_out_sim、control_allocator、fw_rate
 ```
 
 - 先跑 `px4/check_px4_tree.py`（PASS 才編），再在 PX4 原始碼樹執行 `make px4_sitl_default EXTERNAL_MODULES_LOCATION=<專案>/sitl/px4_external BUILD_DIR_SUFFIX=_sim2hitl CMAKE_ARGS=-DPLANT_LIB=<plant library>`。增量編譯，log 在 `~/.cache/px4-llm-sim2hitl/sitl_build_<時間>.log`。
-- 輸出在 `<PX4 原始碼樹>/build/px4_sitl_default_sim2hitl/`（git 忽略的 build 目錄，`check_px4_tree.py` 仍 PASS）。不改 PX4 原始碼，不覆蓋 `build/px4_sitl_default`。
-- PX4 執行檔以絕對路徑連結 plant library；發布新的模型 release 或刪 cache 後重跑本指令。
+- 輸出在 `<PX4 原始碼樹>/build/px4_sitl_default_sim2hitl/`（git 忽略的 build 目錄，`check_px4_tree.py` 仍 PASS）。不改 PX4 原始碼，不覆蓋 `build/px4_sitl_default`。字尾 `_sim2hitl` 可用環境變數 `SIM2HITL_SITL_SUFFIX` 換：同一台機器有第二份 checkout 共用這棵 PX4 樹時要換（根目錄 README「同一台機器放兩份」）。
+- PX4 執行檔照編譯時寫進去的路徑（RUNPATH，預設是模型 release 的資料夾）載入 plant library：發布新的模型 release 或刪 cache 後重跑本指令，否則跑的還是舊的機體，而且不會報錯（`run_sitl.py` 跑之前會核對，見下面）。
 - `--replay`：`make px4_sitl_replay`，輸出在 `<PX4 原始碼樹>/build/px4_sitl_replay/`。這是 PX4 自己的 board（預設 SITL＋uORB 發布規則 `ORB_USE_PUBLISHER_RULES`），不含 `plant_sim`、不需要 plant library；第一次約幾分鐘。
 - 外部模組比 PX4 的 `src/lib` 早設定，所以 `plant_sim` 的 PX4 函式庫用 `target_link_libraries` 依名稱連結，不用 `px4_add_module` 的 `DEPENDS`。
 
@@ -76,7 +76,8 @@ PX4 模組（Stabilized）：sensors、pwm_out_sim、control_allocator、fw_rate
 - **`base_sticks`**：絕對的基準桿量（`manual_control_setpoint` 值），取代配平算出的基準；這時 `trim` 只決定空中起始狀態。`base` 是疊加的偏移。
 - **HITL 版 `stabilized_steps_hitl`**：同一組階躍與基準桿量（15 m/s 平飛配平，取到 MANUAL_CONTROL 的 1/1000：pitch −0.125、油門 −0.77），但 HITL 是從起飛後的巡航（約 25 m/s）進入，所以 settle 60 s。在 SITL 跑就是那趟 HITL 的預演（25 m/s 平飛配平起始）；舊機器上量到約 50 s 回到 15 m/s、高度掉約 16 m、階躍指標和參考情境差 ≤ 0.02°／0.02 s。HITL 由 `hitl/commands/stabilized_steps.py` 飛（起飛後動作 `--after stabilized_steps`）。
 - **`--start CMD`**（可重複）：在該模式的 PX4 模組之後、`plant_sim` 之前多啟動一個指令，例如 `--start "guidance_template start"`（`modules/src/guidance_template` 的範例模組；SITL 由 `px4_external/src/guidance_template/` 的包裝編進來）。情境 `template_offboard.json` 已在 `start` 寫了它，所以 `--scenario sitl/scenarios/template_offboard.json` 不用再加；判定用 `"$PY" -B analysis/template_check.py <out>/instance_0/log/<日期>/<檔>.ulg`。要做 A/B 時，基準要明確指定一個提供同樣任務目標的原生模式與設定值來源；在 OFFBOARD 情境只拿掉這個模組，等於拿掉導引的來源，不等於原生 PX4。
-- **多個 instance**：`--instances N` 平行跑，啟動間隔 `--stagger`（預設 1 s）。PX4 的 server 執行緒在多個同時啟動時可能還沒準備好，所以啟動腳本第一行先等 `px4-ver` 有回應；另外某個 instance 在 `--startup-timeout`（預設 60 s）內沒有建立 `trace.csv`（代表 `plant_sim` 沒起來），或結束時沒有 `summary.json`，runner 會重啟它（`--retries`，結果的 `retries` 欄）。`px4.log` 是區塊緩衝寫入，PX4 結束前讀不到完整內容，不能用來即時判斷。
+- **跑的是哪一份機體**：啟動前用 `ldd` 看這個 SITL 執行檔實際會載入哪一份 plant library，和目前發布的模型 release 不同就在畫面提醒（不擋：用 `--plant-lib` 刻意試建時本來就不同）；兩者都寫進 `run.json` 的 `plant_library`。只在 Linux 查，其他平台寫 null。
+- **多個 instance**：`--instances N` 平行跑，啟動間隔 `--stagger`（預設 1 s）。PX4 的 instance 編號從 0 起（`/tmp/px4-sock-<編號>`），兩次執行同時跑時用 `--instance-base N` 錯開，否則會互相干擾。PX4 的 server 執行緒在多個同時啟動時可能還沒準備好，所以啟動腳本第一行先等 `px4-ver` 有回應；另外某個 instance 在 `--startup-timeout`（預設 60 s）內沒有建立 `trace.csv`（代表 `plant_sim` 沒起來），或結束時沒有 `summary.json`，runner 會重啟它（`--retries`，結果的 `retries` 欄）。`px4.log` 是區塊緩衝寫入，PX4 結束前讀不到完整內容，不能用來即時判斷。
 - **實測速度（Ubuntu 24.04、i7-14700 28 執行緒，2026-10-18，`template_offboard` 情境模擬 60 s、`--no-ulog`）**：一次完整跑完（含 PX4 啟動與關閉）約 1.3 s；`--instances 25 --stagger 0.1` 跑 1000 次共 140.8 s、全部成功、0 次重試（其中 100 s 是啟動間隔）；`--instances 100 --stagger 0.02` 一批 5.5 s，換算 1000 次約 55 s（約 1,100 倍真實時間）。大量批次用 `--no-ulog`、較短的 `--stagger`；換電腦先量一批確認沒有重試。
 - **速度欄位**：每個 instance 的 `realtime_factor` 是它自己的「模擬秒數／實際秒數」；`throughput_realtime_factor` 是所有 instance 的模擬秒數合計，除以第一個開始推進到最後一個結束的實際時間，只有在各 instance 確實同時在跑時才代表平行吞吐量（要用夠長的 `--duration`）。
 

@@ -66,6 +66,8 @@
 | 序列埠 | 連 Pixhawk（USB CDC-ACM） | 使用者加入 `dialout` 群組；停用 ModemManager（它會試探新插上的序列埠）：`sudo systemctl disable --now ModemManager` | `ls -l /dev/ttyACM*`、`groups` |
 | QGC | 人看飛控、手動操作（3.1） | 官方 GitHub 發布的 AppImage（驗證機：v5.1.5，`~/Applications/`，核對官方公布的 SHA-256）；系統套件照 QGC 官方 Linux 說明（驗證機補裝 `libfuse2t64 gstreamer1.0-plugins-bad gstreamer1.0-libav libxcb-cursor0`）。**關掉 USB 自動連線**，只用 UDP 14550 連 runtime，否則會和 owner 搶飛控序列埠：設定檔 `~/.config/QGroundControl/QGroundControl.ini` 的 `[AutoConnect]` 把 `autoConnectPixhawk`、`autoConnectSiKRadio`、`autoConnectRTKGPS`、`autoConnectLibrePilot`、`autoConnectZeroConf` 設 `false`、`autoConnectUDP=true`（QGC 第一次啟動建好設定檔、關閉後再改；或在 QGC 的 Application Settings → Comm Links 取消勾選） | QGC 開著時 `lsof -p <QGC PID>` 只見 UDP 14550、不見 `/dev/ttyACM*` |
 
+**同一台機器放兩份**（例如套件和自己的 fork）：runtime 的狀態跟著資料夾路徑，本來就分開；下面這些預設兩份共用，要分開就設環境變數。暫存資料夾（`SIM2HITL_CACHE`）；SITL 編譯資料夾（PX4 樹裡的 `build/px4_sitl_default_sim2hitl`，`SIM2HITL_SITL_SUFFIX`）——不分開的話，一邊重編，另一邊的 SITL 就跑到這一邊的機體，不會報錯；同時跑 SITL 時的 PX4 編號（`run_sitl.py --instance-base`）；韌體建置樹（`<PX4 樹>-build`，`SIM2HITL_PX4_BUILD_TREE`；共用時不要兩邊同時編）。FC 只有一個：同一時間只能一份開 owner，換之前先在原處 `recover` 並關 owner。
+
 ## 常用指令
 
 ```sh

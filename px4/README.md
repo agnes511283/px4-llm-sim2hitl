@@ -51,7 +51,7 @@ python3 px4/check_px4_tree.py --path <路徑> --remember
 
 - 不直接改使用者的 PX4 原始碼樹。自己的模組放 `modules/src/`（SITL 的包裝在 `sitl/px4_external/`），用 PX4 的 `EXTERNAL_MODULES_LOCATION` 編進去；必須改 PX4 原有的檔案時，做成 patch 放 `px4/patches/`，由配方的 `firmware/firmware.json` 的 `recipe.patches` 指定。
 - **配方的 patch 只套用在韌體**：`px4/build_firmware.py` 會套，SITL（`sitl/build_sitl.py`）直接編鎖定的原始碼樹，不讀配方。現有的記憶卡修正只和實體飛控有關；以後 patch 改到控制邏輯時，要先說清楚 SITL 怎麼用到同一份修改，否則兩邊測的不是同一份程式。
-- 樹裡的 `build/` 是建置產物（SITL 編在 `build/px4_sitl_default_sim2hitl`），git 忽略，不影響核對。
+- 樹裡的 `build/` 是建置產物（SITL 編在 `build/px4_sitl_default_sim2hitl`，字尾可用 `SIM2HITL_SITL_SUFFIX` 換），git 忽略，不影響核對。
 
 ## 編 FC 韌體
 

@@ -27,8 +27,11 @@ plus HITL overrides), translated for SITL: outputs on PWM_MAIN_FUNC instead of H
 IMU device ids, SYS_HITL=0, FC sensor calibration dropped. Prints one JSON line with every instance's
 real-time factor and the aggregate.
 
-The PX4 build is <PX4 tree>/build/px4_sitl_default_sim2hitl (python3 sitl/build_sitl.py); the tree location
-comes from px4/check_px4_tree.py (SIM2HITL_PX4_ROOT or the local config file).
+The PX4 build is <PX4 tree>/build/px4_sitl_default_sim2hitl (python3 sitl/build_sitl.py; SIM2HITL_SITL_SUFFIX
+replaces _sim2hitl); the tree location comes from px4/check_px4_tree.py (SIM2HITL_PX4_ROOT or the local config
+file). Before launching it reads which plant library that build loads (Linux: ldd) and warns when it is not the
+active model release's (rebuild with build_sitl.py); run.json records both. --instance-base N numbers the PX4
+instances from N (their /tmp/px4-sock-<n>), so two runs at the same time do not collide.
 """
 import argparse
 import json
@@ -48,6 +51,7 @@ import wind as plant_wind  # noqa: E402  same wind description as the HITL scene
 NATIVE = ROOT / 'deploy' / '00_native'
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'px4'))
 from check_px4_tree import px4_root  # noqa: E402
+from build_sitl import active_plant_lib, build_dir  # noqa: E402
 # Parameters that belong to the physical FC or to modules this SITL does not run.
 EXCLUDED_PREFIXES = ('CAL_', 'UAVCAN_', 'RC', 'MAV_', 'SER_', 'BAT', 'EKF2_', 'SDLOG_', 'DSHOT_', 'UXRCE_',
                      'HIL_ACT_', 'PWM_', 'SYS_HITL', 'SYS_AUTOSTART', 'SYS_AUTOCONFIG', 'SYS_USB_AUTO')
@@ -150,6 +154,25 @@ def scenario_text(scenario, params):
     return '\n'.join(lines) + '\n', trim_result, wind_reminders
 
 
+def plant_check(px4):
+    """The plant library this PX4 build loads (ldd, Linux only) next to the active model release's. The build finds
+    it through the RUNPATH written when it was built, so after a new release, or a rebuild from another checkout
+    sharing the PX4 tree, it silently runs the plant it was built with until sitl/build_sitl.py runs again."""
+    try:
+        active = active_plant_lib().resolve()
+    except (OSError, ValueError, KeyError, TypeError):
+        active = None
+    loaded = None
+    if active is not None and sys.platform.startswith('linux'):
+        out = subprocess.run(['ldd', str(px4)], capture_output=True, text=True).stdout
+        for line in out.splitlines():
+            name, _, where = line.strip().partition(' => ')
+            if name == active.name and where.startswith('/'):
+                loaded = Path(where.rsplit(' (', 1)[0]).resolve()
+    return {'loaded': str(loaded) if loaded else None, 'active_release': str(active) if active else None,
+            'same': None if loaded is None else loaded == active}
+
+
 def replay_main(args):
     import replay
     sys.path.insert(0, str(ROOT / 'analysis'))
@@ -172,6 +195,9 @@ def main():
     parser.add_argument('--scenario', type=Path, default=ROOT / 'sitl' / 'scenarios' / 'stabilized_steps.json')
     parser.add_argument('--duration', type=float, help='simulated seconds after the first actuator output (default: the scenario)')
     parser.add_argument('--instances', type=int, default=1)
+    parser.add_argument('--instance-base', type=int, default=0,
+                        help='PX4 instance number of the first instance (its /tmp/px4-sock-<n>): another base keeps two\n'
+                             'runs at the same time apart')
     parser.add_argument('--timeout', type=float, default=600.0)
     parser.add_argument('--stagger', type=float, default=1.0, help='seconds between instance launches')
     parser.add_argument('--retries', type=int, default=2)
@@ -188,7 +214,11 @@ def main():
     if args.replay:
         return replay_main(args)
     px4_tree = px4_root()
-    px4 = px4_tree / 'build' / 'px4_sitl_default_sim2hitl' / 'bin' / 'px4'
+    px4 = build_dir(px4_tree) / 'bin' / 'px4'
+    plant = plant_check(px4)
+    if plant['same'] is False:
+        print(f"plant: this SITL build loads {plant['loaded']}, the active model release is {plant['active_release']}; "
+              'rebuild with sitl/build_sitl.py (unless it was built with --plant-lib on purpose)', file=sys.stderr)
     params = sitl_params()
     if args.ulog:
         params['SDLOG_PROFILE'] = read_params(NATIVE / 'hitl_overrides.params')['SDLOG_PROFILE']
@@ -216,7 +246,7 @@ def main():
         script.write_text(startup_script(work / 'sitl_params.bson', scenario['mode'], duration, work, args.ulog,
                                               list(args.start) + scenario.get('start', [])))
         log = open(work / 'px4.log', 'w')
-        proc = subprocess.Popen([str(px4), '-d', '-i', str(i), '-s', str(script), '-w', str(work)],
+        proc = subprocess.Popen([str(px4), '-d', '-i', str(args.instance_base + i), '-s', str(script), '-w', str(work)],
                                 stdout=log, stderr=subprocess.STDOUT, env=env)
         return {'work': work, 'log': log, 'proc': proc, 'summary_seen': None, 'launched': time.monotonic()}
 
@@ -269,7 +299,7 @@ def main():
     sim = sum(r.get('sim_s', 0.0) for r in results)
     stepping = [r for r in results if 'wall_start_unix_us' in r]
     window = (max(r['wall_end_unix_us'] for r in stepping) - min(r['wall_start_unix_us'] for r in stepping)) * 1e-6 if stepping else 0.0
-    report = {'scenario': scenario['name'], 'start': args.start, 'trim': trim_result, 'wind_reminders': wind_reminders, 'instances': results, 'parameters': len(params), 'wall_s_total': wall,
+    report = {'scenario': scenario['name'], 'start': args.start, 'trim': trim_result, 'wind_reminders': wind_reminders, 'plant_library': plant, 'instances': results, 'parameters': len(params), 'wall_s_total': wall,
               # Throughput: simulated seconds of all instances per wall second, from the first instance's
               # first plant step to the last instance's last (only meaningful when the runs overlap).
               'throughput_realtime_factor': sum(r['sim_s'] for r in stepping) / window if window else 0.0,

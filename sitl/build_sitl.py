@@ -15,12 +15,15 @@ for the ULog replay. It has no plant_sim and needs no plant library.
 3. Runs `make px4_sitl_default EXTERNAL_MODULES_LOCATION=sitl/px4_external BUILD_DIR_SUFFIX=_sim2hitl`
    in the PX4 tree (incremental; output in <PX4 tree>/build/px4_sitl_default_sim2hitl, git-ignored).
    It never edits the PX4 tree's sources, and never touches build/px4_sitl_default.
+   SIM2HITL_SITL_SUFFIX replaces _sim2hitl: a second checkout on the same machine (e.g. a fork next to the
+   kit) that shares the PX4 tree sets its own, or each rebuild relinks the other's PX4 to its own plant.
 
 Prints one JSON line (tree, plant library and its SHA-256, exit code, log path).
 """
 import argparse
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import time
@@ -34,6 +37,12 @@ from check_px4_tree import px4_root  # noqa: E402
 import toolchain  # noqa: E402
 
 LOGS = toolchain.cache_root()
+BUILD_SUFFIX = os.environ.get('SIM2HITL_SITL_SUFFIX', '_sim2hitl')
+
+
+def build_dir(tree):
+    """This project's SITL build inside the PX4 tree (sitl/run_sitl.py runs its bin/px4)."""
+    return tree / 'build' / f'px4_sitl_default{BUILD_SUFFIX}'
 
 
 def active_plant_lib():
@@ -67,7 +76,7 @@ def main():
         raise SystemExit(f'plant library not found: {plant}')
     log = LOGS / f'sitl_build_{time.strftime("%Y%m%d_%H%M%S")}.log'
     cmd = ['make', 'px4_sitl_default', f'EXTERNAL_MODULES_LOCATION={ROOT / "sitl" / "px4_external"}',
-           'BUILD_DIR_SUFFIX=_sim2hitl', f'CMAKE_ARGS=-DPLANT_LIB={plant}']
+           f'BUILD_DIR_SUFFIX={BUILD_SUFFIX}', f'CMAKE_ARGS=-DPLANT_LIB={plant}']
     with open(log, 'w') as out:
         code = subprocess.run(cmd, cwd=tree, stdout=out, stderr=subprocess.STDOUT).returncode
     print(json.dumps({'status': 'PASS' if code == 0 else 'FAIL', 'tree': str(tree), 'plant_lib': str(plant),

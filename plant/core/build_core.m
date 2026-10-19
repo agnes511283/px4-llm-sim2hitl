@@ -15,7 +15,8 @@ function cacheRoot = build_core()
 % update.py, so this builder needs no Java.
 %
 % The cache folder is SIM2HITL_CACHE, or the platform's user cache + px4-llm-sim2hitl (same rule as
-% plant/core/toolchain.py). Code is generated for a Linux x86-64 host (where the plant runs).
+% plant/core/toolchain.py). Code is generated for the x86-64 data model (LP64) without instruction-set
+% extensions, so the same C compiles on x86-64 and arm64 hosts (each SSE2 lane was plain double arithmetic).
 coreDir = fileparts(mfilename('fullpath'));
 projectRoot = fileparts(fileparts(coreDir));
 modelDir = fullfile(projectRoot, 'model');
@@ -146,7 +147,9 @@ for k = 1:2
     add_line(windParent, dp.Outport(k), ph.Inport(1)); add_line(windParent, scaleSource, ph.Inport(2));
     for j = 1:numel(dst), add_line(windParent, ph.Outport(1), dst(j)); end
 end
-set_param(model, 'SystemTargetFile', 'ert.tlc', 'ProdHWDeviceType', 'Intel->x86-64 (Linux 64)', 'TargetLang', 'C', ...
+% No instruction-set extensions: the Intel default (SSE2) puts x86 intrinsics in the C, which arm64 cannot compile.
+set_param(model, 'SystemTargetFile', 'ert.tlc', 'ProdHWDeviceType', 'Intel->x86-64 (Linux 64)', ...
+    'InstructionSetExtensions', {'None'}, 'TargetLang', 'C', ...
     'Solver', 'ode4', 'SolverType', 'Fixed-step', 'FixedStep', 'Thil', 'SolverMode', 'SingleTasking', 'SupportContinuousTime', 'on', ...
     'SupportNonFinite', 'on', 'CodeInterfacePackaging', 'Reusable function', 'RootIOFormat', 'Structure reference', ...
     'GenerateAllocFcn', 'off', 'MultiInstanceErrorCode', 'Error', 'IncludeMdlTerminateFcn', 'on', ...

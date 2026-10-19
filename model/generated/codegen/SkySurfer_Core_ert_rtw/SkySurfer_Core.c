@@ -9,7 +9,7 @@
  *
  * Model version                  : 14.12
  * Simulink Coder version         : 26.2 (R2026b) 22-May-2026
- * C/C++ source code generated on : Mon Oct 19 01:08:18 2026
+ * C/C++ source code generated on : Tue Oct 20 02:47:22 2026
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: Intel->x86-64 (Linux 64)
@@ -20,7 +20,6 @@
 #include "SkySurfer_Core.h"
 #include <stdbool.h>
 #include "SkySurfer_Core_private.h"
-#include <emmintrin.h>
 #include <math.h>
 #include <string.h>
 #include "rt_assert.h"
@@ -681,7 +680,6 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   X_SkySurfer_Core_T *SkySurfer_Core_X = SkySurfer_Core_M->contStates;
   XDis_SkySurfer_Core_T *SkySurfer_Core_XDis = ((XDis_SkySurfer_Core_T *)
     SkySurfer_Core_M->contStateDisabled);
-  __m128d tmp_1;
   XDis_SkySurfer_Core_T *_rtXdis;
   double CoreSnapshot_Concat[72];
   double rtb_MatrixConcatenation[18];
@@ -787,15 +785,17 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   double rtb_Reshape1_g[3];
   double rtb_u[3];
   double rtb_Lw[2];
-  double tmp_0[2];
   double frac;
-  double pData_idx_0;
   double pData_idx_0_tmp;
-  double pData_idx_1;
+  double pData_idx_2;
+  double pData_tmp;
+  double pData_tmp_0;
   double rtb_Add_h_idx_2;
   double rtb_Gain;
+  double rtb_Gain1_d;
   double rtb_Gain3;
   double rtb_Gain4;
+  double rtb_Gain8;
   double rtb_Gain_az;
   double rtb_Gain_h;
   double rtb_Limit_AIL_R;
@@ -847,13 +847,12 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   double rtb_Thr;
   double rtb_UnitConversion_d;
   double rtb_UnitConversion_n;
-  double rtb_VectorConcatenate_idx_2;
   double rtb_VectorConcatenate_idx_6;
   double rtb_jxi;
   double rtb_q0dot;
   double rtb_q1dot;
-  double rtb_q3dot;
   double rtb_sigma_ugsigma_vg;
+  double rtb_sincos_o1_idx_0;
   double rtb_sincos_o1_idx_1;
   double rtb_sincos_o1_idx_2;
   double rtb_u2rhoV2;
@@ -864,7 +863,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   double rtb_w3;
   int32_t i;
   int32_t rtb_MatrixConcatenation_tmp;
-  int32_t rtb_VectorConcatenate_j_tmp;
+  int32_t rtb_Switch1_idx_2_tmp;
   uint32_t bpIndices[3];
   uint32_t bpIndices_0[3];
   uint32_t bpIndices_1[3];
@@ -1071,62 +1070,62 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    */
   CoreSnapshot_Concat[5] = SkySurfer_Core_X->UVWb_CSTATE[2];
   if (tmp) {
-    /* Gain: '<S202>/Gain1' incorporates:
-     *  Gain: '<S21>/1//2'
-     *  Inport: '<Root>/InitialConditions'
-     */
-    _mm_storeu_pd(&tmp_0[0], _mm_mul_pd(_mm_mul_pd(_mm_set1_pd
-      (SkySurfer_Core_P.Gain1_Gain_m), _mm_set_pd
-      (SkySurfer_Core_U->InitialConditions[5],
-       SkySurfer_Core_U->InitialConditions[6])), _mm_set1_pd
-      (SkySurfer_Core_P.u2_Gain)));
-
     /* Gain: '<S21>/1//2' incorporates:
      *  Gain: '<S202>/Gain1'
      *  Inport: '<Root>/InitialConditions'
      */
+    rtb_sincos_o1_idx_0 = SkySurfer_Core_P.Gain1_Gain_m *
+      SkySurfer_Core_U->InitialConditions[6] * SkySurfer_Core_P.u2_Gain;
+    rtb_sincos_o1_idx_1 = SkySurfer_Core_P.Gain1_Gain_m *
+      SkySurfer_Core_U->InitialConditions[5] * SkySurfer_Core_P.u2_Gain;
     rtb_sincos_o1_idx_2 = SkySurfer_Core_P.Gain1_Gain_m *
       SkySurfer_Core_U->InitialConditions[4] * SkySurfer_Core_P.u2_Gain;
 
     /* Trigonometry: '<S21>/sincos' */
-    rtb_u[0] = cos(tmp_0[0]);
-    rtb_Q0123_idx_0 = sin(tmp_0[0]);
-    rtb_u[1] = cos(tmp_0[1]);
-    rtb_Q0123_idx_1 = sin(tmp_0[1]);
+    rtb_u[0] = cos(rtb_sincos_o1_idx_0);
+    rtb_Q0123_idx_1 = sin(rtb_sincos_o1_idx_0);
+    rtb_u[1] = cos(rtb_sincos_o1_idx_1);
+    rtb_Q0123_idx_2 = sin(rtb_sincos_o1_idx_1);
     rtb_u[2] = cos(rtb_sincos_o1_idx_2);
-    rtb_Q0123_idx_2 = sin(rtb_sincos_o1_idx_2);
-    tmp_1 = _mm_set_pd(-1.0, 1.0);
+    rtb_Q0123_idx_0 = sin(rtb_sincos_o1_idx_2);
 
     /* Fcn: '<S21>/q0' incorporates:
      *  Fcn: '<S21>/q1'
      *  Trigonometry: '<S21>/sincos'
      */
-    _mm_storeu_pd(&tmp_0[0], _mm_add_pd(_mm_mul_pd(_mm_mul_pd(_mm_set1_pd(rtb_u
-      [0]), _mm_set1_pd(rtb_u[1])), _mm_set_pd(rtb_Q0123_idx_2, rtb_u[2])),
-      _mm_mul_pd(_mm_mul_pd(_mm_mul_pd(_mm_set1_pd(rtb_Q0123_idx_0), _mm_set1_pd
-      (rtb_Q0123_idx_1)), _mm_set_pd(rtb_u[2], rtb_Q0123_idx_2)), tmp_1)));
+    rtb_Q0123_idx_3 = rtb_u[0] * rtb_u[1];
+    rtb_Thr = rtb_Q0123_idx_1 * rtb_Q0123_idx_2;
 
-    /* Fcn: '<S21>/q0' */
-    SkySurfer_Core_DW->q0 = tmp_0[0];
-
-    /* Fcn: '<S21>/q1' */
-    SkySurfer_Core_DW->q1 = tmp_0[1];
-
-    /* Trigonometry: '<S21>/sincos' incorporates:
-     *  Fcn: '<S21>/q2'
-     *  Fcn: '<S21>/q3'
+    /* Fcn: '<S21>/q0' incorporates:
+     *  Trigonometry: '<S21>/sincos'
      */
-    _mm_storeu_pd(&tmp_0[0], _mm_add_pd(_mm_mul_pd(_mm_mul_pd(_mm_set_pd
-      (rtb_Q0123_idx_0, rtb_u[0]), _mm_set_pd(rtb_u[1], rtb_Q0123_idx_1)),
-      _mm_set1_pd(rtb_u[2])), _mm_mul_pd(_mm_mul_pd(_mm_mul_pd(_mm_set_pd(rtb_u
-      [0], rtb_Q0123_idx_0), _mm_set_pd(rtb_Q0123_idx_1, rtb_u[1])), _mm_set1_pd
-      (rtb_Q0123_idx_2)), tmp_1)));
+    SkySurfer_Core_DW->q0 = rtb_Q0123_idx_3 * rtb_u[2] + rtb_Thr *
+      rtb_Q0123_idx_0;
 
-    /* Fcn: '<S21>/q2' */
-    SkySurfer_Core_DW->q2 = tmp_0[0];
+    /* Fcn: '<S21>/q1' incorporates:
+     *  Trigonometry: '<S21>/sincos'
+     */
+    SkySurfer_Core_DW->q1 = rtb_Q0123_idx_3 * rtb_Q0123_idx_0 - rtb_Thr * rtb_u
+      [2];
 
-    /* Fcn: '<S21>/q3' */
-    SkySurfer_Core_DW->q3 = tmp_0[1];
+    /* Fcn: '<S21>/q2' incorporates:
+     *  Fcn: '<S21>/q3'
+     *  Trigonometry: '<S21>/sincos'
+     */
+    rtb_Q0123_idx_1 *= rtb_u[1];
+    rtb_Q0123_idx_2 *= rtb_u[0];
+
+    /* Fcn: '<S21>/q2' incorporates:
+     *  Trigonometry: '<S21>/sincos'
+     */
+    SkySurfer_Core_DW->q2 = rtb_Q0123_idx_2 * rtb_u[2] + rtb_Q0123_idx_1 *
+      rtb_Q0123_idx_0;
+
+    /* Fcn: '<S21>/q3' incorporates:
+     *  Trigonometry: '<S21>/sincos'
+     */
+    SkySurfer_Core_DW->q3 = rtb_Q0123_idx_1 * rtb_u[2] - rtb_Q0123_idx_2 *
+      rtb_Q0123_idx_0;
   }
 
   /* Integrator: '<S14>/Q0123' incorporates:
@@ -1218,11 +1217,15 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
                  SkySurfer_Core_X->Q0123_CSTATE[3] *
                  SkySurfer_Core_X->Q0123_CSTATE[3]);
 
-  /* Integrator: '<S14>/Q0123' incorporates:
-   *  Product: '<S33>/Product'
+  /* Product: '<S33>/Product' incorporates:
+   *  Integrator: '<S14>/Q0123'
    */
-  _mm_storeu_pd(&tmp_0[0], _mm_div_pd(_mm_loadu_pd
-    (&SkySurfer_Core_X->Q0123_CSTATE[0]), _mm_set1_pd(rtb_jxi)));
+  rtb_Thr = SkySurfer_Core_X->Q0123_CSTATE[0] / rtb_jxi;
+
+  /* Product: '<S33>/Product1' incorporates:
+   *  Integrator: '<S14>/Q0123'
+   */
+  rtb_Gain1_d = SkySurfer_Core_X->Q0123_CSTATE[1] / rtb_jxi;
 
   /* Product: '<S33>/Product2' incorporates:
    *  Integrator: '<S14>/Q0123'
@@ -1237,24 +1240,24 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* Product: '<S23>/Product3' incorporates:
    *  Product: '<S27>/Product3'
    */
-  rtb_sincos_o1_idx_2 = tmp_0[0] * tmp_0[0];
+  rtb_sincos_o1_idx_2 = rtb_Thr * rtb_Thr;
 
   /* Product: '<S23>/Product2' incorporates:
    *  Product: '<S27>/Product2'
    */
-  rtb_VectorConcatenate_idx_2 = tmp_0[1] * tmp_0[1];
+  rtb_sincos_o1_idx_1 = rtb_Gain1_d * rtb_Gain1_d;
 
   /* Product: '<S23>/Product1' incorporates:
    *  Product: '<S27>/Product1'
    *  Product: '<S31>/Product1'
    */
-  rtb_VectorConcatenate_idx_6 = rtb_Gain_az * rtb_Gain_az;
+  rtb_sincos_o1_idx_0 = rtb_Gain_az * rtb_Gain_az;
 
   /* Product: '<S23>/Product' incorporates:
    *  Product: '<S27>/Product'
    *  Product: '<S31>/Product'
    */
-  rtb_sincos_o1_idx_1 = rtb_jxi * rtb_jxi;
+  rtb_VectorConcatenate_idx_6 = rtb_jxi * rtb_jxi;
 
   /* Sum: '<S23>/Sum' incorporates:
    *  Product: '<S23>/Product'
@@ -1262,63 +1265,62 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    *  Product: '<S23>/Product2'
    *  Product: '<S23>/Product3'
    */
-  rtb_VectorConcatenate_et[0] = ((rtb_sincos_o1_idx_2 +
-    rtb_VectorConcatenate_idx_2) - rtb_VectorConcatenate_idx_6) -
-    rtb_sincos_o1_idx_1;
+  rtb_VectorConcatenate_et[0] = ((rtb_sincos_o1_idx_2 + rtb_sincos_o1_idx_1) -
+    rtb_sincos_o1_idx_0) - rtb_VectorConcatenate_idx_6;
 
   /* Product: '<S26>/Product3' incorporates:
    *  Product: '<S24>/Product3'
    */
-  rtb_Limit_AIL_R = rtb_jxi * tmp_0[0];
+  rtb_Limit_AIL_R = rtb_jxi * rtb_Thr;
 
   /* Product: '<S26>/Product2' incorporates:
    *  Product: '<S24>/Product2'
    */
-  rtb_q3dot = tmp_0[1] * rtb_Gain_az;
+  rtb_sigma_ugsigma_vg = rtb_Gain1_d * rtb_Gain_az;
 
   /* Gain: '<S26>/Gain' incorporates:
    *  Product: '<S26>/Product2'
    *  Product: '<S26>/Product3'
    *  Sum: '<S26>/Sum'
    */
-  rtb_VectorConcatenate_et[1] = (rtb_q3dot - rtb_Limit_AIL_R) *
+  rtb_VectorConcatenate_et[1] = (rtb_sigma_ugsigma_vg - rtb_Limit_AIL_R) *
     SkySurfer_Core_P.Gain_Gain_e;
 
   /* Product: '<S29>/Product2' incorporates:
    *  Product: '<S25>/Product2'
    */
-  rtb_sigma_ugsigma_vg = tmp_0[1] * rtb_jxi;
+  rtb_LowAltitudeScaleLength = rtb_Gain1_d * rtb_jxi;
 
   /* Product: '<S29>/Product1' incorporates:
    *  Product: '<S25>/Product1'
    */
-  rtb_LowAltitudeScaleLength = tmp_0[0] * rtb_Gain_az;
+  rtb_Lv_idx_0 = rtb_Thr * rtb_Gain_az;
 
   /* Gain: '<S29>/Gain' incorporates:
    *  Product: '<S29>/Product1'
    *  Product: '<S29>/Product2'
    *  Sum: '<S29>/Sum'
    */
-  rtb_VectorConcatenate_et[2] = (rtb_LowAltitudeScaleLength +
-    rtb_sigma_ugsigma_vg) * SkySurfer_Core_P.Gain_Gain_l;
+  rtb_VectorConcatenate_et[2] = (rtb_Lv_idx_0 + rtb_LowAltitudeScaleLength) *
+    SkySurfer_Core_P.Gain_Gain_l;
 
   /* Gain: '<S24>/Gain' incorporates:
    *  Sum: '<S24>/Sum'
    */
-  rtb_VectorConcatenate_et[3] = (rtb_Limit_AIL_R + rtb_q3dot) *
+  rtb_VectorConcatenate_et[3] = (rtb_Limit_AIL_R + rtb_sigma_ugsigma_vg) *
     SkySurfer_Core_P.Gain_Gain_c;
 
   /* Sum: '<S27>/Sum' incorporates:
    *  Sum: '<S31>/Sum'
    */
-  rtb_sincos_o1_idx_2 -= rtb_VectorConcatenate_idx_2;
-  rtb_VectorConcatenate_et[4] = (rtb_sincos_o1_idx_2 +
-    rtb_VectorConcatenate_idx_6) - rtb_sincos_o1_idx_1;
+  rtb_sincos_o1_idx_2 -= rtb_sincos_o1_idx_1;
+  rtb_VectorConcatenate_et[4] = (rtb_sincos_o1_idx_2 + rtb_sincos_o1_idx_0) -
+    rtb_VectorConcatenate_idx_6;
 
   /* Product: '<S30>/Product1' incorporates:
    *  Product: '<S28>/Product1'
    */
-  rtb_VectorConcatenate_idx_2 = tmp_0[0] * tmp_0[1];
+  rtb_sincos_o1_idx_1 = rtb_Thr * rtb_Gain1_d;
 
   /* Product: '<S30>/Product2' incorporates:
    *  Product: '<S28>/Product2'
@@ -1330,48 +1332,52 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    *  Product: '<S30>/Product2'
    *  Sum: '<S30>/Sum'
    */
-  rtb_VectorConcatenate_et[5] = (rtb_Limit_AIL_R - rtb_VectorConcatenate_idx_2) *
+  rtb_VectorConcatenate_et[5] = (rtb_Limit_AIL_R - rtb_sincos_o1_idx_1) *
     SkySurfer_Core_P.Gain_Gain_g;
 
   /* Gain: '<S25>/Gain' incorporates:
    *  Sum: '<S25>/Sum'
    */
-  rtb_VectorConcatenate_et[6] = (rtb_sigma_ugsigma_vg -
-    rtb_LowAltitudeScaleLength) * SkySurfer_Core_P.Gain_Gain_j;
+  rtb_VectorConcatenate_et[6] = (rtb_LowAltitudeScaleLength - rtb_Lv_idx_0) *
+    SkySurfer_Core_P.Gain_Gain_j;
 
   /* Gain: '<S28>/Gain' incorporates:
    *  Sum: '<S28>/Sum'
    */
-  rtb_VectorConcatenate_et[7] = (rtb_VectorConcatenate_idx_2 + rtb_Limit_AIL_R) *
+  rtb_VectorConcatenate_et[7] = (rtb_sincos_o1_idx_1 + rtb_Limit_AIL_R) *
     SkySurfer_Core_P.Gain_Gain_n;
 
   /* Sum: '<S31>/Sum' */
-  rtb_VectorConcatenate_et[8] = (rtb_sincos_o1_idx_2 -
-    rtb_VectorConcatenate_idx_6) + rtb_sincos_o1_idx_1;
+  rtb_VectorConcatenate_et[8] = (rtb_sincos_o1_idx_2 - rtb_sincos_o1_idx_0) +
+    rtb_VectorConcatenate_idx_6;
 
   /* Reshape: '<S32>/Reshape (9) to [3x3] column-major' */
   memcpy(&rtb_Reshape9to3x3columnmajor[0], &rtb_VectorConcatenate_et[0], 9U *
          sizeof(double));
 
   /* Product: '<S18>/Product' incorporates:
-   *  Concatenate: '<S5>/CoreSnapshot_Concat'
    *  Integrator: '<S6>/UVWb'
    *  Math: '<S6>/Transpose'
-   *  Reshape: '<S18>/Reshape2'
    *  Reshape: '<S32>/Reshape (9) to [3x3] column-major'
-   *  SignalConversion generated from: '<S5>/CoreSnapshot_Concat'
    */
-  rtb_Gain_az = SkySurfer_Core_X->UVWb_CSTATE[1];
-  rtb_Thr = SkySurfer_Core_X->UVWb_CSTATE[0];
-  rtb_sincos_o1_idx_2 = SkySurfer_Core_X->UVWb_CSTATE[2];
+  rtb_Thr = SkySurfer_Core_X->UVWb_CSTATE[1];
+  rtb_Gain1_d = SkySurfer_Core_X->UVWb_CSTATE[0];
+  rtb_Gain_az = SkySurfer_Core_X->UVWb_CSTATE[2];
   for (i = 0; i < 3; i++) {
-    _mm_storeu_pd(&tmp_0[0], _mm_add_pd(_mm_add_pd(_mm_mul_pd(_mm_set1_pd
-      (rtb_VectorConcatenate_et[3 * i + 1]), _mm_set1_pd(rtb_Gain_az)),
-      _mm_mul_pd(_mm_set1_pd(rtb_VectorConcatenate_et[3 * i]), _mm_set1_pd
-                 (rtb_Thr))), _mm_mul_pd(_mm_set1_pd(rtb_VectorConcatenate_et[3 *
-      i + 2]), _mm_set1_pd(rtb_sincos_o1_idx_2))));
-    SkySurfer_Core_DW->Reshape2[i] = tmp_0[0];
-    CoreSnapshot_Concat[i + 13] = tmp_0[1];
+    rtb_sincos_o1_idx_2 = (rtb_VectorConcatenate_et[3 * i + 1] * rtb_Thr +
+      rtb_VectorConcatenate_et[3 * i] * rtb_Gain1_d) + rtb_VectorConcatenate_et
+      [3 * i + 2] * rtb_Gain_az;
+
+    /* Reshape: '<S18>/Reshape2' incorporates:
+     *  Math: '<S6>/Transpose'
+     *  Reshape: '<S32>/Reshape (9) to [3x3] column-major'
+     */
+    SkySurfer_Core_DW->Reshape2[i] = rtb_sincos_o1_idx_2;
+
+    /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
+     *  Concatenate: '<S5>/CoreSnapshot_Concat'
+     */
+    CoreSnapshot_Concat[i + 13] = rtb_sincos_o1_idx_2;
   }
 
   /* End of Product: '<S18>/Product' */
@@ -1393,11 +1399,15 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
                  SkySurfer_Core_X->Q0123_CSTATE[3] *
                  SkySurfer_Core_X->Q0123_CSTATE[3]);
 
-  /* Integrator: '<S14>/Q0123' incorporates:
-   *  Product: '<S75>/Product'
+  /* Product: '<S75>/Product' incorporates:
+   *  Integrator: '<S14>/Q0123'
    */
-  _mm_storeu_pd(&tmp_0[0], _mm_div_pd(_mm_loadu_pd
-    (&SkySurfer_Core_X->Q0123_CSTATE[0]), _mm_set1_pd(rtb_Thr)));
+  rtb_Gain1_d = SkySurfer_Core_X->Q0123_CSTATE[0] / rtb_Thr;
+
+  /* Product: '<S75>/Product1' incorporates:
+   *  Integrator: '<S14>/Q0123'
+   */
+  rtb_Gain_az = SkySurfer_Core_X->Q0123_CSTATE[1] / rtb_Thr;
 
   /* Product: '<S75>/Product2' incorporates:
    *  Integrator: '<S14>/Q0123'
@@ -1412,24 +1422,24 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* Product: '<S65>/Product3' incorporates:
    *  Product: '<S69>/Product3'
    */
-  rtb_sincos_o1_idx_2 = tmp_0[0] * tmp_0[0];
+  rtb_sincos_o1_idx_2 = rtb_Gain1_d * rtb_Gain1_d;
 
   /* Product: '<S65>/Product2' incorporates:
    *  Product: '<S69>/Product2'
    */
-  rtb_VectorConcatenate_idx_2 = tmp_0[1] * tmp_0[1];
+  rtb_sincos_o1_idx_1 = rtb_Gain_az * rtb_Gain_az;
 
   /* Product: '<S65>/Product1' incorporates:
    *  Product: '<S69>/Product1'
    *  Product: '<S73>/Product1'
    */
-  rtb_VectorConcatenate_idx_6 = rtb_jxi * rtb_jxi;
+  rtb_sincos_o1_idx_0 = rtb_jxi * rtb_jxi;
 
   /* Product: '<S65>/Product' incorporates:
    *  Product: '<S69>/Product'
    *  Product: '<S73>/Product'
    */
-  rtb_sincos_o1_idx_1 = rtb_Thr * rtb_Thr;
+  rtb_VectorConcatenate_idx_6 = rtb_Thr * rtb_Thr;
 
   /* Sum: '<S65>/Sum' incorporates:
    *  Product: '<S65>/Product'
@@ -1437,63 +1447,62 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    *  Product: '<S65>/Product2'
    *  Product: '<S65>/Product3'
    */
-  rtb_VectorConcatenate_et[0] = ((rtb_sincos_o1_idx_2 +
-    rtb_VectorConcatenate_idx_2) - rtb_VectorConcatenate_idx_6) -
-    rtb_sincos_o1_idx_1;
+  rtb_VectorConcatenate_et[0] = ((rtb_sincos_o1_idx_2 + rtb_sincos_o1_idx_1) -
+    rtb_sincos_o1_idx_0) - rtb_VectorConcatenate_idx_6;
 
   /* Product: '<S68>/Product3' incorporates:
    *  Product: '<S66>/Product3'
    */
-  rtb_Limit_AIL_R = rtb_Thr * tmp_0[0];
+  rtb_Limit_AIL_R = rtb_Thr * rtb_Gain1_d;
 
   /* Product: '<S68>/Product2' incorporates:
    *  Product: '<S66>/Product2'
    */
-  rtb_q3dot = tmp_0[1] * rtb_jxi;
+  rtb_sigma_ugsigma_vg = rtb_Gain_az * rtb_jxi;
 
   /* Gain: '<S68>/Gain' incorporates:
    *  Product: '<S68>/Product2'
    *  Product: '<S68>/Product3'
    *  Sum: '<S68>/Sum'
    */
-  rtb_VectorConcatenate_et[1] = (rtb_q3dot - rtb_Limit_AIL_R) *
+  rtb_VectorConcatenate_et[1] = (rtb_sigma_ugsigma_vg - rtb_Limit_AIL_R) *
     SkySurfer_Core_P.Gain_Gain_js;
 
   /* Product: '<S71>/Product2' incorporates:
    *  Product: '<S67>/Product2'
    */
-  rtb_sigma_ugsigma_vg = tmp_0[1] * rtb_Thr;
+  rtb_LowAltitudeScaleLength = rtb_Gain_az * rtb_Thr;
 
   /* Product: '<S71>/Product1' incorporates:
    *  Product: '<S67>/Product1'
    */
-  rtb_LowAltitudeScaleLength = tmp_0[0] * rtb_jxi;
+  rtb_Lv_idx_0 = rtb_Gain1_d * rtb_jxi;
 
   /* Gain: '<S71>/Gain' incorporates:
    *  Product: '<S71>/Product1'
    *  Product: '<S71>/Product2'
    *  Sum: '<S71>/Sum'
    */
-  rtb_VectorConcatenate_et[2] = (rtb_LowAltitudeScaleLength +
-    rtb_sigma_ugsigma_vg) * SkySurfer_Core_P.Gain_Gain_b;
+  rtb_VectorConcatenate_et[2] = (rtb_Lv_idx_0 + rtb_LowAltitudeScaleLength) *
+    SkySurfer_Core_P.Gain_Gain_b;
 
   /* Gain: '<S66>/Gain' incorporates:
    *  Sum: '<S66>/Sum'
    */
-  rtb_VectorConcatenate_et[3] = (rtb_Limit_AIL_R + rtb_q3dot) *
+  rtb_VectorConcatenate_et[3] = (rtb_Limit_AIL_R + rtb_sigma_ugsigma_vg) *
     SkySurfer_Core_P.Gain_Gain_la;
 
   /* Sum: '<S69>/Sum' incorporates:
    *  Sum: '<S73>/Sum'
    */
-  rtb_sincos_o1_idx_2 -= rtb_VectorConcatenate_idx_2;
-  rtb_VectorConcatenate_et[4] = (rtb_sincos_o1_idx_2 +
-    rtb_VectorConcatenate_idx_6) - rtb_sincos_o1_idx_1;
+  rtb_sincos_o1_idx_2 -= rtb_sincos_o1_idx_1;
+  rtb_VectorConcatenate_et[4] = (rtb_sincos_o1_idx_2 + rtb_sincos_o1_idx_0) -
+    rtb_VectorConcatenate_idx_6;
 
   /* Product: '<S72>/Product1' incorporates:
    *  Product: '<S70>/Product1'
    */
-  rtb_VectorConcatenate_idx_2 = tmp_0[0] * tmp_0[1];
+  rtb_sincos_o1_idx_1 = rtb_Gain1_d * rtb_Gain_az;
 
   /* Product: '<S72>/Product2' incorporates:
    *  Product: '<S70>/Product2'
@@ -1505,58 +1514,53 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    *  Product: '<S72>/Product2'
    *  Sum: '<S72>/Sum'
    */
-  rtb_VectorConcatenate_et[5] = (rtb_Limit_AIL_R - rtb_VectorConcatenate_idx_2) *
+  rtb_VectorConcatenate_et[5] = (rtb_Limit_AIL_R - rtb_sincos_o1_idx_1) *
     SkySurfer_Core_P.Gain_Gain_ah;
 
   /* Gain: '<S67>/Gain' incorporates:
    *  Sum: '<S67>/Sum'
    */
-  rtb_VectorConcatenate_et[6] = (rtb_sigma_ugsigma_vg -
-    rtb_LowAltitudeScaleLength) * SkySurfer_Core_P.Gain_Gain_eu;
+  rtb_VectorConcatenate_et[6] = (rtb_LowAltitudeScaleLength - rtb_Lv_idx_0) *
+    SkySurfer_Core_P.Gain_Gain_eu;
 
   /* Gain: '<S70>/Gain' incorporates:
    *  Sum: '<S70>/Sum'
    */
-  rtb_VectorConcatenate_et[7] = (rtb_VectorConcatenate_idx_2 + rtb_Limit_AIL_R) *
+  rtb_VectorConcatenate_et[7] = (rtb_sincos_o1_idx_1 + rtb_Limit_AIL_R) *
     SkySurfer_Core_P.Gain_Gain_k;
 
   /* Sum: '<S73>/Sum' */
-  rtb_VectorConcatenate_et[8] = (rtb_sincos_o1_idx_2 -
-    rtb_VectorConcatenate_idx_6) + rtb_sincos_o1_idx_1;
+  rtb_VectorConcatenate_et[8] = (rtb_sincos_o1_idx_2 - rtb_sincos_o1_idx_0) +
+    rtb_VectorConcatenate_idx_6;
 
-  /* Selector: '<S40>/Selector1' incorporates:
-   *  Gain: '<S40>/Gain1'
-   *  Reshape: '<S74>/Reshape (9) to [3x3] column-major'
-   */
-  _mm_storeu_pd(&tmp_0[0], _mm_mul_pd(_mm_set_pd(rtb_VectorConcatenate_et[0],
-    SkySurfer_Core_P.Gain1_Gain_cp[0]), _mm_set_pd
-    (SkySurfer_Core_P.Gain1_Gain_cp[1], rtb_VectorConcatenate_et[3])));
-
-  /* Gain: '<S40>/Gain1' */
-  rtb_Thr = tmp_0[0];
-  rtb_sincos_o1_idx_2 = tmp_0[1];
-
-  /* Gain: '<S40>/Gain2' incorporates:
-   *  Gain: '<S40>/Gain1'
+  /* Gain: '<S40>/Gain1' incorporates:
    *  Reshape: '<S74>/Reshape (9) to [3x3] column-major'
    *  Selector: '<S40>/Selector1'
    */
-  _mm_storeu_pd(&tmp_0[0], _mm_mul_pd(_mm_set_pd(SkySurfer_Core_P.Gain2_Gain[0],
-    SkySurfer_Core_P.Gain1_Gain_cp[2]), _mm_loadu_pd(&rtb_VectorConcatenate_et[6])));
-
-  /* Gain: '<S40>/Gain1' */
-  rtb_VectorConcatenate_idx_2 = tmp_0[0];
+  rtb_Gain_az = SkySurfer_Core_P.Gain1_Gain_cp[0] * rtb_VectorConcatenate_et[3];
+  rtb_sincos_o1_idx_2 = rtb_VectorConcatenate_et[0] *
+    SkySurfer_Core_P.Gain1_Gain_cp[1];
+  rtb_sincos_o1_idx_1 = SkySurfer_Core_P.Gain1_Gain_cp[2] *
+    rtb_VectorConcatenate_et[6];
 
   /* Gain: '<S40>/Gain2' incorporates:
-   *  Gain: '<S40>/Gain3'
    *  Reshape: '<S74>/Reshape (9) to [3x3] column-major'
    *  Selector: '<S40>/Selector2'
+   */
+  rtb_Thr = SkySurfer_Core_P.Gain2_Gain[0] * rtb_VectorConcatenate_et[7];
+
+  /* Gain: '<S40>/Gain3' incorporates:
+   *  Reshape: '<S74>/Reshape (9) to [3x3] column-major'
    *  Selector: '<S40>/Selector3'
    */
-  rtb_Gain_az = tmp_0[1];
-  _mm_storeu_pd(&tmp_0[0], _mm_mul_pd(_mm_set_pd(SkySurfer_Core_P.Gain2_Gain[1],
-    SkySurfer_Core_P.Gain3_Gain[0]), _mm_set_pd(rtb_VectorConcatenate_et[8],
-    rtb_VectorConcatenate_et[1])));
+  rtb_sincos_o1_idx_0 = SkySurfer_Core_P.Gain3_Gain[0] *
+    rtb_VectorConcatenate_et[1];
+
+  /* Gain: '<S40>/Gain2' incorporates:
+   *  Reshape: '<S74>/Reshape (9) to [3x3] column-major'
+   *  Selector: '<S40>/Selector2'
+   */
+  rtb_Gain1_d = SkySurfer_Core_P.Gain2_Gain[1] * rtb_VectorConcatenate_et[8];
 
   /* Gain: '<S40>/Gain3' incorporates:
    *  Reshape: '<S74>/Reshape (9) to [3x3] column-major'
@@ -1568,8 +1572,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* If: '<S36>/If' */
   rtPrevAction = SkySurfer_Core_DW->If_ActiveSubsystem;
   if (rtsiIsModeUpdateTimeStep(&SkySurfer_Core_M->solverInfo)) {
-    rtAction = (int8_t)(!(rtb_VectorConcatenate_idx_2 >= 1.0) &&
-                        !(rtb_VectorConcatenate_idx_2 <= -1.0));
+    rtAction = (int8_t)(!(rtb_sincos_o1_idx_1 >= 1.0) && !(rtb_sincos_o1_idx_1 <=
+      -1.0));
     SkySurfer_Core_DW->If_ActiveSubsystem = rtAction;
   } else {
     rtAction = SkySurfer_Core_DW->If_ActiveSubsystem;
@@ -1585,14 +1589,15 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      *  ActionPort: '<S39>/Action Port'
      */
     /* Fcn: '<S39>/Fcn1' */
-    rtb_Merge_a[0] = rt_atan2d_snf(tmp_0[0], rtb_VectorConcatenate_idx_6);
+    rtb_Merge_a[0] = rt_atan2d_snf(rtb_sincos_o1_idx_0,
+      rtb_VectorConcatenate_idx_6);
 
     /* If: '<S46>/If' */
     rtPrevAction = SkySurfer_Core_DW->If_ActiveSubsystem_a;
     if (rtsiIsModeUpdateTimeStep(&SkySurfer_Core_M->solverInfo)) {
-      if (rtb_VectorConcatenate_idx_2 > 1.0) {
+      if (rtb_sincos_o1_idx_1 > 1.0) {
         rtAction = 0;
-      } else if (rtb_VectorConcatenate_idx_2 < -1.0) {
+      } else if (rtb_sincos_o1_idx_1 < -1.0) {
         rtAction = 1;
       } else {
         rtAction = 2;
@@ -1646,7 +1651,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
       /* Merge: '<S46>/Merge' incorporates:
        *  SignalConversion generated from: '<S49>/In'
        */
-      SkySurfer_Core_DW->Merge_i = rtb_VectorConcatenate_idx_2;
+      SkySurfer_Core_DW->Merge_i = rtb_sincos_o1_idx_1;
 
       /* End of Outputs for SubSystem: '<S46>/If Action Subsystem2' */
       break;
@@ -1676,14 +1681,14 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      *  ActionPort: '<S38>/Action Port'
      */
     /* Fcn: '<S38>/Fcn1' */
-    rtb_Merge_a[0] = rt_atan2d_snf(rtb_Thr, rtb_sincos_o1_idx_2);
+    rtb_Merge_a[0] = rt_atan2d_snf(rtb_Gain_az, rtb_sincos_o1_idx_2);
 
     /* If: '<S42>/If' */
     rtPrevAction = SkySurfer_Core_DW->If_ActiveSubsystem_i;
     if (rtsiIsModeUpdateTimeStep(&SkySurfer_Core_M->solverInfo)) {
-      if (rtb_VectorConcatenate_idx_2 > 1.0) {
+      if (rtb_sincos_o1_idx_1 > 1.0) {
         rtAction = 0;
-      } else if (rtb_VectorConcatenate_idx_2 < -1.0) {
+      } else if (rtb_sincos_o1_idx_1 < -1.0) {
         rtAction = 1;
       } else {
         rtAction = 2;
@@ -1737,7 +1742,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
       /* Merge: '<S42>/Merge' incorporates:
        *  SignalConversion generated from: '<S45>/In'
        */
-      SkySurfer_Core_DW->Merge = rtb_VectorConcatenate_idx_2;
+      SkySurfer_Core_DW->Merge = rtb_sincos_o1_idx_1;
 
       /* End of Outputs for SubSystem: '<S42>/If Action Subsystem2' */
       break;
@@ -1759,7 +1764,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* End of Fcn: '<S38>/Fcn2' */
 
     /* Fcn: '<S38>/Fcn3' */
-    rtb_Merge_a[2] = rt_atan2d_snf(rtb_Gain_az, tmp_0[1]);
+    rtb_Merge_a[2] = rt_atan2d_snf(rtb_Thr, rtb_Gain1_d);
 
     /* End of Outputs for SubSystem: '<S36>/AxisRotDefault' */
   }
@@ -1778,13 +1783,13 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
        *  Constant: '<S13>/Constant2'
        *  Constant: '<S4>/const2'
        */
-      rtb_Gain_az = SkySurfer_Core_P.Inertia0[3 * i];
-      rtb_MatrixConcatenation[6 * i] = rtb_Gain_az;
+      rtb_Thr = SkySurfer_Core_P.Inertia0[3 * i];
+      rtb_MatrixConcatenation[6 * i] = rtb_Thr;
       rtb_MatrixConcatenation[6 * i + 3] = SkySurfer_Core_P.Constant2_Value_k[3 *
         i];
 
       /* Selector: '<S16>/Selector2' */
-      SkySurfer_Core_DW->Selector2[3 * i] = rtb_Gain_az;
+      SkySurfer_Core_DW->Selector2[3 * i] = rtb_Thr;
 
       /* Concatenate: '<S15>/Matrix Concatenation' incorporates:
        *  Constant: '<S13>/Constant2'
@@ -1792,13 +1797,13 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
        *  Selector: '<S16>/Selector2'
        */
       rtb_MatrixConcatenation_tmp = 3 * i + 1;
-      rtb_Gain_az = SkySurfer_Core_P.Inertia0[rtb_MatrixConcatenation_tmp];
-      rtb_MatrixConcatenation[6 * i + 1] = rtb_Gain_az;
+      rtb_Thr = SkySurfer_Core_P.Inertia0[rtb_MatrixConcatenation_tmp];
+      rtb_MatrixConcatenation[6 * i + 1] = rtb_Thr;
       rtb_MatrixConcatenation[6 * i + 4] =
         SkySurfer_Core_P.Constant2_Value_k[rtb_MatrixConcatenation_tmp];
 
       /* Selector: '<S16>/Selector2' */
-      SkySurfer_Core_DW->Selector2[rtb_MatrixConcatenation_tmp] = rtb_Gain_az;
+      SkySurfer_Core_DW->Selector2[rtb_MatrixConcatenation_tmp] = rtb_Thr;
 
       /* Concatenate: '<S15>/Matrix Concatenation' incorporates:
        *  Constant: '<S13>/Constant2'
@@ -1806,13 +1811,13 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
        *  Selector: '<S16>/Selector2'
        */
       rtb_MatrixConcatenation_tmp = 3 * i + 2;
-      rtb_Gain_az = SkySurfer_Core_P.Inertia0[rtb_MatrixConcatenation_tmp];
-      rtb_MatrixConcatenation[6 * i + 2] = rtb_Gain_az;
+      rtb_Thr = SkySurfer_Core_P.Inertia0[rtb_MatrixConcatenation_tmp];
+      rtb_MatrixConcatenation[6 * i + 2] = rtb_Thr;
       rtb_MatrixConcatenation[6 * i + 5] =
         SkySurfer_Core_P.Constant2_Value_k[rtb_MatrixConcatenation_tmp];
 
       /* Selector: '<S16>/Selector2' */
-      SkySurfer_Core_DW->Selector2[rtb_MatrixConcatenation_tmp] = rtb_Gain_az;
+      SkySurfer_Core_DW->Selector2[rtb_MatrixConcatenation_tmp] = rtb_Thr;
     }
 
     /* UnitConversion: '<S143>/Unit Conversion' incorporates:
@@ -1827,8 +1832,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      */
     /* Unit Conversion - from: deg to: rad
        Expression: output = (0.0174533*input) + (0) */
-    rtb_VectorConcatenate_idx_6 = 0.017453292519943295 * SkySurfer_Core_U->Wind
-      [1];
+    rtb_sincos_o1_idx_1 = 0.017453292519943295 * SkySurfer_Core_U->Wind[1];
 
     /* Product: '<S142>/Product1' incorporates:
      *  Constant: '<S142>/Wdeg1'
@@ -1836,9 +1840,9 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      *  Trigonometry: '<S142>/SinCos'
      */
     SkySurfer_Core_DW->Product1[0] = SkySurfer_Core_P._Gain * cos
-      (rtb_VectorConcatenate_idx_6) * rtb_sincos_o1_idx_2;
+      (rtb_sincos_o1_idx_1) * rtb_sincos_o1_idx_2;
     SkySurfer_Core_DW->Product1[1] = SkySurfer_Core_P._Gain * sin
-      (rtb_VectorConcatenate_idx_6) * rtb_sincos_o1_idx_2;
+      (rtb_sincos_o1_idx_1) * rtb_sincos_o1_idx_2;
     SkySurfer_Core_DW->Product1[2] = SkySurfer_Core_P._Gain *
       SkySurfer_Core_P.Wdeg1_Value * rtb_sincos_o1_idx_2;
   }
@@ -1850,14 +1854,13 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* Gain: '<S12>/Gain1' incorporates:
    *  Gain: '<S12>/kgf'
    */
-  rtb_VectorConcatenate_idx_2 = SkySurfer_Core_P.kgf_Gain * rtb_Thr *
-    SkySurfer_Core_P.g;
+  rtb_Gain1_d = SkySurfer_Core_P.kgf_Gain * rtb_Thr * SkySurfer_Core_P.g;
 
   /* Gain: '<S12>/Gain' incorporates:
    *  Constant: '<S12>/Constant1'
    *  Product: '<S12>/Product'
    */
-  rtb_Gain_az = rtb_VectorConcatenate_idx_2 * SkySurfer_Core_P.del_z *
+  rtb_Gain_az = rtb_Gain1_d * SkySurfer_Core_P.del_z *
     SkySurfer_Core_P.Gain_Gain_lj;
 
   /* RelationalOperator: '<S140>/Gust Start' incorporates:
@@ -1976,28 +1979,20 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* End of Outputs for SubSystem: '<S140>/Distance into gust (z)' */
   /* End of Outputs for SubSystem: '<S140>/Distance into gust (z)' */
 
-  /* Constant: '<S140>/2' incorporates:
-   *  Gain: '<S140>/Gust magnitude//2.0'
-   *  Gain: '<S140>/pi//Gust length'
-   *  Trigonometry: '<S140>/cos(pi*x//dm)'
-   */
-  _mm_storeu_pd(&tmp_0[0], _mm_mul_pd(_mm_sub_pd(_mm_set1_pd
-    (SkySurfer_Core_P.u_Value), _mm_set_pd(cos(3.141592653589793 /
-    SkySurfer_Core_P.DiscreteWindGustModelOn_d_m[1] *
-    SkySurfer_Core_DW->DistanceintoGustxLimitedtogustlengthd_k), cos
-    (3.141592653589793 / SkySurfer_Core_P.DiscreteWindGustModelOn_d_m[0] *
-     SkySurfer_Core_DW->DistanceintoGustxLimitedtogustlengthd_l))), _mm_div_pd
-    (_mm_loadu_pd(&SkySurfer_Core_P.DiscreteWindGustModelOn_v_m[0]), _mm_set1_pd
-     (2.0))));
-
   /* Gain: '<S140>/Gust magnitude//2.0' incorporates:
    *  Constant: '<S140>/2'
    *  Gain: '<S140>/pi//Gust length'
    *  Sum: '<S140>/Sum1'
    *  Trigonometry: '<S140>/cos(pi*x//dm)'
    */
-  rtb_VectorConcatenate_idx_6 = tmp_0[0];
-  rtb_sincos_o1_idx_1 = tmp_0[1];
+  rtb_sincos_o1_idx_0 = (SkySurfer_Core_P.u_Value - cos(3.141592653589793 /
+    SkySurfer_Core_P.DiscreteWindGustModelOn_d_m[0] *
+    SkySurfer_Core_DW->DistanceintoGustxLimitedtogustlengthd_l)) *
+    (SkySurfer_Core_P.DiscreteWindGustModelOn_v_m[0] / 2.0);
+  rtb_sincos_o1_idx_1 = (SkySurfer_Core_P.u_Value - cos(3.141592653589793 /
+    SkySurfer_Core_P.DiscreteWindGustModelOn_d_m[1] *
+    SkySurfer_Core_DW->DistanceintoGustxLimitedtogustlengthd_k)) *
+    (SkySurfer_Core_P.DiscreteWindGustModelOn_v_m[1] / 2.0);
   rtb_sincos_o1_idx_2 = (SkySurfer_Core_P.u_Value - cos(3.141592653589793 /
     SkySurfer_Core_P.DiscreteWindGustModelOn_d_m[2] *
     SkySurfer_Core_DW->DistanceintoGustxLimitedtogustlengthd)) *
@@ -2089,25 +2084,27 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* Saturate: '<S185>/Limit Function 10ft to 1000ft' */
   if (rtb_UnitConversion_d > SkySurfer_Core_P.LimitFunction10ftto1000ft_UpperSat)
   {
-    rtb_Limit_AIL_R = SkySurfer_Core_P.LimitFunction10ftto1000ft_UpperSat;
+    rtb_VectorConcatenate_idx_6 =
+      SkySurfer_Core_P.LimitFunction10ftto1000ft_UpperSat;
   } else if (rtb_UnitConversion_d <
              SkySurfer_Core_P.LimitFunction10ftto1000ft_LowerSat) {
-    rtb_Limit_AIL_R = SkySurfer_Core_P.LimitFunction10ftto1000ft_LowerSat;
+    rtb_VectorConcatenate_idx_6 =
+      SkySurfer_Core_P.LimitFunction10ftto1000ft_LowerSat;
   } else {
-    rtb_Limit_AIL_R = rtb_UnitConversion_d;
+    rtb_VectorConcatenate_idx_6 = rtb_UnitConversion_d;
   }
 
   /* End of Saturate: '<S185>/Limit Function 10ft to 1000ft' */
 
   /* Fcn: '<S185>/Low Altitude Scale Length' */
-  rtb_Multiply = 0.000823 * rtb_Limit_AIL_R + 0.177;
+  rtb_Multiply = 0.000823 * rtb_VectorConcatenate_idx_6 + 0.177;
   if (rtb_Multiply < 0.0) {
     rtb_Multiply = -rt_powd_snf(-rtb_Multiply, 1.2);
   } else {
     rtb_Multiply = rt_powd_snf(rtb_Multiply, 1.2);
   }
 
-  rtb_LowAltitudeScaleLength = rtb_Limit_AIL_R / rtb_Multiply;
+  rtb_LowAltitudeScaleLength = rtb_VectorConcatenate_idx_6 / rtb_Multiply;
 
   /* End of Fcn: '<S185>/Low Altitude Scale Length' */
   if (tmp) {
@@ -2122,18 +2119,18 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
 
   /* Saturate: '<S168>/Limit Height h<1000ft' */
   if (rtb_UnitConversion_d > SkySurfer_Core_P.LimitHeighth1000ft_UpperSat) {
-    rtb_q3dot = SkySurfer_Core_P.LimitHeighth1000ft_UpperSat;
+    rtb_Limit_AIL_R = SkySurfer_Core_P.LimitHeighth1000ft_UpperSat;
   } else if (rtb_UnitConversion_d < SkySurfer_Core_P.LimitHeighth1000ft_LowerSat)
   {
-    rtb_q3dot = SkySurfer_Core_P.LimitHeighth1000ft_LowerSat;
+    rtb_Limit_AIL_R = SkySurfer_Core_P.LimitHeighth1000ft_LowerSat;
   } else {
-    rtb_q3dot = rtb_UnitConversion_d;
+    rtb_Limit_AIL_R = rtb_UnitConversion_d;
   }
 
   /* End of Saturate: '<S168>/Limit Height h<1000ft' */
 
   /* Fcn: '<S168>/Low Altitude Intensity' */
-  rtb_Multiply = 0.000823 * rtb_q3dot + 0.177;
+  rtb_Multiply = 0.000823 * rtb_Limit_AIL_R + 0.177;
   if (tmp) {
     /* Gain: '<S168>/sigma_wg ' incorporates:
      *  Constant: '<S141>/Windspeed at 20ft (6m)'
@@ -2164,7 +2161,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    */
   bpIndex[0] = plook_bincpa(rtb_UnitConversion_d,
     SkySurfer_Core_P.PreLookUpIndexSearchaltitude_BreakpointsData, 11U,
-    &rtb_q3dot, &SkySurfer_Core_DW->PreLookUpIndexSearchaltitude_DWORK1);
+    &rtb_Limit_AIL_R, &SkySurfer_Core_DW->PreLookUpIndexSearchaltitude_DWORK1);
   if (tmp) {
     /* PreLookup: '<S167>/PreLook-Up Index Search  (prob of exceed)' incorporates:
      *  Constant: '<S167>/Probability of  Exceedance'
@@ -2181,7 +2178,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    *  PreLookup: '<S167>/PreLook-Up Index Search  (prob of exceed)'
    */
   bpIndex[1] = SkySurfer_Core_DW->PreLookUpIndexSearchprobofexceed_o1;
-  rtb_Lw[0] = rtb_q3dot;
+  rtb_Lw[0] = rtb_Limit_AIL_R;
   rtb_Lw[1] = SkySurfer_Core_DW->PreLookUpIndexSearchprobofexceed_o2;
   rtb_MediumHighAltitudeIntensity = intrp2d_la_pw(bpIndex, rtb_Lw,
     SkySurfer_Core_P.MediumHighAltitudeIntensity_Table, 12U,
@@ -2190,22 +2187,22 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Sqrt: '<S160>/Sqrt1' incorporates:
      *  Constant: '<S160>/Constant1'
      */
-    tmp_1 = _mm_set1_pd(sqrt(SkySurfer_Core_P.WhiteNoise_Ts));
+    rtb_Limit_AIL_R = sqrt(SkySurfer_Core_P.WhiteNoise_Ts);
 
-    /* Product: '<S160>/Divide' incorporates:
+    /* Product: '<S160>/Product' incorporates:
      *  Constant: '<S160>/Constant'
-     *  Product: '<S160>/Product'
+     *  Product: '<S160>/Divide'
      *  RandomNumber: '<S160>/White Noise'
      *  Sqrt: '<S160>/Sqrt'
      */
-    _mm_storeu_pd(&SkySurfer_Core_DW->Product[0], _mm_mul_pd(_mm_div_pd
-      (_mm_set_pd(sqrt(SkySurfer_Core_P.WhiteNoise_pwr[1]), sqrt
-                  (SkySurfer_Core_P.WhiteNoise_pwr[0])), tmp_1), _mm_loadu_pd
-      (&SkySurfer_Core_DW->NextOutput[0])));
-    _mm_storeu_pd(&SkySurfer_Core_DW->Product[2], _mm_mul_pd(_mm_div_pd
-      (_mm_set_pd(sqrt(SkySurfer_Core_P.WhiteNoise_pwr[3]), sqrt
-                  (SkySurfer_Core_P.WhiteNoise_pwr[2])), tmp_1), _mm_loadu_pd
-      (&SkySurfer_Core_DW->NextOutput[2])));
+    SkySurfer_Core_DW->Product[0] = sqrt(SkySurfer_Core_P.WhiteNoise_pwr[0]) /
+      rtb_Limit_AIL_R * SkySurfer_Core_DW->NextOutput[0];
+    SkySurfer_Core_DW->Product[1] = sqrt(SkySurfer_Core_P.WhiteNoise_pwr[1]) /
+      rtb_Limit_AIL_R * SkySurfer_Core_DW->NextOutput[1];
+    SkySurfer_Core_DW->Product[2] = sqrt(SkySurfer_Core_P.WhiteNoise_pwr[2]) /
+      rtb_Limit_AIL_R * SkySurfer_Core_DW->NextOutput[2];
+    SkySurfer_Core_DW->Product[3] = sqrt(SkySurfer_Core_P.WhiteNoise_pwr[3]) /
+      rtb_Limit_AIL_R * SkySurfer_Core_DW->NextOutput[3];
 
     /* Outputs for Enabled SubSystem: '<S151>/Hugw(s)' incorporates:
      *  EnablePort: '<S164>/Enable'
@@ -2256,33 +2253,37 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   if (SkySurfer_Core_DW->Hugws_MODE) {
     /* Product: '<S164>/Lug//V' */
     rtb_Lv_idx_0 = rtb_LowAltitudeScaleLength / rtb_UnitConversion_n;
-    rtb_q3dot = SkySurfer_Core_DW->UnitConversion_m / rtb_UnitConversion_n;
+    rtb_Limit_AIL_R = SkySurfer_Core_DW->UnitConversion_m / rtb_UnitConversion_n;
 
     /* Product: '<S164>/w' incorporates:
      *  Gain: '<S164>/(2//pi)'
      *  Integrator: '<S164>/ug_p'
      *  Product: '<S164>/Lug//V1'
      *  Sqrt: '<S164>/sqrt'
+     *  Sum: '<S164>/Sum'
      */
-    _mm_storeu_pd(&SkySurfer_Core_DW->w_k[0], _mm_div_pd(_mm_sub_pd(_mm_mul_pd
-      (_mm_set_pd(sqrt(SkySurfer_Core_P.upi_Gain * rtb_q3dot), sqrt
-                  (SkySurfer_Core_P.upi_Gain * rtb_Lv_idx_0)), _mm_set1_pd
-       (SkySurfer_Core_DW->Product[0])), _mm_loadu_pd
-      (&SkySurfer_Core_X->ug_p_CSTATE[0])), _mm_set_pd(rtb_q3dot, rtb_Lv_idx_0)));
+    SkySurfer_Core_DW->w_k[0] = (sqrt(SkySurfer_Core_P.upi_Gain * rtb_Lv_idx_0) *
+      SkySurfer_Core_DW->Product[0] - SkySurfer_Core_X->ug_p_CSTATE[0]) /
+      rtb_Lv_idx_0;
+    SkySurfer_Core_DW->w_k[1] = (sqrt(SkySurfer_Core_P.upi_Gain *
+      rtb_Limit_AIL_R) * SkySurfer_Core_DW->Product[0] -
+      SkySurfer_Core_X->ug_p_CSTATE[1]) / rtb_Limit_AIL_R;
 
     /* Product: '<S164>/w1' incorporates:
      *  Integrator: '<S164>/ug_p'
      */
-    _mm_storeu_pd(&SkySurfer_Core_DW->w1_h[0], _mm_mul_pd(_mm_loadu_pd
-      (&SkySurfer_Core_X->ug_p_CSTATE[0]), _mm_set_pd
-      (rtb_MediumHighAltitudeIntensity, rtb_sigma_ugsigma_vg)));
+    SkySurfer_Core_DW->w1_h[0] = SkySurfer_Core_X->ug_p_CSTATE[0] *
+      rtb_sigma_ugsigma_vg;
+    SkySurfer_Core_DW->w1_h[1] = SkySurfer_Core_X->ug_p_CSTATE[1] *
+      rtb_MediumHighAltitudeIntensity;
   }
 
   /* End of Outputs for SubSystem: '<S151>/Hugw(s)' */
 
   /* Gain: '<S157>/Lv' */
   rtb_Lv_idx_0 = SkySurfer_Core_P.Lv_Gain * rtb_LowAltitudeScaleLength;
-  rtb_q3dot = SkySurfer_Core_P.Lv_Gain * SkySurfer_Core_DW->UnitConversion_m;
+  rtb_Limit_AIL_R = SkySurfer_Core_P.Lv_Gain *
+    SkySurfer_Core_DW->UnitConversion_m;
 
   /* Outputs for Enabled SubSystem: '<S151>/Hvgw(s)' incorporates:
    *  EnablePort: '<S165>/Enable'
@@ -2362,7 +2363,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
       SkySurfer_Core_X->vgw_p2_CSTATE[0])) / rtb_LowAltitudeScaleLength;
 
     /* Product: '<S165>/Lvg//V' */
-    rtb_LowAltitudeScaleLength = rtb_q3dot / rtb_UnitConversion_n;
+    rtb_LowAltitudeScaleLength = rtb_Limit_AIL_R / rtb_UnitConversion_n;
 
     /* Product: '<S165>/w' incorporates:
      *  Gain: '<S165>/(1//pi)'
@@ -2392,15 +2393,16 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Product: '<S165>/w 1' incorporates:
      *  Integrator: '<S165>/vgw_p2'
      */
-    _mm_storeu_pd(&SkySurfer_Core_DW->w1[0], _mm_mul_pd(_mm_set_pd
-      (rtb_MediumHighAltitudeIntensity, rtb_sigma_ugsigma_vg), _mm_loadu_pd
-      (&SkySurfer_Core_X->vgw_p2_CSTATE[0])));
+    SkySurfer_Core_DW->w1[0] = rtb_sigma_ugsigma_vg *
+      SkySurfer_Core_X->vgw_p2_CSTATE[0];
+    SkySurfer_Core_DW->w1[1] = rtb_MediumHighAltitudeIntensity *
+      SkySurfer_Core_X->vgw_p2_CSTATE[1];
   }
 
   /* End of Outputs for SubSystem: '<S151>/Hvgw(s)' */
 
   /* Gain: '<S157>/Lw' */
-  rtb_Lw[0] = SkySurfer_Core_P.Lw_Gain * rtb_Limit_AIL_R;
+  rtb_Lw[0] = SkySurfer_Core_P.Lw_Gain * rtb_VectorConcatenate_idx_6;
   rtb_Lw[1] = SkySurfer_Core_P.Lw_Gain * SkySurfer_Core_DW->UnitConversion_m;
 
   /* Outputs for Enabled SubSystem: '<S151>/Hwgw(s)' incorporates:
@@ -2488,44 +2490,33 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
       SkySurfer_Core_DW->sqrt_a = sqrt(SkySurfer_Core_P.Constant_Value_d);
     }
 
-    /* Product: '<S166>/Lwg//V' incorporates:
-     *  Product: '<S166>/Lwg//V '
-     */
-    tmp_1 = _mm_set_pd(rtb_LowAltitudeScaleLength, rtb_Lv_idx_0);
-
     /* Product: '<S166>/w ' incorporates:
      *  Integrator: '<S166>/wg_p1'
      *  Integrator: '<S166>/wg_p2'
+     *  Product: '<S166>/Lwg//V'
      *  Product: '<S166>/Lwg//V '
+     *  Sum: '<S166>/Sum1'
      */
-    _mm_storeu_pd(&SkySurfer_Core_DW->w_c[0], _mm_div_pd(_mm_add_pd(_mm_mul_pd
-      (_mm_mul_pd(_mm_loadu_pd(&SkySurfer_Core_DW->w[0]), _mm_set1_pd
-                  (SkySurfer_Core_DW->sqrt_a)), tmp_1), _mm_sub_pd(_mm_loadu_pd(
-      &SkySurfer_Core_X->wg_p1_CSTATE[0]), _mm_loadu_pd
-      (&SkySurfer_Core_X->wg_p2_CSTATE[0]))), tmp_1));
+    SkySurfer_Core_DW->w_c[0] = (SkySurfer_Core_DW->w[0] *
+      SkySurfer_Core_DW->sqrt_a * rtb_Lv_idx_0 + (SkySurfer_Core_X->
+      wg_p1_CSTATE[0] - SkySurfer_Core_X->wg_p2_CSTATE[0])) / rtb_Lv_idx_0;
+    SkySurfer_Core_DW->w_c[1] = (SkySurfer_Core_DW->w[1] *
+      SkySurfer_Core_DW->sqrt_a * rtb_LowAltitudeScaleLength +
+      (SkySurfer_Core_X->wg_p1_CSTATE[1] - SkySurfer_Core_X->wg_p2_CSTATE[1])) /
+      rtb_LowAltitudeScaleLength;
 
     /* Product: '<S166>/Lwg//V 1' incorporates:
      *  Integrator: '<S166>/wg_p2'
      */
-    _mm_storeu_pd(&SkySurfer_Core_DW->LwgV1[0], _mm_mul_pd(_mm_set_pd
-      (rtb_MediumHighAltitudeIntensity, SkySurfer_Core_DW->sigma_wg),
-      _mm_loadu_pd(&SkySurfer_Core_X->wg_p2_CSTATE[0])));
+    SkySurfer_Core_DW->LwgV1[0] = SkySurfer_Core_DW->sigma_wg *
+      SkySurfer_Core_X->wg_p2_CSTATE[0];
+    SkySurfer_Core_DW->LwgV1[1] = rtb_MediumHighAltitudeIntensity *
+      SkySurfer_Core_X->wg_p2_CSTATE[1];
   }
 
   /* End of Outputs for SubSystem: '<S151>/Hwgw(s)' */
 
-  /* If: '<S156>/if Height < Max low altitude  elseif Height > Min isotropic altitude ' incorporates:
-   *  Gain: '<S179>/Gain'
-   *  Product: '<S177>/Product1'
-   *  Product: '<S182>/Product1'
-   *  Product: '<S182>/Product2'
-   *  Product: '<S184>/Product1'
-   *  Product: '<S184>/Product2'
-   *  Sum: '<S177>/Sum2'
-   *  Sum: '<S177>/Sum3'
-   *  Sum: '<S182>/Sum'
-   *  Sum: '<S184>/Sum'
-   */
+  /* If: '<S156>/if Height < Max low altitude  elseif Height > Min isotropic altitude ' */
   rtPrevAction =
     SkySurfer_Core_DW->ifHeightMaxlowaltitudeelseifHeightMinisotropicaltitude_ActiveSubsystem;
   if (rtsiIsModeUpdateTimeStep(&SkySurfer_Core_M->solverInfo)) {
@@ -2558,37 +2549,41 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     rtb_Reshape1_g[2] = SkySurfer_Core_DW->LwgV1[0];
 
     /* Trigonometry: '<S184>/Trigonometric Function' */
-    rtb_Limit_AIL_R = sin(SkySurfer_Core_DW->UnitConversion);
-    rtb_q3dot = cos(SkySurfer_Core_DW->UnitConversion);
-    _mm_storeu_pd(&rtb_Reshape1_g[0], _mm_add_pd(_mm_mul_pd(_mm_set_pd
-      (rtb_Limit_AIL_R, SkySurfer_Core_DW->w1_h[0]), _mm_set_pd
-      (SkySurfer_Core_DW->w1_h[0], rtb_q3dot)), _mm_mul_pd(_mm_mul_pd(_mm_set_pd
-      (SkySurfer_Core_DW->w1[0], rtb_Limit_AIL_R), _mm_set_pd(rtb_q3dot,
-      SkySurfer_Core_DW->w1[0])), _mm_set_pd(1.0, -1.0))));
+    rtb_VectorConcatenate_idx_6 = sin(SkySurfer_Core_DW->UnitConversion);
+    rtb_Limit_AIL_R = cos(SkySurfer_Core_DW->UnitConversion);
 
-    /* Product: '<S183>/Product' incorporates:
+    /* Sum: '<S184>/Sum' incorporates:
      *  Product: '<S184>/Product1'
      *  Product: '<S184>/Product2'
+     */
+    rtb_Reshape1_g[0] = SkySurfer_Core_DW->w1_h[0] * rtb_Limit_AIL_R -
+      rtb_VectorConcatenate_idx_6 * SkySurfer_Core_DW->w1[0];
+
+    /* Sum: '<S184>/Sum1' incorporates:
+     *  Product: '<S184>/Product1'
+     *  Product: '<S184>/Product2'
+     */
+    rtb_Reshape1_g[1] = rtb_VectorConcatenate_idx_6 * SkySurfer_Core_DW->w1_h[0]
+      + SkySurfer_Core_DW->w1[0] * rtb_Limit_AIL_R;
+
+    /* Product: '<S183>/Product' incorporates:
      *  Reshape: '<S183>/Reshape'
      *  Reshape: '<S183>/Reshape1'
      *  Reshape: '<S32>/Reshape (9) to [3x3] column-major'
-     *  Sum: '<S184>/Sum'
      */
+    rtb_w3 = 0.0;
     rtb_Gain3 = 0.0;
     rtb_Gain4 = 0.0;
-    rtb_w3 = 0.0;
     for (i = 0; i < 3; i++) {
-      _mm_storeu_pd(&tmp_0[0], _mm_add_pd(_mm_mul_pd(_mm_loadu_pd
-        (&rtb_Reshape9to3x3columnmajor[3 * i]), _mm_set1_pd(rtb_Reshape1_g[i])),
-        _mm_set_pd(rtb_Gain4, rtb_Gain3)));
-      rtb_Gain3 = tmp_0[0];
-      rtb_Gain4 = tmp_0[1];
-      rtb_w3 += rtb_Reshape9to3x3columnmajor[3 * i + 2] * rtb_Reshape1_g[i];
+      rtb_Multiply = rtb_Reshape1_g[i];
+      rtb_w3 += rtb_Reshape9to3x3columnmajor[3 * i] * rtb_Multiply;
+      rtb_Gain3 += rtb_Reshape9to3x3columnmajor[3 * i + 1] * rtb_Multiply;
+      rtb_Gain4 += rtb_Reshape9to3x3columnmajor[3 * i + 2] * rtb_Multiply;
     }
 
-    rtb_Merge_a[2] = rtb_w3;
-    rtb_Merge_a[1] = rtb_Gain4;
-    rtb_Merge_a[0] = rtb_Gain3;
+    rtb_Merge_a[2] = rtb_Gain4;
+    rtb_Merge_a[1] = rtb_Gain3;
+    rtb_Merge_a[0] = rtb_w3;
 
     /* End of Product: '<S183>/Product' */
     /* End of Outputs for SubSystem: '<S156>/Low altitude  velocities' */
@@ -2598,11 +2593,9 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Outputs for IfAction SubSystem: '<S156>/Medium//High  altitude velocities' incorporates:
      *  ActionPort: '<S179>/Action Port'
      */
-    _mm_storeu_pd(&rtb_Merge_a[0], _mm_mul_pd(_mm_set1_pd
-      (SkySurfer_Core_P.Gain_Gain_f), _mm_set_pd(SkySurfer_Core_DW->w1[1],
-      SkySurfer_Core_DW->w1_h[1])));
-
     /* Gain: '<S179>/Gain' */
+    rtb_Merge_a[0] = SkySurfer_Core_P.Gain_Gain_f * SkySurfer_Core_DW->w1_h[1];
+    rtb_Merge_a[1] = SkySurfer_Core_P.Gain_Gain_f * SkySurfer_Core_DW->w1[1];
     rtb_Merge_a[2] = SkySurfer_Core_P.Gain_Gain_f * SkySurfer_Core_DW->LwgV1[1];
 
     /* End of Outputs for SubSystem: '<S156>/Medium//High  altitude velocities' */
@@ -2613,19 +2606,24 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      *  ActionPort: '<S177>/Action Port'
      */
     /* Trigonometry: '<S182>/Trigonometric Function' */
-    rtb_Limit_AIL_R = sin(SkySurfer_Core_DW->UnitConversion);
-    rtb_q3dot = cos(SkySurfer_Core_DW->UnitConversion);
-    _mm_storeu_pd(&rtb_Merge_a[0], _mm_add_pd(_mm_mul_pd(_mm_set_pd
-      (rtb_Limit_AIL_R, SkySurfer_Core_DW->w1_h[0]), _mm_set_pd
-      (SkySurfer_Core_DW->w1_h[0], rtb_q3dot)), _mm_mul_pd(_mm_mul_pd(_mm_set_pd
-      (SkySurfer_Core_DW->w1[0], rtb_Limit_AIL_R), _mm_set_pd(rtb_q3dot,
-      SkySurfer_Core_DW->w1[0])), _mm_set_pd(1.0, -1.0))));
+    rtb_VectorConcatenate_idx_6 = sin(SkySurfer_Core_DW->UnitConversion);
+    rtb_Limit_AIL_R = cos(SkySurfer_Core_DW->UnitConversion);
 
-    /* SignalConversion generated from: '<S181>/Vector Concatenate' incorporates:
+    /* Sum: '<S182>/Sum' incorporates:
      *  Product: '<S182>/Product1'
      *  Product: '<S182>/Product2'
-     *  Sum: '<S182>/Sum'
      */
+    rtb_Merge_a[0] = SkySurfer_Core_DW->w1_h[0] * rtb_Limit_AIL_R -
+      rtb_VectorConcatenate_idx_6 * SkySurfer_Core_DW->w1[0];
+
+    /* Sum: '<S182>/Sum1' incorporates:
+     *  Product: '<S182>/Product1'
+     *  Product: '<S182>/Product2'
+     */
+    rtb_Merge_a[1] = rtb_VectorConcatenate_idx_6 * SkySurfer_Core_DW->w1_h[0] +
+      SkySurfer_Core_DW->w1[0] * rtb_Limit_AIL_R;
+
+    /* SignalConversion generated from: '<S181>/Vector Concatenate' */
     rtb_Merge_a[2] = SkySurfer_Core_DW->LwgV1[0];
 
     /* Product: '<S181>/Product' incorporates:
@@ -2633,38 +2631,28 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      *  Reshape: '<S181>/Reshape1'
      *  Reshape: '<S32>/Reshape (9) to [3x3] column-major'
      */
+    rtb_w3 = 0.0;
     rtb_Gain3 = 0.0;
     rtb_Gain4 = 0.0;
-    rtb_w3 = 0.0;
     for (i = 0; i < 3; i++) {
-      _mm_storeu_pd(&tmp_0[0], _mm_add_pd(_mm_mul_pd(_mm_loadu_pd
-        (&rtb_Reshape9to3x3columnmajor[3 * i]), _mm_set1_pd(rtb_Merge_a[i])),
-        _mm_set_pd(rtb_Gain4, rtb_Gain3)));
-      rtb_Gain3 = tmp_0[0];
-      rtb_Gain4 = tmp_0[1];
-      rtb_w3 += rtb_Reshape9to3x3columnmajor[3 * i + 2] * rtb_Merge_a[i];
+      rtb_Multiply = rtb_Merge_a[i];
+      rtb_w3 += rtb_Reshape9to3x3columnmajor[3 * i] * rtb_Multiply;
+      rtb_Gain3 += rtb_Reshape9to3x3columnmajor[3 * i + 1] * rtb_Multiply;
+      rtb_Gain4 += rtb_Reshape9to3x3columnmajor[3 * i + 2] * rtb_Multiply;
     }
-
-    rtb_Reshape1_g[2] = rtb_w3;
-    rtb_Reshape1_g[1] = rtb_Gain4;
-    rtb_Reshape1_g[0] = rtb_Gain3;
 
     /* Sum: '<S177>/Sum1' incorporates:
      *  Constant: '<S177>/max_height_low'
      */
-    rtb_Limit_AIL_R = rtb_UnitConversion_d -
+    rtb_VectorConcatenate_idx_6 = rtb_UnitConversion_d -
       SkySurfer_Core_P.max_height_low_Value_b;
 
     /* Sum: '<S177>/Sum' incorporates:
      *  Constant: '<S177>/max_height_low'
      *  Constant: '<S177>/min_height_high'
      */
-    rtb_q3dot = SkySurfer_Core_P.min_height_high_Value_a -
+    rtb_Limit_AIL_R = SkySurfer_Core_P.min_height_high_Value_a -
       SkySurfer_Core_P.max_height_low_Value_b;
-    _mm_storeu_pd(&rtb_Merge_a[0], _mm_add_pd(_mm_div_pd(_mm_mul_pd(_mm_sub_pd
-      (_mm_set_pd(SkySurfer_Core_DW->w1[1], SkySurfer_Core_DW->w1_h[1]),
-       _mm_loadu_pd(&rtb_Reshape1_g[0])), _mm_set1_pd(rtb_Limit_AIL_R)),
-      _mm_set1_pd(rtb_q3dot)), _mm_loadu_pd(&rtb_Reshape1_g[0])));
 
     /* Sum: '<S177>/Sum3' incorporates:
      *  Product: '<S177>/Product1'
@@ -2672,8 +2660,12 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      *  Reshape: '<S181>/Reshape1'
      *  Sum: '<S177>/Sum2'
      */
-    rtb_Merge_a[2] = (SkySurfer_Core_DW->LwgV1[1] - rtb_w3) * rtb_Limit_AIL_R /
-      rtb_q3dot + rtb_w3;
+    rtb_Merge_a[0] = (SkySurfer_Core_DW->w1_h[1] - rtb_w3) *
+      rtb_VectorConcatenate_idx_6 / rtb_Limit_AIL_R + rtb_w3;
+    rtb_Merge_a[1] = (SkySurfer_Core_DW->w1[1] - rtb_Gain3) *
+      rtb_VectorConcatenate_idx_6 / rtb_Limit_AIL_R + rtb_Gain3;
+    rtb_Merge_a[2] = (SkySurfer_Core_DW->LwgV1[1] - rtb_Gain4) *
+      rtb_VectorConcatenate_idx_6 / rtb_Limit_AIL_R + rtb_Gain4;
 
     /* End of Outputs for SubSystem: '<S156>/Interpolate  velocities' */
     break;
@@ -2696,22 +2688,19 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Product: '<S142>/Transform from Inertial to Body axes' incorporates:
      *  Reshape: '<S32>/Reshape (9) to [3x3] column-major'
      */
+    rtb_w3 = 0.0;
     rtb_Gain3 = 0.0;
     rtb_Gain4 = 0.0;
-    rtb_w3 = 0.0;
     for (i = 0; i < 3; i++) {
-      _mm_storeu_pd(&tmp_0[0], _mm_add_pd(_mm_mul_pd(_mm_loadu_pd
-        (&rtb_Reshape9to3x3columnmajor[3 * i]), _mm_set1_pd
-        (SkySurfer_Core_DW->Product1[i])), _mm_set_pd(rtb_Gain4, rtb_Gain3)));
-      rtb_Gain3 = tmp_0[0];
-      rtb_Gain4 = tmp_0[1];
-      rtb_w3 += rtb_Reshape9to3x3columnmajor[3 * i + 2] *
-        SkySurfer_Core_DW->Product1[i];
+      rtb_Multiply = SkySurfer_Core_DW->Product1[i];
+      rtb_w3 += rtb_Reshape9to3x3columnmajor[3 * i] * rtb_Multiply;
+      rtb_Gain3 += rtb_Reshape9to3x3columnmajor[3 * i + 1] * rtb_Multiply;
+      rtb_Gain4 += rtb_Reshape9to3x3columnmajor[3 * i + 2] * rtb_Multiply;
     }
 
-    rtb_Reshape1_g[2] = rtb_w3;
-    rtb_Reshape1_g[1] = rtb_Gain4;
-    rtb_Reshape1_g[0] = rtb_Gain3;
+    rtb_Reshape1_g[2] = rtb_Gain4;
+    rtb_Reshape1_g[1] = rtb_Gain3;
+    rtb_Reshape1_g[0] = rtb_w3;
 
     /* End of Product: '<S142>/Transform from Inertial to Body axes' */
   } else {
@@ -2737,7 +2726,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      * About '<S144>/ln(h//z0)':
      *  Operator: log
      */
-    rtb_Limit_AIL_R = log(SkySurfer_Core_P.hz0_Gain * rtb_Multiply) /
+    rtb_VectorConcatenate_idx_6 = log(SkySurfer_Core_P.hz0_Gain * rtb_Multiply) /
       SkySurfer_Core_DW->lnref_heightz0;
 
     /* Product: '<S144>/Transform from Inertial to Body axes' incorporates:
@@ -2745,35 +2734,29 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      *  Reshape: '<S32>/Reshape (9) to [3x3] column-major'
      */
     rtb_Multiply2 = 0.0;
+    rtb_Product7 = 0.0;
     rtb_Product3_cq = 0.0;
-    rtb_Multiply = 0.0;
     for (i = 0; i < 3; i++) {
-      _mm_storeu_pd(&tmp_0[0], _mm_add_pd(_mm_mul_pd(_mm_loadu_pd
-        (&rtb_Reshape9to3x3columnmajor[3 * i]), _mm_mul_pd(_mm_set1_pd
-        (rtb_Limit_AIL_R), _mm_set1_pd
-        (SkySurfer_Core_DW->Windspeedatreferenceheight[i]))), _mm_set_pd
-        (rtb_Product3_cq, rtb_Multiply2)));
-      rtb_Multiply2 = tmp_0[0];
-      rtb_Product3_cq = tmp_0[1];
-      rtb_Multiply += rtb_Reshape9to3x3columnmajor[3 * i + 2] * (rtb_Limit_AIL_R
-        * SkySurfer_Core_DW->Windspeedatreferenceheight[i]);
+      rtb_Multiply = rtb_VectorConcatenate_idx_6 *
+        SkySurfer_Core_DW->Windspeedatreferenceheight[i];
+      rtb_Multiply2 += rtb_Reshape9to3x3columnmajor[3 * i] * rtb_Multiply;
+      rtb_Product7 += rtb_Reshape9to3x3columnmajor[3 * i + 1] * rtb_Multiply;
+      rtb_Product3_cq += rtb_Reshape9to3x3columnmajor[3 * i + 2] * rtb_Multiply;
     }
 
-    _mm_storeu_pd(&rtb_Reshape1_g[0], _mm_add_pd(_mm_mul_pd(_mm_mul_pd
-      (_mm_set1_pd(0.3048), _mm_loadu_pd(&rtb_Merge_a[0])), _mm_set1_pd
-      (SkySurfer_Core_U->Wind[3])), _mm_add_pd(_mm_set_pd(rtb_sincos_o1_idx_1,
-      rtb_VectorConcatenate_idx_6), _mm_set_pd(rtb_Product3_cq, rtb_Multiply2))));
+    rtb_Reshape1_g[0] = 0.3048 * rtb_Merge_a[0] * SkySurfer_Core_U->Wind[3] +
+      (rtb_sincos_o1_idx_0 + rtb_Multiply2);
+    rtb_Reshape1_g[1] = 0.3048 * rtb_Merge_a[1] * SkySurfer_Core_U->Wind[3] +
+      (rtb_sincos_o1_idx_1 + rtb_Product7);
     rtb_Reshape1_g[2] = 0.3048 * rtb_Merge_a[2] * SkySurfer_Core_U->Wind[3] +
-      (rtb_sincos_o1_idx_2 + rtb_Multiply);
+      (rtb_sincos_o1_idx_2 + rtb_Product3_cq);
   }
 
   /* End of MultiPortSwitch: '<S131>/VB' */
 
   /* Sum: '<S11>/Add1' */
-  _mm_storeu_pd(&tmp_0[0], _mm_sub_pd(_mm_set_pd(rtb_Sum_mi_idx_1,
-    rtb_Sum_mi_idx_0), _mm_loadu_pd(&rtb_Reshape1_g[0])));
-  rtb_VectorConcatenate_idx_6 = tmp_0[0];
-  rtb_sincos_o1_idx_1 = tmp_0[1];
+  rtb_sincos_o1_idx_0 = rtb_Sum_mi_idx_0 - rtb_Reshape1_g[0];
+  rtb_sincos_o1_idx_1 = rtb_Sum_mi_idx_1 - rtb_Reshape1_g[1];
   rtb_sincos_o1_idx_2 = rtb_Sum_mi_idx_2 - rtb_Reshape1_g[2];
 
   /* Outputs for Enabled SubSystem: '<S5>/Aerodynamic' incorporates:
@@ -2782,7 +2765,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* Product: '<S201>/Product' incorporates:
    *  AerodynamicForcesAndMoments: '<S7>/Aerodynamic Forces and Moments '
    */
-  rtb_Switch1_idx_0 = tmp_0[0] * tmp_0[0];
+  rtb_Switch1_idx_0 = rtb_sincos_o1_idx_0 * rtb_sincos_o1_idx_0;
 
   /* Product: '<S201>/Product2' incorporates:
    *  AerodynamicForcesAndMoments: '<S7>/Aerodynamic Forces and Moments '
@@ -2795,8 +2778,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    *  Product: '<S201>/Product2'
    *  Sum: '<S128>/Sum'
    */
-  rtb_Switch1_idx_2 = (tmp_0[1] * tmp_0[1] + rtb_Switch1_idx_0) +
-    rtb_Switch1_idx_1;
+  rtb_Switch1_idx_2 = (rtb_sincos_o1_idx_1 * rtb_sincos_o1_idx_1 +
+                       rtb_Switch1_idx_0) + rtb_Switch1_idx_1;
 
   /* End of Outputs for SubSystem: '<S5>/Aerodynamic' */
 
@@ -2823,16 +2806,18 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     SkySurfer_Core_P.LapseRate_Gain * rtb_Multiply;
 
   /* Gain: '<S136>/1//T0' */
-  rtb_q3dot = SkySurfer_Core_P.uT0_Gain * rtb_LowAltitudeScaleLength;
+  rtb_Limit_AIL_R = SkySurfer_Core_P.uT0_Gain * rtb_LowAltitudeScaleLength;
 
   /* Math: '<S136>/(T//T0)^(g//LR) ' incorporates:
    *  Constant: '<S136>/Constant'
    */
-  if ((rtb_q3dot < 0.0) && (SkySurfer_Core_P.Constant_Value_c > floor
+  if ((rtb_Limit_AIL_R < 0.0) && (SkySurfer_Core_P.Constant_Value_c > floor
        (SkySurfer_Core_P.Constant_Value_c))) {
-    rtb_Limit_AIL_R = -rt_powd_snf(-rtb_q3dot, SkySurfer_Core_P.Constant_Value_c);
+    rtb_VectorConcatenate_idx_6 = -rt_powd_snf(-rtb_Limit_AIL_R,
+      SkySurfer_Core_P.Constant_Value_c);
   } else {
-    rtb_Limit_AIL_R = rt_powd_snf(rtb_q3dot, SkySurfer_Core_P.Constant_Value_c);
+    rtb_VectorConcatenate_idx_6 = rt_powd_snf(rtb_Limit_AIL_R,
+      SkySurfer_Core_P.Constant_Value_c);
   }
 
   /* End of Math: '<S136>/(T//T0)^(g//LR) ' */
@@ -2840,7 +2825,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* Gain: '<S136>/rho0' incorporates:
    *  Product: '<S136>/Product'
    */
-  rtb_Lv_idx_0 = rtb_Limit_AIL_R / rtb_q3dot * SkySurfer_Core_P.rho0_Gain;
+  rtb_Lv_idx_0 = rtb_VectorConcatenate_idx_6 / rtb_Limit_AIL_R *
+    SkySurfer_Core_P.rho0_Gain;
 
   /* Sum: '<S136>/Sum' incorporates:
    *  Constant: '<S136>/Altitude of Troposphere'
@@ -2863,15 +2849,15 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    * About '<S136>/Stratosphere Model':
    *  Operator: exp
    */
-  rtb_q3dot = exp(1.0 / rtb_LowAltitudeScaleLength * (SkySurfer_Core_P.gR_Gain *
-    rtb_Gain_h));
+  rtb_Limit_AIL_R = exp(1.0 / rtb_LowAltitudeScaleLength *
+                        (SkySurfer_Core_P.gR_Gain * rtb_Gain_h));
 
   /* UnitConversion: '<S132>/Density Conversion' incorporates:
    *  Product: '<S136>/Product3'
    */
   /* Unit Conversion - from: kg/m^3 to: kg/m^3
      Expression: output = (1*input) + (0) */
-  rtb_Lv_idx_0 *= rtb_q3dot;
+  rtb_Lv_idx_0 *= rtb_Limit_AIL_R;
 
   /* Sqrt: '<S136>/a' incorporates:
    *  Gain: '<S136>/gamma*R'
@@ -2886,7 +2872,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   rtb_Product1_ow = rtb_sigma_ugsigma_vg / rtb_q0dot;
 
   /* Trigonometry: '<S197>/Incidence' */
-  rtb_q1dot = rt_atan2d_snf(rtb_sincos_o1_idx_2, tmp_0[0]);
+  rtb_q1dot = rt_atan2d_snf(rtb_sincos_o1_idx_2, rtb_sincos_o1_idx_0);
 
   /* Gain: '<S195>/Gain' */
   rtb_Gain = SkySurfer_Core_P.Gain_Gain_k3 * rtb_q1dot;
@@ -2897,7 +2883,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    */
   if (rtb_sigma_ugsigma_vg > SkySurfer_Core_P.Switch_Threshold_j) {
     /* Product: '<S197>/Product' */
-    rtb_Gain_h = tmp_0[1] / rtb_sigma_ugsigma_vg;
+    rtb_Gain_h = rtb_sincos_o1_idx_1 / rtb_sigma_ugsigma_vg;
 
     /* Trigonometry: '<S197>/Sideslip' */
     if (rtb_Gain_h > 1.0) {
@@ -3056,9 +3042,10 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Product: '<S161>/sigma_w' incorporates:
      *  Integrator: '<S161>/pgw_p'
      */
-    _mm_storeu_pd(&SkySurfer_Core_DW->sigma_w[0], _mm_mul_pd(_mm_set_pd
-      (rtb_MediumHighAltitudeIntensity, SkySurfer_Core_DW->sigma_wg),
-      _mm_loadu_pd(&SkySurfer_Core_X->pgw_p_CSTATE[0])));
+    SkySurfer_Core_DW->sigma_w[0] = SkySurfer_Core_DW->sigma_wg *
+      SkySurfer_Core_X->pgw_p_CSTATE[0];
+    SkySurfer_Core_DW->sigma_w[1] = rtb_MediumHighAltitudeIntensity *
+      SkySurfer_Core_X->pgw_p_CSTATE[1];
   }
 
   /* End of Outputs for SubSystem: '<S150>/Hpgw' */
@@ -3106,16 +3093,21 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   }
 
   if (SkySurfer_Core_DW->Hqgw_MODE) {
+    /* Gain: '<S162>/pi//4' */
+    rtb_MediumHighAltitudeIntensity = SkySurfer_Core_P.pi4_Gain *
+      rtb_UnitConversion_n;
+
     /* Product: '<S162>/w' incorporates:
-     *  Gain: '<S162>/pi//4'
      *  Integrator: '<S162>/qgw_p'
      *  Product: '<S162>/wg//V'
+     *  Sum: '<S162>/Sum'
      */
-    _mm_storeu_pd(&SkySurfer_Core_DW->w_jm[0], _mm_mul_pd(_mm_sub_pd(_mm_div_pd
-      (_mm_loadu_pd(&SkySurfer_Core_DW->LwgV1[0]), _mm_set1_pd
-       (rtb_UnitConversion_n)), _mm_loadu_pd(&SkySurfer_Core_X->qgw_p_CSTATE[0])),
-      _mm_div_pd(_mm_set1_pd(SkySurfer_Core_P.pi4_Gain * rtb_UnitConversion_n),
-                 _mm_set1_pd(SkySurfer_Core_DW->UnitConversion_n))));
+    SkySurfer_Core_DW->w_jm[0] = (SkySurfer_Core_DW->LwgV1[0] /
+      rtb_UnitConversion_n - SkySurfer_Core_X->qgw_p_CSTATE[0]) *
+      (rtb_MediumHighAltitudeIntensity / SkySurfer_Core_DW->UnitConversion_n);
+    SkySurfer_Core_DW->w_jm[1] = (SkySurfer_Core_DW->LwgV1[1] /
+      rtb_UnitConversion_n - SkySurfer_Core_X->qgw_p_CSTATE[1]) *
+      (rtb_MediumHighAltitudeIntensity / SkySurfer_Core_DW->UnitConversion_n);
   }
 
   /* End of Outputs for SubSystem: '<S150>/Hqgw' */
@@ -3196,18 +3188,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
 
   /* End of Outputs for SubSystem: '<S150>/Hrgw' */
 
-  /* If: '<S155>/if Height < Max low altitude  elseif Height > Min isotropic altitude ' incorporates:
-   *  Gain: '<S171>/Gain'
-   *  Product: '<S169>/Product1'
-   *  Product: '<S174>/Product1'
-   *  Product: '<S174>/Product2'
-   *  Product: '<S176>/Product1'
-   *  Product: '<S176>/Product2'
-   *  Sum: '<S169>/Sum2'
-   *  Sum: '<S169>/Sum3'
-   *  Sum: '<S174>/Sum'
-   *  Sum: '<S176>/Sum'
-   */
+  /* If: '<S155>/if Height < Max low altitude  elseif Height > Min isotropic altitude ' */
   rtPrevAction =
     SkySurfer_Core_DW->ifHeightMaxlowaltitudeelseifHeightMinisotropicaltitude_ActiveSubsystem_l;
   if (rtsiIsModeUpdateTimeStep(&SkySurfer_Core_M->solverInfo)) {
@@ -3242,36 +3223,39 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Trigonometry: '<S176>/Trigonometric Function1' */
     rtb_UnitConversion_d = sin(SkySurfer_Core_DW->UnitConversion);
     rtb_UnitConversion_n = cos(SkySurfer_Core_DW->UnitConversion);
-    _mm_storeu_pd(&rtb_Merge_a[0], _mm_add_pd(_mm_mul_pd(_mm_set_pd
-      (rtb_UnitConversion_d, SkySurfer_Core_DW->sigma_w[0]), _mm_set_pd
-      (SkySurfer_Core_DW->sigma_w[0], rtb_UnitConversion_n)), _mm_mul_pd
-      (_mm_mul_pd(_mm_set_pd(SkySurfer_Core_DW->w_jm[0], rtb_UnitConversion_d),
-                  _mm_set_pd(rtb_UnitConversion_n, SkySurfer_Core_DW->w_jm[0])),
-       _mm_set_pd(1.0, -1.0))));
 
-    /* Product: '<S175>/Product' incorporates:
+    /* Sum: '<S176>/Sum' incorporates:
      *  Product: '<S176>/Product1'
      *  Product: '<S176>/Product2'
+     */
+    rtb_Merge_a[0] = SkySurfer_Core_DW->sigma_w[0] * rtb_UnitConversion_n -
+      rtb_UnitConversion_d * SkySurfer_Core_DW->w_jm[0];
+
+    /* Sum: '<S176>/Sum1' incorporates:
+     *  Product: '<S176>/Product1'
+     *  Product: '<S176>/Product2'
+     */
+    rtb_Merge_a[1] = rtb_UnitConversion_d * SkySurfer_Core_DW->sigma_w[0] +
+      SkySurfer_Core_DW->w_jm[0] * rtb_UnitConversion_n;
+
+    /* Product: '<S175>/Product' incorporates:
      *  Reshape: '<S175>/Reshape'
      *  Reshape: '<S175>/Reshape1'
      *  Reshape: '<S32>/Reshape (9) to [3x3] column-major'
-     *  Sum: '<S176>/Sum'
      */
+    rtb_w3 = 0.0;
     rtb_Gain3 = 0.0;
     rtb_Gain4 = 0.0;
-    rtb_w3 = 0.0;
     for (i = 0; i < 3; i++) {
-      _mm_storeu_pd(&tmp_0[0], _mm_add_pd(_mm_mul_pd(_mm_loadu_pd
-        (&rtb_Reshape9to3x3columnmajor[3 * i]), _mm_set1_pd(rtb_Merge_a[i])),
-        _mm_set_pd(rtb_Gain4, rtb_Gain3)));
-      rtb_Gain3 = tmp_0[0];
-      rtb_Gain4 = tmp_0[1];
-      rtb_w3 += rtb_Reshape9to3x3columnmajor[3 * i + 2] * rtb_Merge_a[i];
+      rtb_Multiply = rtb_Merge_a[i];
+      rtb_w3 += rtb_Reshape9to3x3columnmajor[3 * i] * rtb_Multiply;
+      rtb_Gain3 += rtb_Reshape9to3x3columnmajor[3 * i + 1] * rtb_Multiply;
+      rtb_Gain4 += rtb_Reshape9to3x3columnmajor[3 * i + 2] * rtb_Multiply;
     }
 
-    rtb_Reshape1_g[2] = rtb_w3;
-    rtb_Reshape1_g[1] = rtb_Gain4;
-    rtb_Reshape1_g[0] = rtb_Gain3;
+    rtb_Reshape1_g[2] = rtb_Gain4;
+    rtb_Reshape1_g[1] = rtb_Gain3;
+    rtb_Reshape1_g[0] = rtb_w3;
 
     /* End of Product: '<S175>/Product' */
     /* End of Outputs for SubSystem: '<S155>/Low altitude  rates' */
@@ -3281,11 +3265,10 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Outputs for IfAction SubSystem: '<S155>/Medium//High  altitude rates' incorporates:
      *  ActionPort: '<S171>/Action Port'
      */
-    _mm_storeu_pd(&rtb_Reshape1_g[0], _mm_mul_pd(_mm_set1_pd
-      (SkySurfer_Core_P.Gain_Gain_a), _mm_set_pd(SkySurfer_Core_DW->w_jm[1],
-      SkySurfer_Core_DW->sigma_w[1])));
-
     /* Gain: '<S171>/Gain' */
+    rtb_Reshape1_g[0] = SkySurfer_Core_P.Gain_Gain_a *
+      SkySurfer_Core_DW->sigma_w[1];
+    rtb_Reshape1_g[1] = SkySurfer_Core_P.Gain_Gain_a * SkySurfer_Core_DW->w_jm[1];
     rtb_Reshape1_g[2] = SkySurfer_Core_P.Gain_Gain_a *
       SkySurfer_Core_DW->UnaryMinus[1];
 
@@ -3299,18 +3282,23 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Trigonometry: '<S174>/Trigonometric Function' */
     rtb_UnitConversion_n = sin(SkySurfer_Core_DW->UnitConversion);
     rtb_MediumHighAltitudeIntensity = cos(SkySurfer_Core_DW->UnitConversion);
-    _mm_storeu_pd(&rtb_Reshape1_g[0], _mm_add_pd(_mm_mul_pd(_mm_set_pd
-      (rtb_UnitConversion_n, SkySurfer_Core_DW->sigma_w[0]), _mm_set_pd
-      (SkySurfer_Core_DW->sigma_w[0], rtb_MediumHighAltitudeIntensity)),
-      _mm_mul_pd(_mm_mul_pd(_mm_set_pd(SkySurfer_Core_DW->w_jm[0],
-      rtb_UnitConversion_n), _mm_set_pd(rtb_MediumHighAltitudeIntensity,
-      SkySurfer_Core_DW->w_jm[0])), _mm_set_pd(1.0, -1.0))));
 
-    /* SignalConversion generated from: '<S173>/Vector Concatenate' incorporates:
+    /* Sum: '<S174>/Sum' incorporates:
      *  Product: '<S174>/Product1'
      *  Product: '<S174>/Product2'
-     *  Sum: '<S174>/Sum'
      */
+    rtb_Reshape1_g[0] = SkySurfer_Core_DW->sigma_w[0] *
+      rtb_MediumHighAltitudeIntensity - rtb_UnitConversion_n *
+      SkySurfer_Core_DW->w_jm[0];
+
+    /* Sum: '<S174>/Sum1' incorporates:
+     *  Product: '<S174>/Product1'
+     *  Product: '<S174>/Product2'
+     */
+    rtb_Reshape1_g[1] = rtb_UnitConversion_n * SkySurfer_Core_DW->sigma_w[0] +
+      SkySurfer_Core_DW->w_jm[0] * rtb_MediumHighAltitudeIntensity;
+
+    /* SignalConversion generated from: '<S173>/Vector Concatenate' */
     rtb_Reshape1_g[2] = SkySurfer_Core_DW->UnaryMinus[0];
 
     /* Product: '<S173>/Product' incorporates:
@@ -3318,21 +3306,15 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      *  Reshape: '<S173>/Reshape1'
      *  Reshape: '<S32>/Reshape (9) to [3x3] column-major'
      */
+    rtb_w3 = 0.0;
     rtb_Gain3 = 0.0;
     rtb_Gain4 = 0.0;
-    rtb_w3 = 0.0;
     for (i = 0; i < 3; i++) {
-      _mm_storeu_pd(&tmp_0[0], _mm_add_pd(_mm_mul_pd(_mm_loadu_pd
-        (&rtb_Reshape9to3x3columnmajor[3 * i]), _mm_set1_pd(rtb_Reshape1_g[i])),
-        _mm_set_pd(rtb_Gain4, rtb_Gain3)));
-      rtb_Gain3 = tmp_0[0];
-      rtb_Gain4 = tmp_0[1];
-      rtb_w3 += rtb_Reshape9to3x3columnmajor[3 * i + 2] * rtb_Reshape1_g[i];
+      rtb_Multiply = rtb_Reshape1_g[i];
+      rtb_w3 += rtb_Reshape9to3x3columnmajor[3 * i] * rtb_Multiply;
+      rtb_Gain3 += rtb_Reshape9to3x3columnmajor[3 * i + 1] * rtb_Multiply;
+      rtb_Gain4 += rtb_Reshape9to3x3columnmajor[3 * i + 2] * rtb_Multiply;
     }
-
-    rtb_Merge_a[2] = rtb_w3;
-    rtb_Merge_a[1] = rtb_Gain4;
-    rtb_Merge_a[0] = rtb_Gain3;
 
     /* Sum: '<S169>/Sum1' incorporates:
      *  Constant: '<S169>/max_height_low'
@@ -3345,11 +3327,6 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      */
     rtb_UnitConversion_n = SkySurfer_Core_P.min_height_high_Value -
       SkySurfer_Core_P.max_height_low_Value;
-    _mm_storeu_pd(&rtb_Reshape1_g[0], _mm_add_pd(_mm_div_pd(_mm_mul_pd
-      (_mm_sub_pd(_mm_set_pd(SkySurfer_Core_DW->w_jm[1],
-      SkySurfer_Core_DW->sigma_w[1]), _mm_loadu_pd(&rtb_Merge_a[0])),
-       _mm_set1_pd(rtb_UnitConversion_d)), _mm_set1_pd(rtb_UnitConversion_n)),
-      _mm_loadu_pd(&rtb_Merge_a[0])));
 
     /* Sum: '<S169>/Sum3' incorporates:
      *  Product: '<S169>/Product1'
@@ -3357,8 +3334,12 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      *  Reshape: '<S173>/Reshape1'
      *  Sum: '<S169>/Sum2'
      */
-    rtb_Reshape1_g[2] = (SkySurfer_Core_DW->UnaryMinus[1] - rtb_w3) *
+    rtb_Reshape1_g[0] = (SkySurfer_Core_DW->sigma_w[1] - rtb_w3) *
       rtb_UnitConversion_d / rtb_UnitConversion_n + rtb_w3;
+    rtb_Reshape1_g[1] = (SkySurfer_Core_DW->w_jm[1] - rtb_Gain3) *
+      rtb_UnitConversion_d / rtb_UnitConversion_n + rtb_Gain3;
+    rtb_Reshape1_g[2] = (SkySurfer_Core_DW->UnaryMinus[1] - rtb_Gain4) *
+      rtb_UnitConversion_d / rtb_UnitConversion_n + rtb_Gain4;
 
     /* End of Outputs for SubSystem: '<S155>/Interpolate  rates' */
     break;
@@ -3377,8 +3358,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     rtb_Reshape1_g[1] = SkySurfer_Core_P.Constant2_Value_m[1];
     rtb_Reshape1_g[2] = SkySurfer_Core_P.Constant2_Value_m[2];
   } else {
-    _mm_storeu_pd(&rtb_Reshape1_g[0], _mm_mul_pd(_mm_loadu_pd(&rtb_Reshape1_g[0]),
-      _mm_set1_pd(SkySurfer_Core_U->Wind[3])));
+    rtb_Reshape1_g[0] *= SkySurfer_Core_U->Wind[3];
+    rtb_Reshape1_g[1] *= SkySurfer_Core_U->Wind[3];
     rtb_Reshape1_g[2] *= SkySurfer_Core_U->Wind[3];
   }
 
@@ -3387,18 +3368,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* Sum: '<S11>/Add4' incorporates:
    *  Switch: '<S5>/Switch2'
    */
-  _mm_storeu_pd(&tmp_0[0], _mm_add_pd(_mm_loadu_pd(&rtb_Reshape1_g[0]),
-    _mm_loadu_pd(&rtb_u[0])));
-
-  /* Concatenate: '<S5>/CoreSnapshot_Concat' incorporates:
-   *  SignalConversion generated from: '<S5>/CoreSnapshot_Concat'
-   */
-  CoreSnapshot_Concat[59] = tmp_0[0];
-
-  /* Sum: '<S11>/Add4' incorporates:
-   *  Switch: '<S5>/Switch2'
-   */
-  rtb_UnitConversion_n = tmp_0[1];
+  rtb_UnitConversion_d = rtb_Reshape1_g[0] + rtb_u[0];
+  rtb_UnitConversion_n = rtb_Reshape1_g[1] + rtb_u[1];
   rtb_MediumHighAltitudeIntensity = rtb_Reshape1_g[2] + rtb_u[2];
 
   /* TransferFcn: '<S3>/Transfer Fcn' */
@@ -3408,7 +3379,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* RateLimiter: '<S3>/Rate Limiter' */
   if (!(SkySurfer_Core_DW->LastMajorTime == (rtMinusInf))) {
     rtb_Multiply = SkySurfer_Core_M->Timing.t[0];
-    rtb_UnitConversion_d = rtb_Multiply - SkySurfer_Core_DW->LastMajorTime;
+    rtb_Gain8 = rtb_Multiply - SkySurfer_Core_DW->LastMajorTime;
     if (SkySurfer_Core_DW->LastMajorTime == rtb_Multiply) {
       if (SkySurfer_Core_DW->PrevLimited) {
         /* TransferFcn: '<S3>/Transfer Fcn' incorporates:
@@ -3417,8 +3388,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
         SkySurfer_Core_DW->RateLimiter = SkySurfer_Core_DW->PrevY;
       }
     } else {
-      rtb_Multiply2 = rtb_UnitConversion_d *
-        SkySurfer_Core_P.RateLimiter_RisingLim;
+      rtb_Multiply2 = rtb_Gain8 * SkySurfer_Core_P.RateLimiter_RisingLim;
       rtb_Multiply = SkySurfer_Core_DW->RateLimiter - SkySurfer_Core_DW->PrevY;
       if (rtb_Multiply > rtb_Multiply2) {
         /* TransferFcn: '<S3>/Transfer Fcn' incorporates:
@@ -3428,13 +3398,12 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
           rtb_Multiply2;
         Compare = true;
       } else {
-        rtb_UnitConversion_d *= SkySurfer_Core_P.RateLimiter_FallingLim;
-        if (rtb_Multiply < rtb_UnitConversion_d) {
+        rtb_Gain8 *= SkySurfer_Core_P.RateLimiter_FallingLim;
+        if (rtb_Multiply < rtb_Gain8) {
           /* TransferFcn: '<S3>/Transfer Fcn' incorporates:
            *  RateLimiter: '<S3>/Rate Limiter'
            */
-          SkySurfer_Core_DW->RateLimiter = SkySurfer_Core_DW->PrevY +
-            rtb_UnitConversion_d;
+          SkySurfer_Core_DW->RateLimiter = SkySurfer_Core_DW->PrevY + rtb_Gain8;
           Compare = true;
         } else {
           Compare = false;
@@ -3459,7 +3428,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* RateLimiter: '<S3>/Rate Limiter3' */
   if (!(SkySurfer_Core_DW->LastMajorTime_e == (rtMinusInf))) {
     rtb_Multiply = SkySurfer_Core_M->Timing.t[0];
-    rtb_UnitConversion_d = rtb_Multiply - SkySurfer_Core_DW->LastMajorTime_e;
+    rtb_Gain8 = rtb_Multiply - SkySurfer_Core_DW->LastMajorTime_e;
     if (SkySurfer_Core_DW->LastMajorTime_e == rtb_Multiply) {
       if (SkySurfer_Core_DW->PrevLimited_j) {
         /* TransferFcn: '<S3>/Transfer Fcn4' incorporates:
@@ -3468,8 +3437,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
         SkySurfer_Core_DW->RateLimiter3 = SkySurfer_Core_DW->PrevY_p;
       }
     } else {
-      rtb_Multiply2 = rtb_UnitConversion_d *
-        SkySurfer_Core_P.RateLimiter3_RisingLim;
+      rtb_Multiply2 = rtb_Gain8 * SkySurfer_Core_P.RateLimiter3_RisingLim;
       rtb_Multiply = SkySurfer_Core_DW->RateLimiter3 -
         SkySurfer_Core_DW->PrevY_p;
       if (rtb_Multiply > rtb_Multiply2) {
@@ -3480,13 +3448,13 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
           rtb_Multiply2;
         Compare = true;
       } else {
-        rtb_UnitConversion_d *= SkySurfer_Core_P.RateLimiter3_FallingLim;
-        if (rtb_Multiply < rtb_UnitConversion_d) {
+        rtb_Gain8 *= SkySurfer_Core_P.RateLimiter3_FallingLim;
+        if (rtb_Multiply < rtb_Gain8) {
           /* TransferFcn: '<S3>/Transfer Fcn4' incorporates:
            *  RateLimiter: '<S3>/Rate Limiter3'
            */
           SkySurfer_Core_DW->RateLimiter3 = SkySurfer_Core_DW->PrevY_p +
-            rtb_UnitConversion_d;
+            rtb_Gain8;
           Compare = true;
         } else {
           Compare = false;
@@ -3511,7 +3479,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* RateLimiter: '<S3>/Rate Limiter1' */
   if (!(SkySurfer_Core_DW->LastMajorTime_p == (rtMinusInf))) {
     rtb_Multiply = SkySurfer_Core_M->Timing.t[0];
-    rtb_UnitConversion_d = rtb_Multiply - SkySurfer_Core_DW->LastMajorTime_p;
+    rtb_Gain8 = rtb_Multiply - SkySurfer_Core_DW->LastMajorTime_p;
     if (SkySurfer_Core_DW->LastMajorTime_p == rtb_Multiply) {
       if (SkySurfer_Core_DW->PrevLimited_j4) {
         /* TransferFcn: '<S3>/Transfer Fcn1' incorporates:
@@ -3520,8 +3488,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
         SkySurfer_Core_DW->RateLimiter1 = SkySurfer_Core_DW->PrevY_d;
       }
     } else {
-      rtb_Multiply2 = rtb_UnitConversion_d *
-        SkySurfer_Core_P.RateLimiter1_RisingLim;
+      rtb_Multiply2 = rtb_Gain8 * SkySurfer_Core_P.RateLimiter1_RisingLim;
       rtb_Multiply = SkySurfer_Core_DW->RateLimiter1 -
         SkySurfer_Core_DW->PrevY_d;
       if (rtb_Multiply > rtb_Multiply2) {
@@ -3532,13 +3499,13 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
           rtb_Multiply2;
         Compare = true;
       } else {
-        rtb_UnitConversion_d *= SkySurfer_Core_P.RateLimiter1_FallingLim;
-        if (rtb_Multiply < rtb_UnitConversion_d) {
+        rtb_Gain8 *= SkySurfer_Core_P.RateLimiter1_FallingLim;
+        if (rtb_Multiply < rtb_Gain8) {
           /* TransferFcn: '<S3>/Transfer Fcn1' incorporates:
            *  RateLimiter: '<S3>/Rate Limiter1'
            */
           SkySurfer_Core_DW->RateLimiter1 = SkySurfer_Core_DW->PrevY_d +
-            rtb_UnitConversion_d;
+            rtb_Gain8;
           Compare = true;
         } else {
           Compare = false;
@@ -3563,7 +3530,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* RateLimiter: '<S3>/Rate Limiter2' */
   if (!(SkySurfer_Core_DW->LastMajorTime_d == (rtMinusInf))) {
     rtb_Multiply = SkySurfer_Core_M->Timing.t[0];
-    rtb_UnitConversion_d = rtb_Multiply - SkySurfer_Core_DW->LastMajorTime_d;
+    rtb_Gain8 = rtb_Multiply - SkySurfer_Core_DW->LastMajorTime_d;
     if (SkySurfer_Core_DW->LastMajorTime_d == rtb_Multiply) {
       if (SkySurfer_Core_DW->PrevLimited_n) {
         /* TransferFcn: '<S3>/Transfer Fcn2' incorporates:
@@ -3572,8 +3539,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
         SkySurfer_Core_DW->RateLimiter2 = SkySurfer_Core_DW->PrevY_m;
       }
     } else {
-      rtb_Multiply2 = rtb_UnitConversion_d *
-        SkySurfer_Core_P.RateLimiter2_RisingLim;
+      rtb_Multiply2 = rtb_Gain8 * SkySurfer_Core_P.RateLimiter2_RisingLim;
       rtb_Multiply = SkySurfer_Core_DW->RateLimiter2 -
         SkySurfer_Core_DW->PrevY_m;
       if (rtb_Multiply > rtb_Multiply2) {
@@ -3584,13 +3550,13 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
           rtb_Multiply2;
         Compare = true;
       } else {
-        rtb_UnitConversion_d *= SkySurfer_Core_P.RateLimiter2_FallingLim;
-        if (rtb_Multiply < rtb_UnitConversion_d) {
+        rtb_Gain8 *= SkySurfer_Core_P.RateLimiter2_FallingLim;
+        if (rtb_Multiply < rtb_Gain8) {
           /* TransferFcn: '<S3>/Transfer Fcn2' incorporates:
            *  RateLimiter: '<S3>/Rate Limiter2'
            */
           SkySurfer_Core_DW->RateLimiter2 = SkySurfer_Core_DW->PrevY_m +
-            rtb_UnitConversion_d;
+            rtb_Gain8;
           Compare = true;
         } else {
           Compare = false;
@@ -3606,8 +3572,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* End of RateLimiter: '<S3>/Rate Limiter2' */
 
   /* Gain: '<S3>/Gain8' */
-  rtb_UnitConversion_d = SkySurfer_Core_P.Gain8_Gain *
-    SkySurfer_Core_DW->RateLimiter2;
+  rtb_Gain8 = SkySurfer_Core_P.Gain8_Gain * SkySurfer_Core_DW->RateLimiter2;
 
   /* RelationalOperator: '<S8>/Compare' incorporates:
    *  Constant: '<S8>/Constant'
@@ -3657,7 +3622,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S91>/Multiply' incorporates:
      *  Product: '<S91>/Product1'
      */
-    rtb_Multiply = SkySurfer_Core_P.b / 2.0 * (rtb_Product_op * tmp_0[0]);
+    rtb_Multiply = SkySurfer_Core_P.b / 2.0 * (rtb_Product_op *
+      rtb_UnitConversion_d);
 
     /* Lookup_n-D: '<S91>/CD_dq' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -3675,7 +3641,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S91>/Multiply2' incorporates:
      *  Product: '<S91>/Product2'
      */
-    rtb_Multiply2 = SkySurfer_Core_P.cbar / 2.0 * (rtb_Product_op * tmp_0[1]);
+    rtb_Multiply2 = SkySurfer_Core_P.cbar / 2.0 * (rtb_Product_op *
+      rtb_UnitConversion_n);
 
     /* Lookup_n-D: '<S91>/CD_dr' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -3798,9 +3765,9 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      *  Abs: '<S7>/Abs3'
      *  Lookup_n-D: '<S7>/Aeroelasticity_RUD'
      */
-    rtb_q1dot = look1_binlcpw(fabs(rtb_UnitConversion_d),
+    rtb_q1dot = look1_binlcpw(fabs(rtb_Gain8),
       SkySurfer_Core_P.Aeroelasticity_RUD,
-      SkySurfer_Core_P.Aeroelasticity_Gain_RUD, 1U) * rtb_UnitConversion_d;
+      SkySurfer_Core_P.Aeroelasticity_Gain_RUD, 1U) * rtb_Gain8;
 
     /* Sum: '<S91>/Sum of Controls' incorporates:
      *  Gain: '<S106>/Gain1'
@@ -3840,7 +3807,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S97>/Multiply3' incorporates:
      *  Product: '<S97>/Product8'
      */
-    rtb_Product7 = SkySurfer_Core_P.b / 2.0 * (rtb_jxi * tmp_0[0]);
+    rtb_Product7 = SkySurfer_Core_P.b / 2.0 * (rtb_jxi * rtb_UnitConversion_d);
 
     /* Lookup_n-D: '<S97>/CS_dq' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -3858,7 +3825,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S97>/Multiply5' incorporates:
      *  Product: '<S97>/Product11'
      */
-    rtb_Product5 = SkySurfer_Core_P.cbar / 2.0 * (rtb_jxi * tmp_0[1]);
+    rtb_Product5 = SkySurfer_Core_P.cbar / 2.0 * (rtb_jxi * rtb_UnitConversion_n);
 
     /* Lookup_n-D: '<S97>/CS_dr' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -3991,7 +3958,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S93>/Multiply3' incorporates:
      *  Product: '<S93>/Product8'
      */
-    rtb_Product16 = SkySurfer_Core_P.b / 2.0 * (rtb_jxi * tmp_0[0]);
+    rtb_Product16 = SkySurfer_Core_P.b / 2.0 * (rtb_jxi * rtb_UnitConversion_d);
 
     /* Lookup_n-D: '<S93>/CL_dq' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -4009,7 +3976,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S93>/Multiply5' incorporates:
      *  Product: '<S93>/Product11'
      */
-    rtb_Product14 = SkySurfer_Core_P.cbar / 2.0 * (rtb_jxi * tmp_0[1]);
+    rtb_Product14 = SkySurfer_Core_P.cbar / 2.0 * (rtb_jxi *
+      rtb_UnitConversion_n);
 
     /* Lookup_n-D: '<S93>/CL_dr' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -4142,7 +4110,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S94>/Multiply3' incorporates:
      *  Product: '<S94>/Product8'
      */
-    rtb_Product16 = SkySurfer_Core_P.b / 2.0 * (rtb_jxi * tmp_0[0]);
+    rtb_Product16 = SkySurfer_Core_P.b / 2.0 * (rtb_jxi * rtb_UnitConversion_d);
 
     /* Lookup_n-D: '<S94>/CMl_dq' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -4160,7 +4128,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S94>/Multiply5' incorporates:
      *  Product: '<S94>/Product11'
      */
-    rtb_Product16_j = SkySurfer_Core_P.cbar / 2.0 * (rtb_jxi * tmp_0[1]);
+    rtb_Product16_j = SkySurfer_Core_P.cbar / 2.0 * (rtb_jxi *
+      rtb_UnitConversion_n);
 
     /* Lookup_n-D: '<S94>/CMl_dr' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -4293,7 +4262,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S95>/Multiply3' incorporates:
      *  Product: '<S95>/Product8'
      */
-    rtb_Product16_a = SkySurfer_Core_P.b / 2.0 * (rtb_jxi * tmp_0[0]);
+    rtb_Product16_a = SkySurfer_Core_P.b / 2.0 * (rtb_jxi * rtb_UnitConversion_d);
 
     /* Lookup_n-D: '<S95>/CMm_dq' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -4311,7 +4280,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S95>/Multiply5' incorporates:
      *  Product: '<S95>/Product11'
      */
-    rtb_Product14_k = SkySurfer_Core_P.cbar / 2.0 * (rtb_jxi * tmp_0[1]);
+    rtb_Product14_k = SkySurfer_Core_P.cbar / 2.0 * (rtb_jxi *
+      rtb_UnitConversion_n);
 
     /* Lookup_n-D: '<S95>/CMm_dr' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -4443,7 +4413,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S96>/Multiply3' incorporates:
      *  Product: '<S96>/Product8'
      */
-    rtb_Product16_on = SkySurfer_Core_P.b / 2.0 * (rtb_jxi * tmp_0[0]);
+    rtb_Product16_on = SkySurfer_Core_P.b / 2.0 * (rtb_jxi *
+      rtb_UnitConversion_d);
 
     /* Lookup_n-D: '<S96>/CMn_dq' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -4461,7 +4432,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S96>/Multiply5' incorporates:
      *  Product: '<S96>/Product11'
      */
-    rtb_Multiply5_o = SkySurfer_Core_P.cbar / 2.0 * (rtb_jxi * tmp_0[1]);
+    rtb_Multiply5_o = SkySurfer_Core_P.cbar / 2.0 * (rtb_jxi *
+      rtb_UnitConversion_n);
 
     /* Lookup_n-D: '<S96>/CMn_dr' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -4604,7 +4576,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      */
     rtb_SumofDatum_k = cos(rtb_Product2_hi);
     rtb_SumofControls_g = sin(rtb_Product2_hi);
-    rtb_Product1_ex = tmp_0[0] * rtb_SumofDatum_k +
+    rtb_Product1_ex = rtb_UnitConversion_d * rtb_SumofDatum_k +
       rtb_MediumHighAltitudeIntensity * rtb_SumofControls_g;
 
     /* Gain: '<S90>/Multiply' incorporates:
@@ -4630,7 +4602,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S90>/Multiply2' incorporates:
      *  Product: '<S90>/Product2'
      */
-    rtb_Product14_hm = SkySurfer_Core_P.cbar / 2.0 * (rtb_jxi * tmp_0[1]);
+    rtb_Product14_hm = SkySurfer_Core_P.cbar / 2.0 * (rtb_jxi *
+      rtb_UnitConversion_n);
 
     /* Lookup_n-D: '<S90>/CDr' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -4648,8 +4621,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
       SkySurfer_Core_P.CDr_dimSizes);
 
     /* Fcn: '<S7>/Stab_r' */
-    rtb_u2rhoV2 = rtb_MediumHighAltitudeIntensity * rtb_SumofDatum_k - tmp_0[0] *
-      rtb_SumofControls_g;
+    rtb_u2rhoV2 = rtb_MediumHighAltitudeIntensity * rtb_SumofDatum_k -
+      rtb_UnitConversion_d * rtb_SumofControls_g;
 
     /* Lookup_n-D: '<S90>/CDd01' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -4724,12 +4697,11 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      *  Sum: '<S90>/Sum of Datum'
      *  Sum: '<S90>/Sum1'
      */
-    rtb_Product14_hm = (((SkySurfer_Core_P.b / 2.0 * (rtb_jxi * rtb_u2rhoV2) +
-                          (rtb_Multiply5_o + rtb_Product14_hm)) /
-                         rtb_sigma_ugsigma_vg + rtb_Product3_cq) +
-                        SkySurfer_Core_P.CD_fix_AVL) + (((rtb_Product2_hi *
-      rtb_Product_op + rtb_Product2_g5 * rtb_Product1_p4) + rtb_Product2_pw *
-      rtb_Product2_my) + rtb_Product2_ox * rtb_q1dot);
+    rtb_jxi = (((SkySurfer_Core_P.b / 2.0 * (rtb_jxi * rtb_u2rhoV2) +
+                 (rtb_Multiply5_o + rtb_Product14_hm)) / rtb_sigma_ugsigma_vg +
+                rtb_Product3_cq) + SkySurfer_Core_P.CD_fix_AVL) +
+      (((rtb_Product2_hi * rtb_Product_op + rtb_Product2_g5 * rtb_Product1_p4) +
+        rtb_Product2_pw * rtb_Product2_my) + rtb_Product2_ox * rtb_q1dot);
 
     /* Lookup_n-D: '<S98>/CYtot' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -4764,7 +4736,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S98>/Multiply' incorporates:
      *  Product: '<S98>/Product1'
      */
-    rtb_jxi = SkySurfer_Core_P.b / 2.0 * (rtb_Product3_cq * rtb_Product1_ex);
+    rtb_Multiply5_o = SkySurfer_Core_P.b / 2.0 * (rtb_Product3_cq *
+      rtb_Product1_ex);
 
     /* Lookup_n-D: '<S98>/CYq' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -4784,7 +4757,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S98>/Multiply2' incorporates:
      *  Product: '<S98>/Product2'
      */
-    rtb_Multiply5_o = SkySurfer_Core_P.cbar / 2.0 * (rtb_Product3_cq * tmp_0[1]);
+    rtb_Product14_hm = SkySurfer_Core_P.cbar / 2.0 * (rtb_Product3_cq *
+      rtb_UnitConversion_n);
 
     /* Lookup_n-D: '<S98>/CYr' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -4808,8 +4782,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      *  Sum: '<S98>/Sum1'
      */
     rtb_SumofDatum_k = (SkySurfer_Core_P.b / 2.0 * (rtb_Product3_cq *
-      rtb_u2rhoV2) + (rtb_jxi + rtb_Multiply5_o)) / rtb_sigma_ugsigma_vg +
-      rtb_Product2_hi;
+      rtb_u2rhoV2) + (rtb_Multiply5_o + rtb_Product14_hm)) /
+      rtb_sigma_ugsigma_vg + rtb_Product2_hi;
 
     /* Lookup_n-D: '<S98>/CYd01' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -4914,7 +4888,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S92>/Multiply' incorporates:
      *  Product: '<S92>/Product1'
      */
-    rtb_jxi = SkySurfer_Core_P.b / 2.0 * (rtb_Product3_cq * rtb_Product1_ex);
+    rtb_Multiply5_o = SkySurfer_Core_P.b / 2.0 * (rtb_Product3_cq *
+      rtb_Product1_ex);
 
     /* Lookup_n-D: '<S92>/CLq' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -4934,7 +4909,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S92>/Multiply2' incorporates:
      *  Product: '<S92>/Product2'
      */
-    rtb_Multiply5_o = SkySurfer_Core_P.cbar / 2.0 * (rtb_Product3_cq * tmp_0[1]);
+    rtb_Product14_hm = SkySurfer_Core_P.cbar / 2.0 * (rtb_Product3_cq *
+      rtb_UnitConversion_n);
 
     /* Lookup_n-D: '<S92>/CLr' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -4958,8 +4934,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      *  Sum: '<S92>/Sum1'
      */
     rtb_SumofDatum_ax = (SkySurfer_Core_P.b / 2.0 * (rtb_Product3_cq *
-      rtb_u2rhoV2) + (rtb_jxi + rtb_Multiply5_o)) / rtb_sigma_ugsigma_vg +
-      rtb_Product2_hi;
+      rtb_u2rhoV2) + (rtb_Multiply5_o + rtb_Product14_hm)) /
+      rtb_sigma_ugsigma_vg + rtb_Product2_hi;
 
     /* Lookup_n-D: '<S92>/CLd01' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -5064,7 +5040,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S99>/Multiply' incorporates:
      *  Product: '<S99>/Product1'
      */
-    rtb_jxi = SkySurfer_Core_P.b / 2.0 * (rtb_Product3_cq * rtb_Product1_ex);
+    rtb_Multiply5_o = SkySurfer_Core_P.b / 2.0 * (rtb_Product3_cq *
+      rtb_Product1_ex);
 
     /* Lookup_n-D: '<S99>/Clq' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -5084,7 +5061,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S99>/Multiply2' incorporates:
      *  Product: '<S99>/Product2'
      */
-    rtb_Multiply5_o = SkySurfer_Core_P.cbar / 2.0 * (rtb_Product3_cq * tmp_0[1]);
+    rtb_Product14_hm = SkySurfer_Core_P.cbar / 2.0 * (rtb_Product3_cq *
+      rtb_UnitConversion_n);
 
     /* Lookup_n-D: '<S99>/Clr' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -5175,8 +5153,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      *  Sum: '<S99>/Sum1'
      */
     rtb_Sum4_h1 = ((SkySurfer_Core_P.b / 2.0 * (rtb_Product3_cq * rtb_u2rhoV2) +
-                    (rtb_jxi + rtb_Multiply5_o)) / rtb_sigma_ugsigma_vg +
-                   rtb_Product2_hi) + (((rtb_Product2_g5 * rtb_Product_op +
+                    (rtb_Multiply5_o + rtb_Product14_hm)) / rtb_sigma_ugsigma_vg
+                   + rtb_Product2_hi) + (((rtb_Product2_g5 * rtb_Product_op +
       rtb_Product2_pw * rtb_Product1_p4) + rtb_Product2_ox * rtb_Product2_my) +
       rtb_Product2_aw * rtb_q1dot) * SkySurfer_Core_P.Gain_Gain;
 
@@ -5213,7 +5191,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S100>/Multiply' incorporates:
      *  Product: '<S100>/Product1'
      */
-    rtb_jxi = SkySurfer_Core_P.b / 2.0 * (rtb_Product3_cq * rtb_Product1_ex);
+    rtb_Multiply5_o = SkySurfer_Core_P.b / 2.0 * (rtb_Product3_cq *
+      rtb_Product1_ex);
 
     /* Lookup_n-D: '<S100>/Cmq' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -5233,7 +5212,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S100>/Multiply2' incorporates:
      *  Product: '<S100>/Product2'
      */
-    rtb_Multiply5_o = SkySurfer_Core_P.cbar / 2.0 * (rtb_Product3_cq * tmp_0[1]);
+    rtb_Product14_hm = SkySurfer_Core_P.cbar / 2.0 * (rtb_Product3_cq *
+      rtb_UnitConversion_n);
 
     /* Lookup_n-D: '<S100>/Cmr' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -5257,8 +5237,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      *  Sum: '<S100>/Sum1'
      */
     rtb_SumofDatum_g = (SkySurfer_Core_P.b / 2.0 * (rtb_Product3_cq *
-      rtb_u2rhoV2) + (rtb_jxi + rtb_Multiply5_o)) / rtb_sigma_ugsigma_vg +
-      rtb_Product2_hi;
+      rtb_u2rhoV2) + (rtb_Multiply5_o + rtb_Product14_hm)) /
+      rtb_sigma_ugsigma_vg + rtb_Product2_hi;
 
     /* Lookup_n-D: '<S100>/Cmd01' incorporates:
      *  SignalConversion generated from: '<S90>/CDd01'
@@ -5443,7 +5423,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
     /* Gain: '<S103>/1//2rhoV^2' incorporates:
      *  Product: '<S103>/Product2'
      */
-    rtb_jxi = rtb_Switch1_idx_2 * rtb_Lv_idx_0 * SkySurfer_Core_P.u2rhoV2_Gain;
+    rtb_Multiply5_o = rtb_Switch1_idx_2 * rtb_Lv_idx_0 *
+      SkySurfer_Core_P.u2rhoV2_Gain;
 
     /* AerodynamicForcesAndMoments: '<S7>/Aerodynamic Forces and Moments 1' incorporates:
      *  Constant: '<S7>/b3'
@@ -5473,49 +5454,47 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      *  Sum: '<S92>/Sum4'
      *  Sum: '<S98>/Sum4'
      */
-    rtb_Switch1_idx_2 = rt_atan2d_snf(rtb_sincos_o1_idx_2,
-      rtb_VectorConcatenate_idx_6);
-    rtb_Multiply5_o = rt_atan2d_snf(rtb_sincos_o1_idx_2,
-      rtb_VectorConcatenate_idx_6);
-    pData_idx_0 = rt_atan2d_snf(rtb_sincos_o1_idx_2, rtb_VectorConcatenate_idx_6);
-    frac = -rtb_Product14_hm * rtb_jxi * SkySurfer_Core_P.S;
-    rtb_Product14_hm = (rtb_SumofDatum_k + rtb_SumofControls_g) * rtb_jxi *
-      SkySurfer_Core_P.S;
-    rtb_SumofDatum_k = -(rtb_SumofDatum_ax + rtb_SumofControls_o) * rtb_jxi *
-      SkySurfer_Core_P.S;
-    _mm_storeu_pd(&tmp_0[0], _mm_sub_pd(_mm_set_pd(-SkySurfer_Core_P.CG_m[1],
-      -SkySurfer_Core_P.CG_m[0]), _mm_set_pd(-SkySurfer_Core_P.XREF_m[1],
-      -SkySurfer_Core_P.XREF_m[0])));
-    rtb_SumofControls_g = -SkySurfer_Core_P.CG_m[2] - (-SkySurfer_Core_P.XREF_m
-      [2]);
-    rtb_SumofDatum_ax = sin(rtb_Multiply5_o);
-    rtb_SumofControls_o = cos(rtb_Multiply5_o);
-    pData_idx_0_tmp = 0.0 * tmp_0[1];
-    rtb_Multiply5_o = (rtb_SumofControls_o * tmp_0[0] + pData_idx_0_tmp) +
-      rtb_SumofDatum_ax * rtb_SumofControls_g;
-    pData_idx_1 = (0.0 * tmp_0[0] + tmp_0[1]) + 0.0 * rtb_SumofControls_g;
-    rtb_SumofControls_g = (-rtb_SumofDatum_ax * tmp_0[0] + pData_idx_0_tmp) +
-      rtb_SumofControls_o * rtb_SumofControls_g;
-    rtb_Sum4_h1 = rtb_Sum4_h1 * SkySurfer_Core_P.b * SkySurfer_Core_P.S *
-      rtb_jxi + (rtb_Product14_hm * rtb_SumofControls_g - pData_idx_1 *
-                 rtb_SumofDatum_k);
+    rtb_Switch1_idx_2 = rt_atan2d_snf(rtb_sincos_o1_idx_2, rtb_sincos_o1_idx_0);
+    frac = rt_atan2d_snf(rtb_sincos_o1_idx_2, rtb_sincos_o1_idx_0);
+    rtb_Product14_hm = rt_atan2d_snf(rtb_sincos_o1_idx_2, rtb_sincos_o1_idx_0);
+    rtb_jxi = -rtb_jxi * rtb_Multiply5_o * SkySurfer_Core_P.S;
+    rtb_SumofDatum_k = (rtb_SumofDatum_k + rtb_SumofControls_g) *
+      rtb_Multiply5_o * SkySurfer_Core_P.S;
+    rtb_SumofControls_g = -(rtb_SumofDatum_ax + rtb_SumofControls_o) *
+      rtb_Multiply5_o * SkySurfer_Core_P.S;
+    rtb_SumofDatum_ax = -SkySurfer_Core_P.CG_m[0] - (-SkySurfer_Core_P.XREF_m[0]);
+    rtb_SumofControls_o = -SkySurfer_Core_P.CG_m[1] - (-SkySurfer_Core_P.XREF_m
+      [1]);
+    pData_idx_2 = -SkySurfer_Core_P.CG_m[2] - (-SkySurfer_Core_P.XREF_m[2]);
+    pData_tmp = sin(frac);
+    pData_tmp_0 = cos(frac);
+    pData_idx_0_tmp = 0.0 * rtb_SumofControls_o;
+    frac = (pData_tmp_0 * rtb_SumofDatum_ax + pData_idx_0_tmp) + pData_tmp *
+      pData_idx_2;
+    rtb_SumofControls_o = (0.0 * rtb_SumofDatum_ax + rtb_SumofControls_o) + 0.0 *
+      pData_idx_2;
+    pData_idx_2 = (-pData_tmp * rtb_SumofDatum_ax + pData_idx_0_tmp) +
+      pData_tmp_0 * pData_idx_2;
+    rtb_SumofDatum_ax = rtb_Sum4_h1 * SkySurfer_Core_P.b * SkySurfer_Core_P.S *
+      rtb_Multiply5_o + (rtb_SumofDatum_k * pData_idx_2 - rtb_SumofControls_o *
+                         rtb_SumofControls_g);
     rtb_Product2_hi = ((((rtb_Product2_hi * rtb_Product_op + rtb_Product2_g5 *
                           rtb_Product1_p4) + rtb_Product2_pw * rtb_Product2_my)
                         + rtb_Product2_ox * rtb_q1dot) + rtb_SumofDatum_g) *
-      SkySurfer_Core_P.cbar * SkySurfer_Core_P.S * rtb_jxi + (rtb_Multiply5_o *
-      rtb_SumofDatum_k - frac * rtb_SumofControls_g);
-    rtb_SumofControls_g = ((((SkySurfer_Core_P.b / 2.0 * (rtb_Product3_cq *
+      SkySurfer_Core_P.cbar * SkySurfer_Core_P.S * rtb_Multiply5_o + (frac *
+      rtb_SumofControls_g - rtb_jxi * pData_idx_2);
+    pData_idx_2 = ((((SkySurfer_Core_P.b / 2.0 * (rtb_Product3_cq *
       rtb_Product1_ex) + SkySurfer_Core_P.cbar / 2.0 * (rtb_Product1_jf *
       rtb_UnitConversion_n)) + SkySurfer_Core_P.b / 2.0 * (rtb_Product1_pw *
       rtb_u2rhoV2)) / rtb_sigma_ugsigma_vg + rtb_Product2_aw) + (((rtb_u2rhoV2_i
       * rtb_Product_op + rtb_u2rhoV2_n * rtb_Product1_p4) + rtb_u2rhoV2_m *
       rtb_Product2_my) + rtb_u2rhoV2_e * rtb_q1dot)) * SkySurfer_Core_P.b *
-      SkySurfer_Core_P.S * rtb_jxi + (frac * pData_idx_1 - rtb_Multiply5_o *
-      rtb_Product14_hm);
+      SkySurfer_Core_P.S * rtb_Multiply5_o + (rtb_jxi * rtb_SumofControls_o -
+      frac * rtb_SumofDatum_k);
     rtb_Product3_cq = sin(rtb_Switch1_idx_2);
     rtb_q1dot = cos(rtb_Switch1_idx_2);
-    rtb_Product_op = sin(pData_idx_0);
-    rtb_Product1_p4 = cos(pData_idx_0);
+    rtb_Product_op = sin(rtb_Product14_hm);
+    rtb_Product1_p4 = cos(rtb_Product14_hm);
 
     /* AerodynamicForcesAndMoments: '<S7>/Aerodynamic Forces and Moments ' incorporates:
      *  Constant: '<S7>/b1'
@@ -5527,61 +5506,58 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      *  Sum: '<S95>/Sum4'
      *  Sum: '<S97>/Sum4'
      */
-    rtb_Switch1_idx_2 = rt_atan2d_snf(rtb_sincos_o1_idx_2,
-      rtb_VectorConcatenate_idx_6);
-    rtb_SumofDatum_ax = sqrt(rtb_Switch1_idx_0 + rtb_Switch1_idx_1);
-    pData_idx_1 = rt_atan2d_snf(rtb_sincos_o1_idx_1, rtb_SumofDatum_ax);
-    rtb_SumofControls_o = cos(rtb_Switch1_idx_2);
+    rtb_Switch1_idx_2 = rt_atan2d_snf(rtb_sincos_o1_idx_2, rtb_sincos_o1_idx_0);
+    pData_tmp = sqrt(rtb_Switch1_idx_0 + rtb_Switch1_idx_1);
+    rtb_SumofControls_o = rt_atan2d_snf(rtb_sincos_o1_idx_1, pData_tmp);
+    pData_tmp_0 = cos(rtb_Switch1_idx_2);
     rtb_Switch1_idx_0 = sin(rtb_Switch1_idx_2);
-    rtb_Switch1_idx_1 = cos(pData_idx_1);
-    rtb_Product2_my = sin(pData_idx_1);
-    rtb_Switch1_idx_2 = rt_atan2d_snf(rtb_sincos_o1_idx_2,
-      rtb_VectorConcatenate_idx_6);
-    pData_idx_1 = rt_atan2d_snf(rtb_sincos_o1_idx_1, rtb_SumofDatum_ax);
-    pData_idx_0 = cos(rtb_Switch1_idx_2);
-    rtb_Product2_pw = sin(rtb_Switch1_idx_2);
-    rtb_Product2_ox = cos(pData_idx_1);
-    rtb_Product2_aw = sin(pData_idx_1);
-    rtb_Switch1_idx_2 = rt_atan2d_snf(rtb_sincos_o1_idx_2,
-      rtb_VectorConcatenate_idx_6);
-    pData_idx_1 = rt_atan2d_snf(rtb_sincos_o1_idx_1, rtb_SumofDatum_ax);
-    rtb_SumofDatum_ax = cos(rtb_Switch1_idx_2);
+    rtb_Switch1_idx_1 = cos(rtb_SumofControls_o);
+    rtb_Product2_my = sin(rtb_SumofControls_o);
+    rtb_Switch1_idx_2 = rt_atan2d_snf(rtb_sincos_o1_idx_2, rtb_sincos_o1_idx_0);
+    rtb_SumofControls_o = rt_atan2d_snf(rtb_sincos_o1_idx_1, pData_tmp);
+    rtb_Product2_pw = cos(rtb_Switch1_idx_2);
+    rtb_Product2_ox = sin(rtb_Switch1_idx_2);
+    rtb_Product2_aw = cos(rtb_SumofControls_o);
+    rtb_Sum4_h1 = sin(rtb_SumofControls_o);
+    rtb_Switch1_idx_2 = rt_atan2d_snf(rtb_sincos_o1_idx_2, rtb_sincos_o1_idx_0);
+    rtb_SumofControls_o = rt_atan2d_snf(rtb_sincos_o1_idx_1, pData_tmp);
+    pData_tmp = cos(rtb_Switch1_idx_2);
     rtb_Product1_ex = sin(rtb_Switch1_idx_2);
-    rtb_u2rhoV2 = cos(pData_idx_1);
-    rtb_Product2_g5 = sin(pData_idx_1);
+    rtb_u2rhoV2 = cos(rtb_SumofControls_o);
+    rtb_Product2_g5 = sin(rtb_SumofControls_o);
     rtb_Switch1_idx_2 = -((rtb_Multiply + SkySurfer_Core_P.CD_fix_VSP) +
-                          rtb_Multiply2) * rtb_jxi * SkySurfer_Core_P.S;
-    pData_idx_1 = -(rtb_Product7 + rtb_Product5) * rtb_jxi * SkySurfer_Core_P.S;
-    rtb_Multiply = -(rtb_Product14 + rtb_Product14_d) * rtb_jxi *
+                          rtb_Multiply2) * rtb_Multiply5_o * SkySurfer_Core_P.S;
+    rtb_SumofControls_o = -(rtb_Product7 + rtb_Product5) * rtb_Multiply5_o *
       SkySurfer_Core_P.S;
-    _mm_storeu_pd(&tmp_0[0], _mm_sub_pd(_mm_set_pd(-SkySurfer_Core_P.CG_m[1],
-      -SkySurfer_Core_P.CG_m[0]), _mm_set_pd(-SkySurfer_Core_P.XREF_m[1],
-      -SkySurfer_Core_P.XREF_m[0])));
-    rtb_Multiply2 = -SkySurfer_Core_P.CG_m[2] - (-SkySurfer_Core_P.XREF_m[2]);
-    pData_idx_0_tmp = rtb_Product2_aw * 0.0;
-    rtb_Product5 = rtb_Product2_ox * 0.0;
-    rtb_Product14 = 0.0 * -rtb_Product2_pw;
-    rtb_Product7 = 0.0 * pData_idx_0;
-    rtb_Multiply5_o = (((rtb_Product2_ox * pData_idx_0 + pData_idx_0_tmp) +
-                        rtb_Product14) * tmp_0[0] + (rtb_Product5 +
-      rtb_Product2_aw) * tmp_0[1]) + ((rtb_Product2_ox * rtb_Product2_pw +
-      pData_idx_0_tmp) + rtb_Product7) * rtb_Multiply2;
-    rtb_Product5 = (((pData_idx_0 * -rtb_Product2_aw + rtb_Product5) +
-                     rtb_Product14) * tmp_0[0] + (-rtb_Product2_aw * 0.0 +
-      rtb_Product2_ox) * tmp_0[1]) + ((rtb_Product2_pw * -rtb_Product2_aw +
-      rtb_Product5) + rtb_Product7) * rtb_Multiply2;
-    rtb_Multiply2 = ((rtb_Product7 - rtb_Product2_pw) * tmp_0[0] + tmp_0[1] *
-                     0.0) + (0.0 * rtb_Product2_pw + pData_idx_0) *
-      rtb_Multiply2;
-    pData_idx_0 = (rtb_Product16 + rtb_Product16_j) * SkySurfer_Core_P.b *
-      SkySurfer_Core_P.S * rtb_jxi + (pData_idx_1 * rtb_Multiply2 - rtb_Product5
-      * rtb_Multiply);
-    rtb_Product7 = (rtb_Product16_a + rtb_Product14_k) * SkySurfer_Core_P.cbar *
-      SkySurfer_Core_P.S * rtb_jxi + (rtb_Multiply5_o * rtb_Multiply -
-      rtb_Switch1_idx_2 * rtb_Multiply2);
-    rtb_Multiply2 = rtb_Product16_on * SkySurfer_Core_P.b * SkySurfer_Core_P.S *
-      rtb_jxi + (rtb_Switch1_idx_2 * rtb_Product5 - rtb_Multiply5_o *
-                 pData_idx_1);
+    rtb_Multiply = -(rtb_Product14 + rtb_Product14_d) * rtb_Multiply5_o *
+      SkySurfer_Core_P.S;
+    frac = -SkySurfer_Core_P.CG_m[0] - (-SkySurfer_Core_P.XREF_m[0]);
+    rtb_Multiply2 = -SkySurfer_Core_P.CG_m[1] - (-SkySurfer_Core_P.XREF_m[1]);
+    rtb_Product7 = -SkySurfer_Core_P.CG_m[2] - (-SkySurfer_Core_P.XREF_m[2]);
+    pData_idx_0_tmp = rtb_Sum4_h1 * 0.0;
+    rtb_Product14 = rtb_Product2_aw * 0.0;
+    rtb_Product14_d = 0.0 * -rtb_Product2_ox;
+    rtb_Product5 = 0.0 * rtb_Product2_pw;
+    rtb_Product14_hm = (((rtb_Product2_aw * rtb_Product2_pw + pData_idx_0_tmp) +
+                         rtb_Product14_d) * frac + (rtb_Product14 + rtb_Sum4_h1)
+                        * rtb_Multiply2) + ((rtb_Product2_aw * rtb_Product2_ox +
+      pData_idx_0_tmp) + rtb_Product5) * rtb_Product7;
+    rtb_Product14 = (((rtb_Product2_pw * -rtb_Sum4_h1 + rtb_Product14) +
+                      rtb_Product14_d) * frac + (-rtb_Sum4_h1 * 0.0 +
+      rtb_Product2_aw) * rtb_Multiply2) + ((rtb_Product2_ox * -rtb_Sum4_h1 +
+      rtb_Product14) + rtb_Product5) * rtb_Product7;
+    rtb_Product7 = ((rtb_Product5 - rtb_Product2_ox) * frac + rtb_Multiply2 *
+                    0.0) + (0.0 * rtb_Product2_ox + rtb_Product2_pw) *
+      rtb_Product7;
+    frac = (rtb_Product16 + rtb_Product16_j) * SkySurfer_Core_P.b *
+      SkySurfer_Core_P.S * rtb_Multiply5_o + (rtb_SumofControls_o * rtb_Product7
+      - rtb_Product14 * rtb_Multiply);
+    rtb_Multiply2 = (rtb_Product16_a + rtb_Product14_k) * SkySurfer_Core_P.cbar *
+      SkySurfer_Core_P.S * rtb_Multiply5_o + (rtb_Product14_hm * rtb_Multiply -
+      rtb_Switch1_idx_2 * rtb_Product7);
+    rtb_Product7 = rtb_Product16_on * SkySurfer_Core_P.b * SkySurfer_Core_P.S *
+      rtb_Multiply5_o + (rtb_Switch1_idx_2 * rtb_Product14 - rtb_Product14_hm *
+                         rtb_SumofControls_o);
 
     /* Switch: '<S7>/Switch' incorporates:
      *  Constant: '<S7>/b7'
@@ -5593,17 +5569,17 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
       /* Switch: '<S7>/Switch' incorporates:
        *  AerodynamicForcesAndMoments: '<S7>/Aerodynamic Forces and Moments '
        */
-      SkySurfer_Core_DW->Switch[0] = (((rtb_Switch1_idx_1 * rtb_SumofControls_o
-        + rtb_Product2_my * 0.0) + rtb_Product5) * rtb_Switch1_idx_2 +
-        ((rtb_SumofControls_o * -rtb_Product2_my + rtb_Switch1_idx_1 * 0.0) +
-         rtb_Product5) * pData_idx_1) + (0.0 * rtb_SumofControls_o -
+      SkySurfer_Core_DW->Switch[0] = (((rtb_Switch1_idx_1 * pData_tmp_0 +
+        rtb_Product2_my * 0.0) + rtb_Product5) * rtb_Switch1_idx_2 +
+        ((pData_tmp_0 * -rtb_Product2_my + rtb_Switch1_idx_1 * 0.0) +
+         rtb_Product5) * rtb_SumofControls_o) + (0.0 * pData_tmp_0 -
         rtb_Switch1_idx_0) * rtb_Multiply;
     } else {
       /* Switch: '<S7>/Switch' incorporates:
        *  AerodynamicForcesAndMoments: '<S7>/Aerodynamic Forces and Moments 1'
        */
-      SkySurfer_Core_DW->Switch[0] = (rtb_q1dot * frac + 0.0 * rtb_Product14_hm)
-        + -rtb_Product3_cq * rtb_SumofDatum_k;
+      SkySurfer_Core_DW->Switch[0] = (rtb_q1dot * rtb_jxi + 0.0 *
+        rtb_SumofDatum_k) + -rtb_Product3_cq * rtb_SumofControls_g;
     }
 
     /* Switch: '<S7>/Switch1' incorporates:
@@ -5616,17 +5592,16 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
       /* Switch: '<S7>/Switch1' incorporates:
        *  AerodynamicForcesAndMoments: '<S7>/Aerodynamic Forces and Moments '
        */
-      SkySurfer_Core_DW->Switch1[0] = (((rtb_u2rhoV2 * rtb_SumofDatum_ax +
-        rtb_Product2_g5 * 0.0) + rtb_Product5) * pData_idx_0 +
-        ((rtb_SumofDatum_ax * -rtb_Product2_g5 + rtb_u2rhoV2 * 0.0) +
-         rtb_Product5) * rtb_Product7) + (0.0 * rtb_SumofDatum_ax -
-        rtb_Product1_ex) * rtb_Multiply2;
+      SkySurfer_Core_DW->Switch1[0] = (((rtb_u2rhoV2 * pData_tmp +
+        rtb_Product2_g5 * 0.0) + rtb_Product5) * frac + ((pData_tmp *
+        -rtb_Product2_g5 + rtb_u2rhoV2 * 0.0) + rtb_Product5) * rtb_Multiply2) +
+        (0.0 * pData_tmp - rtb_Product1_ex) * rtb_Product7;
     } else {
       /* Switch: '<S7>/Switch1' incorporates:
        *  AerodynamicForcesAndMoments: '<S7>/Aerodynamic Forces and Moments 1'
        */
-      SkySurfer_Core_DW->Switch1[0] = (rtb_Product1_p4 * rtb_Sum4_h1 + 0.0 *
-        rtb_Product2_hi) + -rtb_Product_op * rtb_SumofControls_g;
+      SkySurfer_Core_DW->Switch1[0] = (rtb_Product1_p4 * rtb_SumofDatum_ax + 0.0
+        * rtb_Product2_hi) + -rtb_Product_op * pData_idx_2;
     }
 
     /* Switch: '<S7>/Switch' incorporates:
@@ -5638,13 +5613,13 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
        */
       SkySurfer_Core_DW->Switch[1] = ((rtb_Switch1_idx_1 * 0.0 + rtb_Product2_my)
         * rtb_Switch1_idx_2 + (-rtb_Product2_my * 0.0 + rtb_Switch1_idx_1) *
-        pData_idx_1) + rtb_Multiply * 0.0;
+        rtb_SumofControls_o) + rtb_Multiply * 0.0;
     } else {
       /* Switch: '<S7>/Switch' incorporates:
        *  AerodynamicForcesAndMoments: '<S7>/Aerodynamic Forces and Moments 1'
        */
-      SkySurfer_Core_DW->Switch[1] = (0.0 * frac + rtb_Product14_hm) + 0.0 *
-        rtb_SumofDatum_k;
+      SkySurfer_Core_DW->Switch[1] = (0.0 * rtb_jxi + rtb_SumofDatum_k) + 0.0 *
+        rtb_SumofControls_g;
     }
 
     /* Switch: '<S7>/Switch1' incorporates:
@@ -5655,14 +5630,14 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
        *  AerodynamicForcesAndMoments: '<S7>/Aerodynamic Forces and Moments '
        */
       SkySurfer_Core_DW->Switch1[1] = ((rtb_u2rhoV2 * 0.0 + rtb_Product2_g5) *
-        pData_idx_0 + (-rtb_Product2_g5 * 0.0 + rtb_u2rhoV2) * rtb_Product7) +
-        rtb_Multiply2 * 0.0;
+        frac + (-rtb_Product2_g5 * 0.0 + rtb_u2rhoV2) * rtb_Multiply2) +
+        rtb_Product7 * 0.0;
     } else {
       /* Switch: '<S7>/Switch1' incorporates:
        *  AerodynamicForcesAndMoments: '<S7>/Aerodynamic Forces and Moments 1'
        */
-      SkySurfer_Core_DW->Switch1[1] = (0.0 * rtb_Sum4_h1 + rtb_Product2_hi) +
-        0.0 * rtb_SumofControls_g;
+      SkySurfer_Core_DW->Switch1[1] = (0.0 * rtb_SumofDatum_ax + rtb_Product2_hi)
+        + 0.0 * pData_idx_2;
     }
 
     /* Switch: '<S7>/Switch' incorporates:
@@ -5670,7 +5645,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      */
     if (SkySurfer_Core_P.useAVL_VSP > SkySurfer_Core_P.Switch_Threshold) {
       /* AerodynamicForcesAndMoments: '<S7>/Aerodynamic Forces and Moments ' */
-      rtb_Product5 = 0.0 * rtb_SumofControls_o;
+      rtb_Product5 = 0.0 * pData_tmp_0;
 
       /* Switch: '<S7>/Switch' incorporates:
        *  AerodynamicForcesAndMoments: '<S7>/Aerodynamic Forces and Moments '
@@ -5678,14 +5653,14 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
       SkySurfer_Core_DW->Switch[2] = (((rtb_Switch1_idx_1 * rtb_Switch1_idx_0 +
         rtb_Product2_my * 0.0) + rtb_Product5) * rtb_Switch1_idx_2 +
         ((rtb_Switch1_idx_0 * -rtb_Product2_my + rtb_Switch1_idx_1 * 0.0) +
-         rtb_Product5) * pData_idx_1) + (0.0 * rtb_Switch1_idx_0 +
-        rtb_SumofControls_o) * rtb_Multiply;
+         rtb_Product5) * rtb_SumofControls_o) + (0.0 * rtb_Switch1_idx_0 +
+        pData_tmp_0) * rtb_Multiply;
     } else {
       /* Switch: '<S7>/Switch' incorporates:
        *  AerodynamicForcesAndMoments: '<S7>/Aerodynamic Forces and Moments 1'
        */
-      SkySurfer_Core_DW->Switch[2] = (rtb_Product3_cq * frac + 0.0 *
-        rtb_Product14_hm) + rtb_q1dot * rtb_SumofDatum_k;
+      SkySurfer_Core_DW->Switch[2] = (rtb_Product3_cq * rtb_jxi + 0.0 *
+        rtb_SumofDatum_k) + rtb_q1dot * rtb_SumofControls_g;
     }
 
     /* Switch: '<S7>/Switch1' incorporates:
@@ -5693,21 +5668,21 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
      */
     if (SkySurfer_Core_P.useAVL_VSP > SkySurfer_Core_P.Switch1_Threshold) {
       /* AerodynamicForcesAndMoments: '<S7>/Aerodynamic Forces and Moments ' */
-      rtb_Product5 = 0.0 * rtb_SumofDatum_ax;
+      rtb_Product5 = 0.0 * pData_tmp;
 
       /* Switch: '<S7>/Switch1' incorporates:
        *  AerodynamicForcesAndMoments: '<S7>/Aerodynamic Forces and Moments '
        */
       SkySurfer_Core_DW->Switch1[2] = (((rtb_u2rhoV2 * rtb_Product1_ex +
-        rtb_Product2_g5 * 0.0) + rtb_Product5) * pData_idx_0 + ((rtb_Product1_ex
-        * -rtb_Product2_g5 + rtb_u2rhoV2 * 0.0) + rtb_Product5) * rtb_Product7)
-        + (0.0 * rtb_Product1_ex + rtb_SumofDatum_ax) * rtb_Multiply2;
+        rtb_Product2_g5 * 0.0) + rtb_Product5) * frac + ((rtb_Product1_ex *
+        -rtb_Product2_g5 + rtb_u2rhoV2 * 0.0) + rtb_Product5) * rtb_Multiply2) +
+        (0.0 * rtb_Product1_ex + pData_tmp) * rtb_Product7;
     } else {
       /* Switch: '<S7>/Switch1' incorporates:
        *  AerodynamicForcesAndMoments: '<S7>/Aerodynamic Forces and Moments 1'
        */
-      SkySurfer_Core_DW->Switch1[2] = (rtb_Product_op * rtb_Sum4_h1 + 0.0 *
-        rtb_Product2_hi) + rtb_Product1_p4 * rtb_SumofControls_g;
+      SkySurfer_Core_DW->Switch1[2] = (rtb_Product_op * rtb_SumofDatum_ax + 0.0 *
+        rtb_Product2_hi) + rtb_Product1_p4 * pData_idx_2;
     }
   }
 
@@ -5732,8 +5707,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    *  Constant: '<S12>/Constant'
    *  Constant: '<S12>/Constant4'
    */
-  _mm_storeu_pd(&rtb_Merge_a[0], _mm_add_pd(_mm_set_pd(rtb_Gain_az,
-    SkySurfer_Core_P.Constant4_Value), _mm_loadu_pd(&rtb_Reshape1_g[0])));
+  rtb_Merge_a[0] = SkySurfer_Core_P.Constant4_Value + rtb_Reshape1_g[0];
+  rtb_Merge_a[1] = rtb_Gain_az + rtb_Reshape1_g[1];
   rtb_Merge_a[2] = SkySurfer_Core_P.Constant_Value_k5 + rtb_Reshape1_g[2];
   if (tmp) {
     for (i = 0; i < 3; i++) {
@@ -5784,43 +5759,43 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   }
 
   /* Product: '<S84>/Product' incorporates:
-   *  Reshape: '<S84>/Reshape1'
-   *  Selector: '<S16>/Selector'
    *  Switch: '<S5>/Switch1'
    */
   rtb_Switch1_idx_0 = 0.0;
   rtb_Switch1_idx_1 = 0.0;
   rtb_Switch1_idx_2 = 0.0;
-  for (i = 0; i < 3; i++) {
-    _mm_storeu_pd(&tmp_0[0], _mm_add_pd(_mm_mul_pd(_mm_loadu_pd
-      (&SkySurfer_Core_DW->Selector[3 * i]), _mm_set1_pd(rtb_u[i])), _mm_set_pd
-      (rtb_Switch1_idx_1, rtb_Switch1_idx_0)));
-    rtb_Switch1_idx_0 = tmp_0[0];
-    rtb_Switch1_idx_1 = tmp_0[1];
-    rtb_Switch1_idx_2 += SkySurfer_Core_DW->Selector[3 * i + 2] * rtb_u[i];
-  }
 
-  /* End of Product: '<S84>/Product' */
-
-  /* Product: '<S85>/Product' incorporates:
-   *  Reshape: '<S85>/Reshape1'
-   *  Selector: '<S16>/Selector1'
-   */
+  /* Product: '<S85>/Product' */
   rtb_Multiply = 0.0;
   rtb_Multiply2 = 0.0;
   rtb_Product3_cq = 0.0;
   for (i = 0; i < 3; i++) {
-    _mm_storeu_pd(&tmp_0[0], _mm_add_pd(_mm_mul_pd(_mm_loadu_pd
-      (&SkySurfer_Core_DW->Selector1[3 * i]), _mm_set1_pd(rtb_u[i])), _mm_set_pd
-      (rtb_Multiply2, rtb_Multiply)));
-    rtb_Multiply = tmp_0[0];
-    rtb_Multiply2 = tmp_0[1];
-    rtb_Product3_cq += SkySurfer_Core_DW->Selector1[3 * i + 2] * rtb_u[i];
-  }
+    /* Product: '<S84>/Product' incorporates:
+     *  Product: '<S85>/Product'
+     *  Reshape: '<S84>/Reshape1'
+     *  Selector: '<S16>/Selector'
+     *  Switch: '<S5>/Switch1'
+     */
+    rtb_Product7 = rtb_u[i];
+    rtb_Switch1_idx_0 += SkySurfer_Core_DW->Selector[3 * i] * rtb_Product7;
+    rtb_MatrixConcatenation_tmp = 3 * i + 1;
+    rtb_Switch1_idx_1 += SkySurfer_Core_DW->Selector[rtb_MatrixConcatenation_tmp]
+      * rtb_Product7;
+    rtb_Switch1_idx_2_tmp = 3 * i + 2;
+    rtb_Switch1_idx_2 += SkySurfer_Core_DW->Selector[rtb_Switch1_idx_2_tmp] *
+      rtb_Product7;
 
-  rtb_MatrixMultiply[2] = rtb_Product3_cq;
-  rtb_MatrixMultiply[1] = rtb_Multiply2;
-  rtb_MatrixMultiply[0] = rtb_Multiply;
+    /* Product: '<S85>/Product' incorporates:
+     *  Reshape: '<S85>/Reshape1'
+     *  Selector: '<S16>/Selector1'
+     */
+    rtb_Product7 = rtb_u[i];
+    rtb_Multiply += SkySurfer_Core_DW->Selector1[3 * i] * rtb_Product7;
+    rtb_Multiply2 += SkySurfer_Core_DW->Selector1[rtb_MatrixConcatenation_tmp] *
+      rtb_Product7;
+    rtb_Product3_cq += SkySurfer_Core_DW->Selector1[rtb_Switch1_idx_2_tmp] *
+      rtb_Product7;
+  }
 
   /* Product: '<S16>/Product2' incorporates:
    *  Product: '<S10>/Matrix Multiply'
@@ -5836,15 +5811,14 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    *  Sum: '<S16>/Sum2'
    *  Sum: '<S83>/Sum'
    */
-  _mm_storeu_pd(&fractions[0], _mm_sub_pd(_mm_sub_pd(_mm_loadu_pd(&rtb_Merge_a[0]),
-    _mm_loadu_pd(&rtb_MatrixMultiply[0])), _mm_sub_pd(_mm_mul_pd(_mm_set_pd
-    (rtb_Switch1_idx_0, rtb_u[1]), _mm_set_pd(rtb_u[2], rtb_Switch1_idx_2)),
-    _mm_mul_pd(_mm_set_pd(rtb_u[0], rtb_Switch1_idx_1), _mm_set_pd
-               (rtb_Switch1_idx_2, rtb_u[2])))));
-  fractions[2] = (rtb_Merge_a[2] - rtb_Product3_cq) - (rtb_u[0] *
+  rtb_MatrixMultiply[0] = (rtb_Merge_a[0] - rtb_Multiply) - (rtb_u[1] *
+    rtb_Switch1_idx_2 - rtb_Switch1_idx_1 * rtb_u[2]);
+  rtb_MatrixMultiply[1] = (rtb_Merge_a[1] - rtb_Multiply2) - (rtb_Switch1_idx_0 *
+    rtb_u[2] - rtb_u[0] * rtb_Switch1_idx_2);
+  rtb_MatrixMultiply[2] = (rtb_Merge_a[2] - rtb_Product3_cq) - (rtb_u[0] *
     rtb_Switch1_idx_1 - rtb_Switch1_idx_0 * rtb_u[1]);
-  rt_mrdivide_U1d1x3_U2d3x3_Yd1x3_snf(fractions, SkySurfer_Core_DW->Selector2,
-    SkySurfer_Core_DW->Reshape);
+  rt_mrdivide_U1d1x3_U2d3x3_Yd1x3_snf(rtb_MatrixMultiply,
+    SkySurfer_Core_DW->Selector2, SkySurfer_Core_DW->Reshape);
 
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
@@ -5875,7 +5849,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   CoreSnapshot_Concat[20] = SkySurfer_Core_DW->Reshape[1];
 
   /* Product: '<S129>/Product' */
-  rtb_Product3_cq = 0.0;
+  rtb_Product7 = 0.0;
 
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
@@ -5886,24 +5860,20 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    *  Constant: '<S129>/Constant'
    *  Reshape: '<S32>/Reshape (9) to [3x3] column-major'
    */
-  rtb_Multiply = 0.0;
+  rtb_Product3_cq = 0.0;
   for (i = 0; i < 3; i++) {
-    _mm_storeu_pd(&tmp_0[0], _mm_add_pd(_mm_mul_pd(_mm_loadu_pd
-      (&rtb_Reshape9to3x3columnmajor[3 * i]), _mm_set1_pd
-      (SkySurfer_Core_P.Constant_Value_f0[i])), _mm_set_pd(rtb_Product3_cq,
-      rtb_Multiply2)));
-    rtb_Multiply2 = tmp_0[0];
-    rtb_Product3_cq = tmp_0[1];
-    rtb_Multiply += rtb_Reshape9to3x3columnmajor[3 * i + 2] *
-      SkySurfer_Core_P.Constant_Value_f0[i];
+    rtb_Multiply = SkySurfer_Core_P.Constant_Value_f0[i];
+    rtb_Multiply2 += rtb_Reshape9to3x3columnmajor[3 * i] * rtb_Multiply;
+    rtb_Product7 += rtb_Reshape9to3x3columnmajor[3 * i + 1] * rtb_Multiply;
+    rtb_Product3_cq += rtb_Reshape9to3x3columnmajor[3 * i + 2] * rtb_Multiply;
   }
 
   /* Product: '<S129>/Product3' incorporates:
    *  Constant: '<S4>/const1'
    */
   rtb_Multiply2 *= SkySurfer_Core_P.Mass0;
-  rtb_Product7 = SkySurfer_Core_P.Mass0 * rtb_Product3_cq;
-  rtb_Product5 = SkySurfer_Core_P.Mass0 * rtb_Multiply;
+  rtb_Product7 *= SkySurfer_Core_P.Mass0;
+  rtb_Product5 = SkySurfer_Core_P.Mass0 * rtb_Product3_cq;
 
   /* Switch: '<S192>/Switch' incorporates:
    *  Constant: '<S192>/Constant'
@@ -5952,22 +5922,15 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* Product: '<S10>/Matrix Multiply' incorporates:
    *  Reshape: '<S32>/Reshape (9) to [3x3] column-major'
    */
-  rtb_Multiply = 0.0;
   rtb_Product3_cq = 0.0;
   rtb_Product16 = 0.0;
+  rtb_Product14 = 0.0;
   for (i = 0; i < 3; i++) {
-    _mm_storeu_pd(&tmp_0[0], _mm_add_pd(_mm_mul_pd(_mm_loadu_pd
-      (&rtb_Reshape9to3x3columnmajor[3 * i]), _mm_set1_pd(rtb_MatrixMultiply[i])),
-      _mm_set_pd(rtb_Product3_cq, rtb_Multiply)));
-    rtb_Multiply = tmp_0[0];
-    rtb_Product3_cq = tmp_0[1];
-    rtb_Product16 += rtb_Reshape9to3x3columnmajor[3 * i + 2] *
-      rtb_MatrixMultiply[i];
+    rtb_Multiply = rtb_MatrixMultiply[i];
+    rtb_Product3_cq += rtb_Reshape9to3x3columnmajor[3 * i] * rtb_Multiply;
+    rtb_Product16 += rtb_Reshape9to3x3columnmajor[3 * i + 1] * rtb_Multiply;
+    rtb_Product14 += rtb_Reshape9to3x3columnmajor[3 * i + 2] * rtb_Multiply;
   }
-
-  rtb_MatrixMultiply[2] = rtb_Product16;
-  rtb_MatrixMultiply[1] = rtb_Product3_cq;
-  rtb_MatrixMultiply[0] = rtb_Multiply;
 
   /* Sum: '<S5>/Add' incorporates:
    *  Constant: '<S12>/Constant5'
@@ -5975,19 +5938,19 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    *  Product: '<S10>/Matrix Multiply'
    *  Product: '<S129>/Product3'
    */
-  _mm_storeu_pd(&tmp_0[0], _mm_add_pd(_mm_add_pd(_mm_add_pd(_mm_set_pd
-    (rtb_Switch1_idx_1, rtb_Switch1_idx_0), _mm_set_pd
-    (SkySurfer_Core_P.Constant5_Value, rtb_VectorConcatenate_idx_2)), _mm_set_pd
-    (rtb_Product7, rtb_Multiply2)), _mm_loadu_pd(&rtb_MatrixMultiply[0])));
+  rtb_Multiply = ((rtb_Switch1_idx_0 + rtb_Gain1_d) + rtb_Multiply2) +
+    rtb_Product3_cq;
+  rtb_q1dot = ((rtb_Switch1_idx_1 + SkySurfer_Core_P.Constant5_Value) +
+               rtb_Product7) + rtb_Product16;
   rtb_Add_h_idx_2 = ((rtb_Switch1_idx_2 + SkySurfer_Core_P.Constant6_Value_o) +
-                     rtb_Product5) + rtb_Product16;
+                     rtb_Product5) + rtb_Product14;
 
   /* Product: '<S6>/Product' incorporates:
    *  Constant: '<S4>/const1'
    */
-  rtb_Product14 = tmp_0[0] / SkySurfer_Core_P.Mass0;
-  rtb_q1dot = tmp_0[1] / SkySurfer_Core_P.Mass0;
-  rtb_Product_op = rtb_Add_h_idx_2 / SkySurfer_Core_P.Mass0;
+  rtb_Product16_j = rtb_Multiply / SkySurfer_Core_P.Mass0;
+  rtb_Product_op = rtb_q1dot / SkySurfer_Core_P.Mass0;
+  rtb_Product14_d = rtb_Add_h_idx_2 / SkySurfer_Core_P.Mass0;
 
   /* Sum: '<S6>/Sum' incorporates:
    *  Product: '<S88>/i x j'
@@ -5998,19 +5961,19 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    *  Product: '<S89>/k x j'
    *  Sum: '<S17>/Sum'
    */
-  _mm_storeu_pd(&SkySurfer_Core_DW->Sum[0], _mm_add_pd(_mm_sub_pd(_mm_mul_pd
-    (_mm_set_pd(rtb_u[0], rtb_Sum_mi_idx_1), _mm_set_pd(rtb_Sum_mi_idx_2, rtb_u
-    [2])), _mm_mul_pd(_mm_set_pd(rtb_Sum_mi_idx_0, rtb_u[1]), _mm_set_pd(rtb_u[2],
-    rtb_Sum_mi_idx_2))), _mm_set_pd(rtb_q1dot, rtb_Product14)));
+  SkySurfer_Core_DW->Sum[0] = (rtb_Sum_mi_idx_1 * rtb_u[2] - rtb_u[1] *
+    rtb_Sum_mi_idx_2) + rtb_Product16_j;
+  SkySurfer_Core_DW->Sum[1] = (rtb_u[0] * rtb_Sum_mi_idx_2 - rtb_Sum_mi_idx_0 *
+    rtb_u[2]) + rtb_Product_op;
   SkySurfer_Core_DW->Sum[2] = (rtb_Sum_mi_idx_0 * rtb_u[1] - rtb_u[0] *
-    rtb_Sum_mi_idx_1) + rtb_Product_op;
+    rtb_Sum_mi_idx_1) + rtb_Product14_d;
 
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
    *  Constant: '<S12>/Constant5'
    *  Constant: '<S12>/Constant6'
    */
-  CoreSnapshot_Concat[34] = rtb_VectorConcatenate_idx_2;
+  CoreSnapshot_Concat[34] = rtb_Gain1_d;
   CoreSnapshot_Concat[35] = SkySurfer_Core_P.Constant5_Value;
   CoreSnapshot_Concat[36] = SkySurfer_Core_P.Constant6_Value_o;
 
@@ -6051,7 +6014,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
    */
-  CoreSnapshot_Concat[25] = rtb_Product14;
+  CoreSnapshot_Concat[25] = rtb_Product16_j;
 
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
@@ -6067,7 +6030,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
    *  Product: '<S10>/Matrix Multiply'
    */
-  CoreSnapshot_Concat[40] = rtb_Multiply;
+  CoreSnapshot_Concat[40] = rtb_Product3_cq;
 
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
@@ -6077,8 +6040,9 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
 
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
+   *  Sum: '<S5>/Add'
    */
-  CoreSnapshot_Concat[46] = tmp_0[0];
+  CoreSnapshot_Concat[46] = rtb_Multiply;
 
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
@@ -6088,7 +6052,13 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
    */
-  CoreSnapshot_Concat[56] = rtb_VectorConcatenate_idx_6;
+  CoreSnapshot_Concat[56] = rtb_sincos_o1_idx_0;
+
+  /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
+   *  Concatenate: '<S5>/CoreSnapshot_Concat'
+   *  Sum: '<S11>/Add4'
+   */
+  CoreSnapshot_Concat[59] = rtb_UnitConversion_d;
 
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
@@ -6098,7 +6068,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
    */
-  CoreSnapshot_Concat[26] = rtb_q1dot;
+  CoreSnapshot_Concat[26] = rtb_Product_op;
 
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
@@ -6114,7 +6084,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
    *  Product: '<S10>/Matrix Multiply'
    */
-  CoreSnapshot_Concat[41] = rtb_Product3_cq;
+  CoreSnapshot_Concat[41] = rtb_Product16;
 
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
@@ -6124,8 +6094,9 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
 
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
+   *  Sum: '<S5>/Add'
    */
-  CoreSnapshot_Concat[47] = tmp_0[1];
+  CoreSnapshot_Concat[47] = rtb_q1dot;
 
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
@@ -6151,7 +6122,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
    */
-  CoreSnapshot_Concat[27] = rtb_Product_op;
+  CoreSnapshot_Concat[27] = rtb_Product14_d;
 
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
@@ -6167,7 +6138,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
    *  Product: '<S10>/Matrix Multiply'
    */
-  CoreSnapshot_Concat[42] = rtb_Product16;
+  CoreSnapshot_Concat[42] = rtb_Product14;
 
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
@@ -6216,8 +6187,8 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    */
   /* Unit Conversion - from: Pa to: Pa
      Expression: output = (1*input) + (0) */
-  CoreSnapshot_Concat[64] = SkySurfer_Core_P.P0_Gain * rtb_Limit_AIL_R *
-    rtb_q3dot;
+  CoreSnapshot_Concat[64] = SkySurfer_Core_P.P0_Gain *
+    rtb_VectorConcatenate_idx_6 * rtb_Limit_AIL_R;
 
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
@@ -6242,7 +6213,7 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
    */
-  CoreSnapshot_Concat[69] = rtb_UnitConversion_d;
+  CoreSnapshot_Concat[69] = rtb_Gain8;
 
   /* SignalConversion generated from: '<S5>/CoreSnapshot_Concat' incorporates:
    *  Concatenate: '<S5>/CoreSnapshot_Concat'
@@ -6287,14 +6258,14 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
       for (i = 0; i < 3; i++) {
         for (rtb_MatrixConcatenation_tmp = 0; rtb_MatrixConcatenation_tmp < 3;
              rtb_MatrixConcatenation_tmp++) {
-          rtb_VectorConcatenate_j_tmp = 3 * rtb_MatrixConcatenation_tmp + i;
-          rtb_Reshape9to3x3columnmajor[rtb_VectorConcatenate_j_tmp] =
+          rtb_Switch1_idx_2_tmp = 3 * rtb_MatrixConcatenation_tmp + i;
+          rtb_Reshape9to3x3columnmajor[rtb_Switch1_idx_2_tmp] =
             ((rtb_VectorConcatenate_et[3 * i + 1] * rtb_VectorConcatenate_et[3 *
               rtb_MatrixConcatenation_tmp + 1] + rtb_VectorConcatenate_et[3 * i]
               * rtb_VectorConcatenate_et[3 * rtb_MatrixConcatenation_tmp]) +
              rtb_VectorConcatenate_et[3 * i + 2] * rtb_VectorConcatenate_et[3 *
              rtb_MatrixConcatenation_tmp + 2]) +
-            SkySurfer_Core_P.Bias1_Bias[rtb_VectorConcatenate_j_tmp];
+            SkySurfer_Core_P.Bias1_Bias[rtb_Switch1_idx_2_tmp];
         }
       }
 
@@ -6445,18 +6416,14 @@ void SkySurfer_Core_step(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M,
    *  Fcn: '<S22>/q2dot'
    *  Fcn: '<S22>/q3dot'
    */
-  _mm_storeu_pd(&SkySurfer_Core_DW->TmpSignalConversionAtQ0123Inport1[0],
-                _mm_mul_pd(_mm_add_pd(_mm_add_pd(_mm_mul_pd(_mm_set_pd
-    (rtb_Product_op, rtb_Product1_p4), _mm_set1_pd(rtb_u[0])), _mm_mul_pd
-    (_mm_set1_pd(rtb_Product2_my), _mm_loadu_pd(&rtb_u[1]))), _mm_mul_pd
-    (_mm_mul_pd(_mm_set1_pd(rtb_Product3_cq), _mm_set_pd(rtb_u[1], rtb_u[2])),
-     _mm_set_pd(-1.0, 1.0))), _mm_set_pd(0.5, -0.5)));
-  _mm_storeu_pd(&SkySurfer_Core_DW->TmpSignalConversionAtQ0123Inport1[2],
-                _mm_mul_pd(_mm_sub_pd(_mm_add_pd(_mm_mul_pd(_mm_set1_pd
-    (rtb_Product_op), _mm_loadu_pd(&rtb_u[1])), _mm_mul_pd(_mm_set_pd
-    (rtb_Product1_p4, rtb_Product3_cq), _mm_loadu_pd(&rtb_u[0]))), _mm_mul_pd
-    (_mm_set_pd(rtb_Product2_my, rtb_Product1_p4), _mm_set_pd(rtb_u[0], rtb_u[2]))),
-    _mm_set1_pd(0.5)));
+  SkySurfer_Core_DW->TmpSignalConversionAtQ0123Inport1[0] = ((rtb_Product1_p4 *
+    rtb_u[0] + rtb_Product2_my * rtb_u[1]) + rtb_Product3_cq * rtb_u[2]) * -0.5;
+  SkySurfer_Core_DW->TmpSignalConversionAtQ0123Inport1[1] = ((rtb_Product_op *
+    rtb_u[0] + rtb_Product2_my * rtb_u[2]) - rtb_Product3_cq * rtb_u[1]) * 0.5;
+  SkySurfer_Core_DW->TmpSignalConversionAtQ0123Inport1[2] = ((rtb_Product_op *
+    rtb_u[1] + rtb_Product3_cq * rtb_u[0]) - rtb_Product1_p4 * rtb_u[2]) * 0.5;
+  SkySurfer_Core_DW->TmpSignalConversionAtQ0123Inport1[3] = ((rtb_Product_op *
+    rtb_u[2] + rtb_Product1_p4 * rtb_u[1]) - rtb_Product2_my * rtb_u[0]) * 0.5;
   if (tmp) {
     /* Saturate: '<S3>/Limit_ELE' incorporates:
      *  Inport: '<Root>/Controls'
@@ -7023,12 +6990,7 @@ void SkySurfer_Core_initialize(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M
       tmp = fmod(tmp, 4.294967296E+9);
     }
 
-    if (tmp < 0.0) {
-      tseed = (uint32_t)-(int32_t)(uint32_t)-tmp;
-    } else {
-      tseed = (uint32_t)tmp;
-    }
-
+    tseed = tmp < 0.0 ? (uint32_t)-(int32_t)(uint32_t)-tmp : (uint32_t)tmp;
     r = tseed >> 16U;
     t = tseed & 32768U;
     tseed = ((((tseed - (r << 16U)) + t) << 16U) + t) + r;
@@ -7049,12 +7011,7 @@ void SkySurfer_Core_initialize(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M
       tmp = fmod(tmp, 4.294967296E+9);
     }
 
-    if (tmp < 0.0) {
-      tseed = (uint32_t)-(int32_t)(uint32_t)-tmp;
-    } else {
-      tseed = (uint32_t)tmp;
-    }
-
+    tseed = tmp < 0.0 ? (uint32_t)-(int32_t)(uint32_t)-tmp : (uint32_t)tmp;
     r = tseed >> 16U;
     t = tseed & 32768U;
     tseed = ((((tseed - (r << 16U)) + t) << 16U) + t) + r;
@@ -7075,12 +7032,7 @@ void SkySurfer_Core_initialize(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M
       tmp = fmod(tmp, 4.294967296E+9);
     }
 
-    if (tmp < 0.0) {
-      tseed = (uint32_t)-(int32_t)(uint32_t)-tmp;
-    } else {
-      tseed = (uint32_t)tmp;
-    }
-
+    tseed = tmp < 0.0 ? (uint32_t)-(int32_t)(uint32_t)-tmp : (uint32_t)tmp;
     r = tseed >> 16U;
     t = tseed & 32768U;
     tseed = ((((tseed - (r << 16U)) + t) << 16U) + t) + r;
@@ -7101,12 +7053,7 @@ void SkySurfer_Core_initialize(RT_MODEL_SkySurfer_Core_T *const SkySurfer_Core_M
       tmp = fmod(tmp, 4.294967296E+9);
     }
 
-    if (tmp < 0.0) {
-      tseed = (uint32_t)-(int32_t)(uint32_t)-tmp;
-    } else {
-      tseed = (uint32_t)tmp;
-    }
-
+    tseed = tmp < 0.0 ? (uint32_t)-(int32_t)(uint32_t)-tmp : (uint32_t)tmp;
     r = tseed >> 16U;
     t = tseed & 32768U;
     tseed = ((((tseed - (r << 16U)) + t) << 16U) + t) + r;

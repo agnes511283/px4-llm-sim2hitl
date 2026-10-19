@@ -2,7 +2,7 @@
 ## Makefile generated for component 'SkySurfer_Core'. 
 ## 
 ## Makefile     : SkySurfer_Core.mk
-## Generated on : Mon Oct 19 01:08:22 2026
+## Generated on : Tue Oct 20 02:47:39 2026
 ## Final product: $(RELATIVE_PATH_TO_ANCHOR)/SkySurfer_Core
 ## Product type : executable
 ## 
@@ -21,7 +21,7 @@ MAKEFILE                  = SkySurfer_Core.mk
 MATLAB_ROOT               = /home/iec/MATLAB/R2026b
 MATLAB_BIN                = /home/iec/MATLAB/R2026b/bin
 MATLAB_ARCH_BIN           = $(MATLAB_BIN)/glnxa64
-START_DIR                 = /home/iec/.cache/px4-llm-sim2hitl/core_20261019_010753_185/codegen
+START_DIR                 = /home/iec/.cache/px4-llm-sim2hitl/core_20261020_024503_670/codegen
 SOLVER                    = 
 SOLVER_OBJ                = 
 CLASSIC_INTERFACE         = 0
@@ -237,19 +237,17 @@ SYSTEM_LIBS =
 # C Compiler
 #---------------
 
-CFLAGS_TFL = -msse2 -fno-predictive-commoning
 CFLAGS_BASIC = $(DEFINES) $(INCLUDES)
 
-CFLAGS += $(CFLAGS_TFL) $(CFLAGS_BASIC)
+CFLAGS += $(CFLAGS_BASIC)
 
 #-----------------
 # C++ Compiler
 #-----------------
 
-CPPFLAGS_TFL = -msse2 -fno-predictive-commoning
 CPPFLAGS_BASIC = $(DEFINES) $(INCLUDES)
 
-CPPFLAGS += $(CPPFLAGS_TFL) $(CPPFLAGS_BASIC)
+CPPFLAGS += $(CPPFLAGS_BASIC)
 
 ###########################################################################
 ## INLINED COMMANDS

@@ -2,7 +2,7 @@
 
 [繁體中文](README.md) | **English**
 
-> **This is a translation.** The authoritative README is [README.md](README.md) (Traditional Chinese); where the two differ, follow README.md. Translated from README.md with SHA-256 `f1e92b3b5b422c760fbf05400d206c64ef1f35ebd7b24d64d1c60e248dd007a9`: if `sha256sum README.md` prints something else, this translation is behind. The AI rules ([AGENTS.md](AGENTS.md)) and the folder READMEs are in Traditional Chinese only; an AI agent reads them without trouble.
+> **This is a translation.** The authoritative README is [README.md](README.md) (Traditional Chinese); where the two differ, follow README.md. Translated from README.md with SHA-256 `afbced2fb58efc6f67e4e8685c710bb897ef0b0c45c521eb938f1223d0bfd11d`: if `sha256sum README.md` prints something else, this translation is behind. The AI rules ([AGENTS.md](AGENTS.md)) and the folder READMEs are in Traditional Chinese only; an AI agent reads them without trouble.
 
 Flight-control development kit: MATLAB/Simulink aircraft model → C → SITL (minimal PX4) → custom PX4 firmware → HITL on a real flight controller (Pixhawk). When you develop with an AI, its working rules are in [AGENTS.md](AGENTS.md).
 
@@ -18,7 +18,7 @@ Flight-control development kit: MATLAB/Simulink aircraft model → C → SITL (m
 
 - **Only want to understand it**: any AI that can read web pages will do; ask it "what is this and what can it do for me".
 - **Want to develop**: use an AI that can run commands on your computer (for example Claude Code or Codex). Paste the link the same way and ask it to download the repo to a fixed folder on your computer (do not move it later; to move it, recover first as AGENTS says).
-  - The first time: say "set this computer up following the README's environment setup". It checks item by item and asks you to paste once when it needs sudo or a permission. **For now only Ubuntu 24.04 (x86-64) is supported**; other systems have not been verified, the AI will try following the official docs, but expect extra time on pitfalls.
+  - The first time: say "set this computer up following the README's environment setup". It checks item by item and asks you to paste once when it needs sudo or a permission. **The whole pipeline is verified only on Ubuntu 24.04 (x86-64)**; macOS (Apple silicon) is verified up to SITL (see "Verification matrix" and [platforms/macos.md](platforms/macos.md), in Traditional Chinese); other systems are untested, the AI will try following the official docs, but expect extra time on pitfalls.
   - After that: just say what you want, for example "I want to switch to my own aircraft" or "I want to build a new guidance algorithm". It starts the conversation at stage 1, "Requirements and spec".
 - **Use a capable AI**: it has to read long documents, write code, run commands and understand the results. A model that is too small, or set to low reasoning, tends to skip the docs and guess. Tested and works: GPT-6.1 sol (reasoning: medium).
 
@@ -54,7 +54,7 @@ An analogy: every new conversation, your AI is like a colleague on their first d
 
 ## Environment setup (first time)
 
-Verified on **Ubuntu 24.04 x86-64** only. Each item below says "why" and "how it was done on the validation machine (Ubuntu)"; the how is only an example. When changing platform or version, **ask the AI to check the item's official documentation first** and confirm the right way before installing.
+The whole pipeline is verified on **Ubuntu 24.04 x86-64** only (how far each platform is verified: "Verification matrix"; macOS platform differences: [platforms/macos.md](platforms/macos.md)). Each item below says "why" and "how it was done on the validation machine (Ubuntu)"; the how is only an example. When changing platform or version, **ask the AI to check the item's official documentation first** and confirm the right way before installing.
 
 | Item | Why | Ubuntu 24.04 way (example) | How to check |
 |---|---|---|---|
@@ -90,6 +90,22 @@ Manual HITL (3.1) order: `bridge` starts the owner → `status` confirms recover
 - **Model and PX4 parameters do not match (airspeed too high)**: PX4's `FW_THR_TRIM=0.6`, while this aircraft model needs only about 0.115 throttle for level flight at 15 m/s. Observed so far: the native loiter and SITL airspeeds are 20–30 m/s (target 15 m/s); in HITL, when TECS climbs, the airspeed shoots up and the altitude overshoots, which is why the template's altitude check FAILs. The throttle-trim gap is one possible cause, but how the two are linked and how much it explains is not yet confirmed. Following the principles in [AGENTS](AGENTS.md), check the model first (thrust, drag, mass), then decide whether the model needs fixing or this aircraft's PX4 parameters must be set to match the real aircraft.
 - **The 3.2 exit check is not done**: the baseline parameters of `deploy/00_native` assign no physical servo outputs (`PWM_MAIN_FUNC*`, `PWM_AUX_FUNC*` all 0), `GPS_1_CONFIG=0`, the airspeed sensor driver is off; with HITL turned off there is no output at all. It needs the real aircraft's wiring and parameters.
 - **Real-time permission for ordinary users**: see the real-time scheduling item in "Environment setup"; without it things run, but with little timing margin.
+
+## Verification matrix
+
+Only which stage was verified on which platform and when; each cell is PASS, FAIL or untested, and untested does not count as supported.
+
+| Stage | Linux (Ubuntu 24.04 x86-64) | macOS (27.0.1 arm64) |
+|---|---|---|
+| Source tree and environment check | PASS (2026-10-18) | PASS (2026-10-20) |
+| Code generation (MATLAB R2026b) | PASS (2026-10-20, rerun without instruction-set extensions) | PASS (2026-10-20) |
+| Model release (four gates, 60 s pacing) | PASS (2026-10-20) | PASS (2026-10-20) |
+| Trim | PASS (2026-10-20, identical to the previous release to the last digit) | PASS (2026-10-20, identical to the last digit) |
+| SITL reference scenario and template | PASS (2026-10-20) | PASS (2026-10-20, same metrics) |
+| SITL many instances | PASS (2026-10-18, 1000 runs) | PASS (2026-10-20, one hang in the first batch, see the macOS notes) |
+| Offline runtime tests | PASS (2026-10-20) | untested |
+| Firmware build | PASS (2026-10-18) | untested |
+| Hardware in the loop (HITL) | PASS (2026-10-18; on 2026-10-20 timing FAIL without real-time privilege, see the record below) | untested |
 
 ## Validation record (2026-10-18, Ubuntu 24.04)
 

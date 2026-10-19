@@ -47,7 +47,7 @@ def build_sequence():
 - `Mode` 允許 main mode 1–8、sub mode 0–255。這裡用到的：4／3 = AUTO_LOITER、6 = OFFBOARD、7 = STABILIZED。OFFBOARD 只有在有來源送 offboard 訊號時 PX4 才會進（例如 `modules/` 的模組 `guidance_template`）；訊號停了 PX4 走自己的 offboard 失聯保護。實際支援哪些模式與進入條件依韌體而定，要在 HITL 確認。
 - `ON_FINISH`：
   - `'hold'`：結束時 PX4 必須在 Stabilized，否則失敗並放手；roll、yaw 桿歸中，自動飛手回到原本的高度保持。
-  - `'loiter'`：結束時 PX4 必須在 AUTO_LOITER（4／3）；飛手繼續送中立的 MANUAL_CONTROL 與 heartbeat（照舊滿足 RC 失聯設定），導航由 PX4 負責。會一直持續到明確停止，不會自己停模型；PX4 離開 AUTO_LOITER 就放手。
+  - `'loiter'`：結束時 PX4 必須在 AUTO_LOITER（4／3）；飛手繼續送中立的 MANUAL_CONTROL 與 heartbeat（照舊滿足 RC 失聯設定），導航由 PX4 負責。會一直持續到明確停止，不會自己停模型；PX4 之後換到其他模式也不放手（Stabilized 時平飛定高，其他模式中立，見 [autotakeoff README](../autotakeoff/README.md)）。
   - `'release'`：停止送桿，交回原本的人工輸入；不自動 disarm。
 - 載入時就檢查（起飛前），不合法就拒絕起飛。離線先試載入（專案根目錄）：
 

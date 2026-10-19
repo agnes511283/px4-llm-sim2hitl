@@ -4,7 +4,8 @@
 Connects to the HIL bridge agent port and flies like the QGC joystick does:
 MANUAL_CONTROL in Stabilized. Sequence: Stabilized, arm, takeoff throttle,
 pitch up at the rotate airspeed, climb to the target height, then wings level
-with a slow altitude hold. The sticks are frozen while PX4 is in Offboard.
+with a slow altitude hold. The sticks are frozen while PX4 is in Offboard; once flying they go on in every
+mode (in HITL they are PX4's only RC).
 
   takeoff   run the sequence (refuses unless PX4 reads back SYS_HITL=1)
   status    print the current flight state (works with or without a takeoff running)
@@ -384,13 +385,24 @@ class Takeoff:
             if not v.armed or elapsed > 5:
                 self.release(self.reason)
 
+        script_running = bool(self.after_sequence and self.after_sequence.state == 'running')
         if self.state in ('roll', 'climb', 'cruise', 'loiter'):
+            # In HITL these sticks are PX4's only RC: once flying (cruise, loiter) a mode change never stops them, or
+            # PX4's RC-loss failsafe (NAV_RCL_ACT) would follow whatever PX4 or a companion computer chose. Frozen in
+            # OFFBOARD, level flight with altitude hold in Stabilized, neutral in every other mode (AUTO_LOITER,
+            # Position after an Offboard loss, RTL, ...). An explicit stop, QGC stick moves, lost telemetry, a disarm
+            # or a failed post-takeoff script hand back. During the takeoff (roll, climb) a mode change still stops.
             if not v.armed:
                 self.release('PX4 disarmed')
-            elif self.state == 'loiter' and (v.mode, v.sub_mode) != (4, 3):
-                self.release('PX4 left AUTO_LOITER')
-            elif (self.state != 'loiter' and v.mode not in (STABILIZED, OFFBOARD)
-                  and not (self.after_sequence and self.after_sequence.state == 'running')):
+            elif self.state == 'loiter' and v.mode == STABILIZED:
+                self.go('cruise', 'PX4 in Stabilized: level flight with altitude hold')
+            elif self.state == 'loiter':
+                pass                                            # neutral input keepalive in any other mode
+            elif self.state == 'cruise' and v.mode not in (STABILIZED, OFFBOARD) and not script_running:
+                self.sticks[:] = [0, 0, round(1000*a.cruise_throttle), 0]
+                self.pitch_command = 0.
+                self.go('loiter', f'PX4 mode {v.mode}/{v.sub_mode} from cruise: neutral input keepalive')
+            elif self.state in ('roll', 'climb') and v.mode not in (STABILIZED, OFFBOARD) and not script_running:
                 self.release(f'PX4 left Stabilized (mode {v.mode})')
         if self.streaming:
             self.link.send(mav.MAVLink_manual_control_message(TARGET[0], *self.sticks, 0))

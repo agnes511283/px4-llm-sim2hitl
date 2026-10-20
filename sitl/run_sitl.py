@@ -27,17 +27,25 @@ plus HITL overrides), translated for SITL: outputs on PWM_MAIN_FUNC instead of H
 IMU device ids, SYS_HITL=0, FC sensor calibration dropped. Prints one JSON line with every instance's
 real-time factor and the aggregate.
 
+Each instance runs in its own process group. One that has not started plant_sim (no trace.csv) within
+--startup-timeout s, whose trace.csv has not grown for --stall-timeout s, or that exited without a summary is
+killed together with its group (its start-up script included: killing PX4 alone leaves the script sending
+commands to the next PX4 of that instance number) and restarted, at most --retries times; after that it is
+reported as "stalled" instead of being waited for until --timeout. A restart keeps the failed attempt's
+px4.log and trace.csv as px4.attempt<N>.log and trace.attempt<N>.csv.
+
 The PX4 build is <PX4 tree>/build/px4_sitl_default_sim2hitl (python3 sitl/build_sitl.py; SIM2HITL_SITL_SUFFIX
 replaces _sim2hitl); the tree location comes from px4/check_px4_tree.py (SIM2HITL_PX4_ROOT or the local config
 file). Before launching it reads which plant library that build loads (build_sitl.loaded_library: macOS otool,
 Linux ldd) and warns when it is not the active model release's (rebuild with build_sitl.py); run.json records
-both. --instance-base N numbers the PX4
-instances from N (their /tmp/px4-sock-<n>), so two runs at the same time do not collide.
+both. --instance-base N numbers the PX4 instances from N (their /tmp/px4-sock-<n>), so two runs at the same
+time do not collide.
 """
 import argparse
 import json
 import math
 import os
+import signal
 import sys
 import struct
 import subprocess
@@ -191,6 +199,14 @@ def replay_main(args):
     return 0 if result['replayed_ulog'] and result['exit'] == 0 and not result['timed_out'] else 2
 
 
+def stop(proc, sig):
+    """Signal PX4 and everything it started (start-up script, PX4 client commands): the instance's process group."""
+    try:
+        os.killpg(proc.pid, sig)
+    except ProcessLookupError:
+        pass
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--out', type=Path, required=True)
@@ -204,6 +220,7 @@ def main():
     parser.add_argument('--stagger', type=float, default=1.0, help='seconds between instance launches')
     parser.add_argument('--retries', type=int, default=2)
     parser.add_argument('--startup-timeout', type=float, default=60.0)
+    parser.add_argument('--stall-timeout', type=float, default=60.0, help='seconds without trace.csv growing: stuck')
     parser.add_argument('--ulog', action=argparse.BooleanOptionalAction, default=True,
                         help="record a ULog with the HITL logging profile (default; --no-ulog to skip)")
     parser.add_argument('--logger-topics', type=Path, help='custom logger topic list instead of the profile')
@@ -230,9 +247,9 @@ def main():
     for reminder in wind_reminders:
         print('wind: ' + reminder, file=sys.stderr)
     env = dict(os.environ, PATH=f'{px4.parent}:{os.environ.get("PATH", "")}')
-    # The start-up script waits for the PX4 server, launches are staggered, and an instance whose plant_sim has
-    # not started (no trace.csv) within --startup-timeout s or that exited without a summary is restarted
-    # (at most --retries times; counted in the report). px4.log is block-buffered, so it is not polled.
+    # The start-up script waits for the PX4 server, launches are staggered, and a stuck instance (see the module
+    # docstring) is restarted with its whole process group (at most --retries times; counted in the report).
+    # px4.log is block-buffered, so it is not polled.
 
     def launch(i):
         work = (args.out / f'instance_{i}').resolve()
@@ -249,8 +266,9 @@ def main():
                                               list(args.start) + scenario.get('start', [])))
         log = open(work / 'px4.log', 'w')
         proc = subprocess.Popen([str(px4), '-d', '-i', str(args.instance_base + i), '-s', str(script), '-w', str(work)],
-                                stdout=log, stderr=subprocess.STDOUT, env=env)
-        return {'work': work, 'log': log, 'proc': proc, 'summary_seen': None, 'launched': time.monotonic()}
+                                stdout=log, stderr=subprocess.STDOUT, env=env, start_new_session=True)
+        return {'work': work, 'log': log, 'proc': proc, 'summary_seen': None, 'trace_size': -1,
+                'progress': time.monotonic()}
 
     start = time.monotonic()
     runs = {}
@@ -268,20 +286,30 @@ def main():
             proc, work = run['proc'], run['work']
             code = proc.poll()
             done = (work / 'summary.json').is_file()
-            if not done and retries[i] < args.retries:
-                stuck = not (work / 'trace.csv').is_file() and time.monotonic() - run['launched'] > args.startup_timeout
+            if not done:
+                trace = work / 'trace.csv'
+                size = trace.stat().st_size if trace.is_file() else -1
+                if size != run['trace_size']:
+                    run['trace_size'], run['progress'] = size, time.monotonic()
+                stuck = time.monotonic() - run['progress'] > (args.startup_timeout if size < 0 else args.stall_timeout)
                 if code is not None or stuck:
                     if code is None:
-                        proc.kill()
+                        stop(proc, signal.SIGKILL)
                         proc.wait()
-                    run['log'].close()
-                    retries[i] += 1
-                    runs[i] = launch(i)
-                    continue
+                    if retries[i] < args.retries:
+                        run['log'].close()
+                        retries[i] += 1
+                        # Keep the failed attempt's evidence: px4.attempt<N>.log, trace.attempt<N>.csv.
+                        for old in (work / 'px4.log', work / 'trace.csv'):
+                            if old.is_file():
+                                old.rename(work / f'{old.stem}.attempt{retries[i]}{old.suffix}')
+                        runs[i] = launch(i)
+                        continue
+                    code = 'stalled' if code is None else code
             if code is None and done:
                 run['summary_seen'] = run['summary_seen'] or time.monotonic()
                 if time.monotonic() - run['summary_seen'] > 5.0:
-                    proc.terminate()
+                    stop(proc, signal.SIGTERM)
                     code = proc.wait()
             if code is not None:
                 codes[i] = code
@@ -289,7 +317,7 @@ def main():
     results = []
     for i, run in runs.items():
         if i not in codes:
-            run['proc'].kill()
+            stop(run['proc'], signal.SIGKILL)
             run['proc'].wait()
             codes[i] = 'timeout'
         run['log'].close()

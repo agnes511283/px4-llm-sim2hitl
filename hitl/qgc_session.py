@@ -4,14 +4,16 @@
                                 [--no-log] [--keep-owner]
 
 owner (started if not running) -> checks: verified FC, unarmed, SYS_HITL=1, nothing pending (a pending recovery
-gets one standard recover) -> QGC (only when its settings keep USB auto-connect off) -> model on the ground ->
+gets one standard recover; a model that is already running stops the session: it may be another session's
+flight) -> QGC (only when its settings keep USB auto-connect off) -> model on the ground ->
 automatic takeoff (unless --no-takeoff or 'm' at the prompt) -> you fly with the QGC joystick; a status line
 shows height, airspeed and mode -> Enter, Ctrl-C or closing the window ends it: model-stop ->
 recover --hil-force-disarm (the runtime forces only after a refused normal disarm) -> status check -> this
 flight's records (unless --no-log; the same checks as hitl-run: the FC log is newer than the newest one before the
 flight, downloaded twice and identical, strict parse) in <cache>/manual_flights/ -> owner shutdown (unless
---keep-owner). Anything that is not ready stops here with the reason; nothing is bypassed. A human flight is an
-observation, not a test: nothing is judged PASS or FAIL.
+--keep-owner). Once the cleanup has started, Ctrl-C or closing the window no longer interrupts it. Anything that
+is not ready stops here with the reason; nothing is bypassed. A human flight is an observation, not a test:
+nothing is judged PASS or FAIL.
 """
 import argparse
 import fcntl
@@ -28,15 +30,21 @@ from pathlib import Path
 PROJECT = Path(__file__).resolve().parents[1]
 RUNBRIDGE = str(PROJECT / 'runbridge')
 sys.path.insert(0, str(PROJECT / 'hitl'))
+sys.path.insert(0, str(PROJECT / 'plant' / 'core'))
 from host.ipc import request  # noqa: E402
+import toolchain  # noqa: E402
 QGC_INI = Path.home() / '.config' / 'QGroundControl' / 'QGroundControl.ini'
+# Set when the cleanup starts: from then on Ctrl-C and closing the window do not interrupt it.
+CLEANUP = threading.Event()
 MODES = {1: 'Manual', 2: 'Altitude', 3: 'Position', 4: 'Auto (Hold/Return/...)', 5: 'Acro', 6: 'Offboard',
          7: 'Stabilized'}
 
 
 def runbridge(*args, timeout=120):
-    """(exit code, result): the last JSON line of the output, an operation's own result taken out of it."""
-    result = subprocess.run([RUNBRIDGE, *args], cwd=PROJECT, capture_output=True, text=True, timeout=timeout)
+    """(exit code, result): the last JSON line of the output, an operation's own result taken out of it. Its own
+    session: Ctrl-C and closing the window reach only this process, which decides (not a command halfway)."""
+    result = subprocess.run([RUNBRIDGE, *args], cwd=PROJECT, capture_output=True, text=True, timeout=timeout,
+                            start_new_session=True)
     line = next((x for x in reversed(result.stdout.strip().splitlines()) if x.startswith('{')), None)
     try:
         value = json.loads(line) if line else None
@@ -58,7 +66,7 @@ def status():
 
 
 def start_owner():
-    log = Path(os.environ.get('SIM2HITL_CACHE') or Path.home() / '.cache' / 'px4-llm-sim2hitl') / 'manual'
+    log = cache() / 'manual'
     log.mkdir(parents=True, exist_ok=True)
     stream = open(log / f'qgc_session_owner_{time.strftime("%Y%m%d_%H%M%S")}.log', 'a')
     subprocess.Popen([RUNBRIDGE, 'bridge'], cwd=PROJECT, stdout=stream, stderr=subprocess.STDOUT,
@@ -107,12 +115,12 @@ def line(s):
 
 
 def cache():
-    return Path(os.environ.get('SIM2HITL_CACHE') or Path.home() / '.cache' / 'px4-llm-sim2hitl')
+    return toolchain.cache_root()
 
 
 def one_session():
-    """Only one session at a time: a second window would stop the first one's model or reboot the FC in the
-    middle of its log download. flock is released when the process ends, however it ends (no stale lock). A
+    """Only one session at a time: a second window would recover (reboot) the FC in the middle of the first one's
+    cleanup and log download. flock is released when the process ends, however it ends (no stale lock). A
     closed window still finishes its cleanup for about a minute, so a new session waits for it."""
     path = cache() / 'manual' / 'qgc_session.lock'
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -153,7 +161,8 @@ def keep_records(record):
         paths = [g.get('path') for g in got]
         same = all(paths) and len({hashlib.sha256(Path(x).read_bytes()).hexdigest() for x in paths}) == 1
         strict = json.loads(subprocess.run([sys.executable, '-B', str(PROJECT / 'analysis' / 'ulog_strict.py'),
-                                            paths[0]], capture_output=True, text=True).stdout or '{}') if same else {}
+                                            paths[0]], capture_output=True, text=True,
+                                           start_new_session=True).stdout or '{}') if same else {}
         record['fc_log'] = {'id': newest, 'path': paths[0], 'downloaded_twice_identical': same,
                             'strict_ok': bool(strict.get(paths[0], {}).get('ok')) if same else None}
     (out / 'session.json').write_text(json.dumps(record, indent=2, ensure_ascii=False) + '\n')
@@ -168,7 +177,8 @@ def show_status(stop):
 
 
 def finish(keep_owner, record=None):
-    print('\n\n結束：停模型 → 恢復 → 檢查')
+    CLEANUP.set()
+    print('\n\n結束：停模型 → 恢復 → 檢查（收尾中再按 Ctrl-C 或關視窗也會做完）')
     runbridge('model-stop', timeout=60)
     code, value = runbridge('recover', '--hil-force-disarm', timeout=120)
     s = status() or {}
@@ -196,13 +206,28 @@ def main():
     parser.add_argument('--keep-owner', action='store_true', help='leave the owner running at the end')
     args = parser.parse_args()
     # Closing the window (SIGHUP) or SIGTERM ends the session the same way as Ctrl-C. Without a window the
-    # output of the cleanup goes to a log file, so printing cannot stop the recovery halfway.
+    # output of the cleanup goes to a log file, so printing cannot stop the recovery halfway. Once the cleanup has
+    # started (CLEANUP), none of them interrupts it: a second Ctrl-C would leave the recovery unconfirmed and the
+    # records not kept.
     def hangup(signum, frame):
-        log = cache() / 'manual'
-        log.mkdir(parents=True, exist_ok=True)
-        sys.stdout = sys.stderr = open(log / f'qgc_session_closed_{time.strftime("%Y%m%d_%H%M%S")}.log', 'a')
-        raise KeyboardInterrupt
+        if not hangup.redirected:
+            log = cache() / 'manual'
+            log.mkdir(parents=True, exist_ok=True)
+            sys.stdout = sys.stderr = open(log / f'qgc_session_closed_{time.strftime("%Y%m%d_%H%M%S")}.log', 'a')
+            hangup.redirected = True
+        if not CLEANUP.is_set():
+            raise KeyboardInterrupt
 
+    def interrupt(signum, frame):
+        if not CLEANUP.is_set():
+            raise KeyboardInterrupt
+        try:
+            print('\n收尾中（停模型、恢復、存紀錄），等它做完', flush=True)
+        except OSError:
+            pass
+
+    hangup.redirected = False
+    signal.signal(signal.SIGINT, interrupt)
     signal.signal(signal.SIGHUP, hangup)
     signal.signal(signal.SIGTERM, hangup)
 
@@ -210,10 +235,10 @@ def main():
     print('== 1/4 owner 與 FC')
     s = status() or start_owner()
     if s.get('model') == 'running':
-        print('上次的模型還在跑，先停模型並恢復')
-        if finish(keep_owner=True):
-            return 3
-        s = status()
+        # Not necessarily left over: another session or window may be flying (hitl-run, deploy-test, by hand).
+        print('模型已經在跑：可能是別的 session 或視窗正在飛（./runbridge status 的 operations），這裡不替它停。'
+              '確定沒有人在飛，再照 hitl/README 的恢復規則：./runbridge model-stop → ./runbridge recover --hil-force-disarm')
+        return 3
     if s.get('recovery_required'):
         print('有待恢復，先做一次標準恢復')
         runbridge('recover', timeout=120)

@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
 .venv/
+# macOS Finder's folder settings
+.DS_Store
 # Built locally from the sources (model releases and their active pointers)
 hitl/releases/
 hitl/active/

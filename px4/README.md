@@ -7,7 +7,7 @@ PX4 原始碼樹很大，**不放在專案裡**，放在專案外。本資料夾
 | [px4_lock.json](px4_lock.json) | 版本鎖：repository、tag、commit、FC 韌體說明、本機位置設定檔在哪 |
 | [check_px4_tree.py](check_px4_tree.py) | 核對這台機器的原始碼樹是否等於版本鎖（commit、沒有修改、submodule）；其他程式也用它找原始碼樹 |
 | [build_firmware.py](build_firmware.py) | 編部署配方的 FC 韌體（`./runbridge build-firmware --release deploy/<配方>` 呼叫它） |
-| [patches/](patches/) | 套在 PX4 上的修正；目前只有 NuttX 的記憶卡讀取修正（原因見 [AGENTS](../AGENTS.md) 第 1 段） |
+| [patches/](patches/) | 套在 PX4 上的修正：NuttX 的記憶卡讀取修正（原因見 [AGENTS](../AGENTS.md) 第 1 段）；Cube Orange+ 的 `hil` 板子變體（預設韌體沒有 HITL 要的 `pwm_out_sim`，見 [fc/cubeorangeplus.md](../fc/cubeorangeplus.md)） |
 
 目前鎖定 **v1.17.0**（commit `d6f12ad1c4f70ad3230afd7d86e971421e02fef4`）。SITL、FC 韌體與 HITL 都用這一個版本。
 
@@ -61,8 +61,10 @@ python3 px4/check_px4_tree.py --path <路徑> --remember
 
 - 讀配方 `deploy/<配方>/firmware/firmware.json` 的 `recipe`：`make_target`、`patches`、`modules`（`modules/src/` 裡的資料夾名）。沒有 `recipe` 的配方不編：`deploy/00_native` 保存的是現成的原生韌體。
 - 在原始碼樹**旁邊的建置樹**編譯：`<樹>-build`（或環境變數 `SIM2HITL_PX4_BUILD_TREE`）。第一次用 `rsync` 從原樹複製一份（不需要網路），之後每次編譯前重設到鎖定的 commit。使用者的原樹不動。**建置樹是可以整個清掉的專用副本**：每次編譯前會強制切回鎖定的 commit、把子模組重設並清掉所有未追蹤的檔案，所以 `SIM2HITL_PX4_BUILD_TREE` 不可以指到原始碼樹或任何放了自己東西的資料夾。
+- **FC 回報的 `board_version` 是 USB 產品碼**（`CONFIG_CDCACM_PRODUCTID`），不一定等於韌體的 board id：6C 都是 56，Cube Orange+ 是 4184 對 1063。`build_firmware.py` 從建置的 NuttX 設定記下它，身分核對比它。
 - patch 用 `git am` commit 在建置樹對應的 repo 裡，作者與日期取自 patch 檔，committer 固定、commit 日期等於作者日期，所以同樣的 patch 永遠得到同樣的 commit。FC 回報的 NuttX hash 因此可預期，`deploy-test` 與 `deploy/check_params.py` 用它核對 FC 上是哪個配方。
-- 產物（`.px4`、`parameters.json.xz`）寫到配方的 `firmware/`（不進 git，見 `.gitignore`）；身分（`embedded`）、flash 用量與建置紀錄寫進 `firmware.json`，參數名單的 SHA-256 寫進配方的 `params.json`。建置 log 在 cache（`./runbridge where cache`）的 `firmware/<配方>/`。
+- patch 的 `repo` 是 `.`（PX4 主 repo，例如板子變體）時，`git describe` 變成 `v1.17.0-1-g…`，FC 回報的版本類型從 release 變成 dev；只改子模組（NuttX 修正）時不會。
+- 產物（`.px4`、`parameters.json.xz`）寫到配方的 `firmware/`（不進 git，見 `.gitignore`）；身分（`embedded`：board id、FC 會回報的 `board_version`、PX4 與 NuttX 的 hash）、flash 用量與建置紀錄寫進 `firmware.json`，參數名單的 SHA-256 寫進配方的 `params.json`。建置 log 在 cache（`./runbridge where cache`）的 `firmware/<配方>/`。
 - 通常不必單獨編：`./runbridge deploy-test --release deploy/<配方> --flash` 在沒有編好的檔、或 patch、模組改了的時候會自己編。
 
 ## 換 PX4 版本
@@ -70,7 +72,7 @@ python3 px4/check_px4_tree.py --path <路徑> --remember
 SITL、韌體與 HITL 要同一個版本，所以是整套一起換。先和使用者談好再動手：
 
 1. 問使用者新樹放哪裡（專案外）；舊樹留著，回退要用。下載新的 tag。
-2. 對舊 tag 看差異：uORB 訊息（`msg/`）、固定翼模組（`src/modules/fw_*`）、專案用到的參數、開機腳本與機架（`ROMFS/`）、board（`boards/px4/fmu-v6c/`）。兩版的參數名單用 `python3 deploy/check_params.py --compare-firmware 舊.json.xz 新.json.xz` 比。
-3. 查新版是否已經包含 `px4/patches/` 的 NuttX 修正（AGENTS 第 1 段）。
+2. 對舊 tag 看差異：uORB 訊息（`msg/`）、固定翼模組（`src/modules/fw_*`）、專案用到的參數、開機腳本與機架（`ROMFS/`）、有配方的 board（`boards/px4/fmu-v6c/`、`boards/cubepilot/cubeorangeplus/`；Cube 的預設韌體是否已經有 `pwm_out_sim`）。兩版的參數名單用 `python3 deploy/check_params.py --compare-firmware 舊.json.xz 新.json.xz` 比。
+3. 查新版是否已經包含 `px4/patches/` 的 NuttX 修正（AGENTS 第 1 段），Cube 的 `hil` 變體 patch 是否還套得上、還需不需要。
 4. 改 `px4_lock.json` 的 `tag`、`commit`、`hitl_firmware.version`；`python3 px4/check_px4_tree.py --path <新樹> --remember` 要 PASS。
 5. 重編 SITL、重跑情境；每個配方重編並用 `deploy-test` 測。`deploy/00_native` 的韌體是 v1.17.0 的成品、不會自己重建，新版的原生基準怎麼取得要和使用者討論。

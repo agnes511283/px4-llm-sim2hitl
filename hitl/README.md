@@ -12,7 +12,7 @@
 | Python | `./runbridge --setup`（要 uv）依 `pyproject.toml`／`uv.lock` 建 venv，位置見 `./runbridge where venv`（Linux 是 `~/.local/share/px4-llm-sim2hitl/venv`）；`SIM2HITL_VENV` 改位置，`SIM2HITL_PYTHON` 指定直譯器。套件：pyserial 3.5、pymavlink 2.4.49、numpy 2.0.2 |
 | 檢查 | `./runbridge --check-python` 只檢查、不安裝；找不到 Python 時退出碼 4 |
 | 模型 release | `./runbridge update-model --generate`（要 MATLAB）→ `./runbridge update-model`（編譯、四道檢查、發布）。release 在 `hitl/releases/skysurfer/<平台>/<build-id>/`（平台見 `./runbridge where platform`，例如 `linux-x64`、`macos-arm64`），用哪一個由 `hitl/active/<平台>.json` 指定；兩者都在本機建、不進 git。release 含模型與 worker（`libskysurfer`、`libhil_worker`、`libskysurfer_plant`；Linux 是 `.so`、macOS 是 `.dylib`），只依賴系統 C 函式庫，跑 runtime 不需要 MATLAB。`./runbridge update-model --rollback` 切回前一個 |
-| FC 序列埠 | `/dev/ttyACM*`（使用者要在 `dialout` 群組）；`--port` 預設 `auto`，依 USB 廠商碼與裝置名稱挑出 FC |
+| FC 序列埠 | `/dev/ttyACM*`（使用者要在 `dialout` 群組）；`--port` 預設 `auto`，依 USB 廠商碼與裝置名稱挑出 FC。FC 在 bootloader 時不連上去：名稱規則在 `host/serial_helpers.py` 的 `BOOTLOADER_LABEL`（PX4 的 `PX4 BL …`、CubePilot 出廠 ArduPilot bootloader 的 `CubeOrange+-BL`，它和韌體同一個 USB VID/PID） |
 | QGC 與自動飛手 | 只走本機 UDP：owner 從 127.0.0.1:14575 送到 QGC 的 14550；自動飛手是 14576 → 14560 |
 
 - 模型 ABI：`interface/hil_model_api.h` 是權威；ABI 版本 65537（0x00010001），C 自然對齊、不 pack；Initial／Input／Output／Info 為 120／176／680／280 bytes。SkySurfer 的實作是 `aircraft/skysurfer/adapter.c`。
@@ -57,6 +57,42 @@ cache 下的 `runtime/<hash>/`（這台機器的位置：`./runbridge where runt
 - **GPS 品質**是固定的模擬值，不是實際觀測：fix 3、衛星 10、eph／epv 30／50 cm（寫在 `native/posix/io.c` 與 `host/core.py`，`profile.json` 的 `gps_quality` 同值）。
 - **場景**（`aircraft/skysurfer/scenario.py`）：可給離地高度 0–10000 m、TAS 0–200 m/s（加攻角／側滑 ±45°）或機體速度、Euler（roll ±180°、pitch ±80°、yaw ±360°）、緯經度。地面 MSL、geoid、初始角速度、亂數種子只接受 0，其他值拒絕。風用場景的 `wind_ned_m_s`（定常風）與 `wind` 物件（起風方式、陣風、風切、亂流；格式與提醒在 `plant/wind.py`），模型有風功能時由 `hil_model_configure_wind` 設定，提醒放在 `status` 的 `wind_reminders` 與每次 run 的紀錄。實體 FC 只能從地面靜止開始；非零高度或速度只能用 fake FC 離線驗證。
 - **發散保護**（`adapter.c`）：加速度 > 1000 m/s²、角速度 > 100 rad/s、GPS 速度 > 200 m/s 或出現非有限值就 fault，要重設；不裁切、不歸零、不改飛機來掩蓋。
+
+## 用 QGC 搖桿手動飛（3.1）
+
+QGC 的搖桿（畫面上的虛擬搖桿，或 USB 遊戲手把）經 UDP 送 MANUAL_CONTROL，owner 原樣轉給 FC：HITL 沒有實體遙控器，**這個搖桿就是 PX4 的遙控**。自動飛手在飛時，QGC 的搖桿先交給飛手；搖桿動超過約 15 %（150/1000），飛手就放手、把控制交給 QGC（[autotakeoff README](autotakeoff/README.md)）。2026-10-20 在 Cube Orange+（`01_sdfix_cubeorangeplus`）上準備。
+
+**一次性設定**
+
+- QGC 只連 UDP：`~/.config/QGroundControl/QGroundControl.ini` 的 `[AutoConnect]`（根目錄 README「環境準備」）。改之前 QGC 要關著。
+- 虛擬搖桿：QGC 左上 **Q 圖示 → Application Settings → General → Fly View** 區段，勾 **Virtual Joystick**；回到飛行畫面會出現兩個圓盤（mode 2：左邊上下是油門、左右是方向舵；右邊是俯仰與滾轉）。有「Auto-Center Throttle」時不要勾（固定翼的油門不回中）。
+- USB 手把：插上後 **Q 圖示 → Vehicle Setup → Joystick**，在 Active joystick 選它，**Calibrate → Start** 照提示動桿，最後啟用。PX4 的 `COM_RC_IN_MODE` 不能是 0（預設 3：遙控或搖桿、先到先用）。
+
+**每次飛**
+
+```sh
+./runbridge bridge          # 開 owner（已開著就跳過）
+./runbridge status          # fc.state = verified、ready_to_start_model = true、missing_conditions = []
+```
+
+1. 開 QGC（例：`~/Applications/QGroundControl-x86_64.AppImage`），等它經 UDP 連上飛機。
+2. `./runbridge model-start`：模型在地面開始跑，PX4 開始收到感測器（Preflight Fail 的訊息會消失）。
+3. 起飛，建議用自動起飛：`./runbridge takeoff --altitude 100`。滑跑、爬升到 100 m 後在 Stabilized 平飛。
+4. 接手：動 QGC 的搖桿，飛手放手，之後由你飛。上方的模式選單：**Stabilized**（姿態增穩，放手回水平）、**Position**（固定翼：滾轉桿轉向、俯仰桿給爬升率、放手保持航向與高度，最好飛）、**Hold**（盤旋）。QGC 的選單切不到固定翼的 Offboard。
+5. 結束（停在空中是正常的）：
+
+```sh
+./runbridge model-stop
+./runbridge recover --hil-force-disarm    # 在空中結束要加；完成後 status 是未解鎖、SYS_HITL=1、沒有待恢復
+./runbridge shutdown                      # 不再用就關 owner
+```
+
+**要知道的**
+
+- QGC 停止送搖桿（關掉虛擬搖桿、關掉 QGC）超過 `COM_RC_LOSS_T`（0.5 s），PX4 的遙控斷訊保護接手：Hold 5 s 後 RTL。
+- 想自己從地面起飛：模式切 Stabilized → 用 QGC 解鎖（點上方的飛行狀態 → Arm，滑動確認）→ 油門推過一半 → 空速約 12 m/s 時拉桿抬頭，爬升角約 12°。PX4 固定翼的 Takeoff 模式在這裡不能用（要跑道起飛設定或手擲偵測）。遙控器設了解鎖開關的 FC（`RC_MAP_ARM_SW > 0`，例如這次的 Cube）沒有搖桿手勢解鎖，一定要用 QGC 的 Arm。
+- 不要用 QGC 改參數：配方的核對會判 FAIL（`not_default`），參數部署也會把別的寫入者當成錯誤。要改就改配方再部署。
+- 空速偏高、爬高時衝過頭是已知的模型與參數不吻合（根目錄 README「已知問題」），不是搖桿的問題。
 
 ## 離線測試
 

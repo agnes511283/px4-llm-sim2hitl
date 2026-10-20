@@ -157,7 +157,7 @@ def main(argv=None):
         from host.deploy import run_deploy
 
         report, path = run_deploy(RUNTIME, args)
-        print(json.dumps({'verdict': report['verdict'], 'report': str(path),
+        print(json.dumps({'verdict': report['verdict'], 'scope': report['scope'], 'report': str(path),
                           'steps': [(s['step'], s['verdict']) for s in report['steps']]}))
         return {'PASS': 0, 'PLAN': 0}.get(report['verdict'], 3)
     if args.action != 'bridge':

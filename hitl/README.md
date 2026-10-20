@@ -71,6 +71,7 @@ QGC 的搖桿（畫面上的虛擬搖桿，或 USB 遊戲手把）經 UDP 送 MA
 **一鍵版**：`hitl/qgc_session.sh`（Linux）把下面的「每次飛」串成一次：開 owner（沒開才開）→ 檢查 FC（未解鎖、`SYS_HITL=1`、沒有待恢復；有待恢復先做一次標準 `recover`）→ 開 QGC（設定檔沒關 USB 自動連線就不開，並說明原因）→ 模型上地面（`--scenario` 可換場景，例 `hitl/scenarios/wind_steady_5.json` 在風裡飛）→ 問要不要自動起飛 → 你飛，視窗每 3 s 顯示高度、空速、模式、晚到次數 → 按 Enter、Ctrl-C 或關視窗都會停模型、`recover --hil-force-disarm`、檢查、留下這趟的紀錄、關 owner。任何一項沒準備好就停下說明，不繞過。選項見 `hitl/qgc_session.py --help`（`--altitude`、`--scenario`、`--no-takeoff`、`--no-qgc`、`--no-log`、`--keep-owner`）。要點兩下就跑，建一個桌面捷徑（`.desktop`，例：`Exec=gnome-terminal -- <專案>/hitl/qgc_session.sh`），放在 `~/.local/share/applications/` 或桌面；放桌面的要允許執行（右鍵 Allow Launching）。捷徑的路徑屬於這台機器，不進專案。
 
 - **這趟的紀錄**：cache（`./runbridge where cache`）的 `manual_flights/flight_<時間>/session.json`：場景、有沒有自動起飛、模型版本、owner 的 `wire.bin`／`timing.csv` 在哪、飛控記錄（和 `hitl-run` 同樣的核對：編號比飛行前最新的新、下載兩次相同、嚴格解析）。沒解鎖就沒有新的飛控記錄，會寫明沒留。
+- **一次只能一個**：第二個視窗會停掉第一個的模型、或在它下載飛控記錄時重開 FC（2026-10-20 實際發生：關掉的視窗還在收尾，又開了一個，第一趟的飛控記錄因此沒下載到）。現在用一把鎖（`flock`，程序結束就自動放開）：前一個還在收尾（約 1 分鐘）就等它，還在飛就說明後結束。
 - **狀態列不能干擾時序**：在同一個程序裡走 owner 的本機 IPC 查狀態。2026-10-20 第一版每 2 s 開一個新的 `runbridge` 程序查，沒有即時權限時 4 ms 迴圈晚到 1 次（6.1 ms）；改成同程序、每 3 s 之後 0 次（最慢 2.1 ms）。
 
 **人飛 HITL 能看什麼、不能當什麼**

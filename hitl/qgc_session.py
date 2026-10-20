@@ -14,6 +14,7 @@ flight, downloaded twice and identical, strict parse) in <cache>/manual_flights/
 observation, not a test: nothing is judged PASS or FAIL.
 """
 import argparse
+import fcntl
 import hashlib
 import json
 import os
@@ -109,6 +110,27 @@ def cache():
     return Path(os.environ.get('SIM2HITL_CACHE') or Path.home() / '.cache' / 'px4-llm-sim2hitl')
 
 
+def one_session():
+    """Only one session at a time: a second window would stop the first one's model or reboot the FC in the
+    middle of its log download. flock is released when the process ends, however it ends (no stale lock). A
+    closed window still finishes its cleanup for about a minute, so a new session waits for it."""
+    path = cache() / 'manual' / 'qgc_session.lock'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(path, os.O_CREAT | os.O_RDWR)
+    end = time.monotonic() + 120
+    while True:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            os.ftruncate(fd, 0)
+            os.write(fd, str(os.getpid()).encode())
+            return fd  # held for the life of this process
+        except BlockingIOError:
+            if time.monotonic() > end:
+                raise SystemExit('另一個 SkySurfer HITL 視窗還在跑：先在那個視窗按 Enter 結束，再開新的')
+            print('\r前一個視窗還在跑或還在收尾（恢復、存紀錄約 1 分鐘），等它結束…', end='', flush=True)
+            time.sleep(2)
+
+
 def newest_log():
     """The id of the FC's newest log, or None when the list cannot be read."""
     code, value = runbridge('fetch-log', '--list', timeout=120)
@@ -184,6 +206,7 @@ def main():
     signal.signal(signal.SIGHUP, hangup)
     signal.signal(signal.SIGTERM, hangup)
 
+    lock = one_session()  # noqa: F841 - kept open until the process ends
     print('== 1/4 owner 與 FC')
     s = status() or start_owner()
     if s.get('model') == 'running':

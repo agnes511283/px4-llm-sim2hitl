@@ -101,6 +101,17 @@ class CheckParamsTests(unittest.TestCase):
         self.assertEqual(self.readback(autopilot_version=None)['verdict'], 'INCOMPLETE')
         self.assertEqual(self.readback(param_list={'sha256': 'x'})['verdict'], 'INCOMPLETE')
 
+    def test_board_version_is_the_usb_product_id(self):
+        # Cube Orange+: the image's board id is 1063 but PX4 reports its USB product id 0x1058 as board_version.
+        # A recipe that records board_version is compared with it; the board id is not what the FC reports.
+        self.info['embedded'].update(board_id=1063, board_version=0x1058)
+        (self.dir / 'firmware/firmware.json').write_text(json.dumps(self.info))
+        version = {'git_hash_prefix': GIT[:10]}
+        self.assertEqual(self.readback(autopilot_version=dict(version, board_version=4184))['verdict'], 'PASS')
+        r = self.readback(autopilot_version=dict(version, board_version=1063))
+        self.assertEqual((r['verdict'], r['identity'][0]['problem'], r['identity'][0]['expected']),
+                         ('FAIL', 'board', 4184))
+
     def test_nuttx_identity(self):
         # A recipe that records its NuttX commit: the FC's os_custom_version must match (a committed NuttX patch
         # changes it); an old readback without it is incomplete. Without the record nothing is compared.

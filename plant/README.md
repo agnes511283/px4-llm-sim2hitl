@@ -21,6 +21,7 @@
 | [core/reuse_policy_gate.m](core/reuse_policy_gate.m) | reuse-library 閘門：`.satk/reuse-libraries.json` 必須存在、`confirmed_none: true`、沒有列任何 library（builder 不支援自訂 library） |
 | [core/plant_core.c](core/plant_core.c) | 生成碼外面的可重入包裝：每架自己的狀態、輸入、初值；狀態複製；讀連續狀態與 f(x, u)（配平用） |
 | [core/toolchain.py](core/toolchain.py) | 編譯器、MATLAB、cache 位置（都可用環境變數指定） |
+| [core/rtw/](core/rtw/) | 沒有 MATLAB 的機器編生成碼用的兩個最小標頭檔（`rtw_solver.h`、`rtw_continuous.h`），見「沒有 MATLAB 的機器」 |
 | [core/compile_core.py](core/compile_core.py) | 編成 `libskysurfer_core.so`（核心）與 `libskysurfer_plant.so`（核心＋Truth＋sensors）；手寫 C 以 `-Wall -Wextra -Werror` 檢查 |
 | [core/validate_core.py](core/validate_core.py) | 核心驗收 |
 | [core/validate_plant.py](core/validate_plant.py) | Truth 與 sensors 驗收 |
@@ -34,6 +35,12 @@
 - **連續狀態與 f(x, u)**（API 1.1）：37 個連續狀態（位置、機體速度、四元數、角速度、5 個致動器、16 個 Dryden 亂流濾波器、3 個陣風距離；順序與致動器對應見 `plant_core.h`）。`plant_core_get_state()` 讀出；`plant_core_eval()` 寫入狀態 x、套用命令、跑一個正常步，回傳該步 ode4 第一階的 f(t_k, x) 與 x 的 snapshot，和模擬是同一段程式。注意：(1) 新初始化的核心第一步會從初值輸入重新載入積分器，所以先步進一次再寫狀態；(2) 舵面在伺服之後有 rate limiter（記住前一次輸出），單次求值舵面最多動 2°，求平衡時同一狀態要寫入並步進數十次讓 limiter 到位（`sitl/trim.py`）。eval 之後核心已前進一步，所以在副本上做。
 - **呼叫規則**：每架配置 `plant_core_size()` 位元組；`plant_core_step()` 先回報 t_k，再積分一步。同一程序可交錯跑多架，但一次一個呼叫，不在多執行緒同時呼叫。複製狀態一律用 `plant_core_copy()`（內部指標要重新指向新位置）。
 - **單位**：照來源，SI；欄位名稱有 `_deg` 的是度。
+
+## 沒有 MATLAB 的機器
+
+- 第二段（`./runbridge update-model`）不需要 MATLAB 連線，但生成碼 `#include` 兩個 MATLAB 安裝目錄裡的 run-time 標頭檔：`rtw_solver.h`、`rtw_continuous.h`（`simulink/include`）。找不到 MATLAB 時，`toolchain.rtw_include_dirs()` 改用 [core/rtw/](core/rtw/) 的最小版本：照生成碼與 `core/plant_core.c` 實際用到的寫（求解器物件只指向模型自己的時間、步長、狀態與導數，另有兩個在初始化時設成 false 的旗標），不是 MathWorks 的檔案。用了哪一份記在 release 的 `core_compile.json` 與 `build.json`（`rtw_headers`）；它們在 `plant/core/` 裡，所以也在 build-id 的指紋內。
+- 對不對由四道檢查決定。2026-10-20 在一台沒有 MATLAB 的 Ubuntu 24.04 上：四道檢查 PASS（`skysurfer-3cbb58ff…`），60 秒節拍 0 次晚到；對錄製參考資料最大誤差 6.2e-15（靜止時沒有定義的攻角除外，同之前的紀錄），和用 MATLAB 標頭檔編的版本數值相同；SITL 參考情境與範本和紀錄相同。
+- 沒有 MATLAB 還是不能做的：第一段產碼（`update-model --generate`，也就是任何模型修改）、`analysis/matlab/` 的畫圖、`aircraft/avl/build_avl_mat.m`。只連 FC、不跑模型的機器用 `update-model --fc-only`（[hitl README](../hitl/README.md)）。
 
 ## 手動建置與驗收
 

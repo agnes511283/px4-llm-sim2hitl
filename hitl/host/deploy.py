@@ -113,11 +113,17 @@ def ready_to_write(status):
 
 
 def recipe_matches(project, version):
-    """Deploy recipes whose recorded firmware identity matches what the FC reports."""
+    """Deploy recipes whose recorded firmware identity matches what the FC reports. The board counts too: the
+    native firmware of two boards has the same PX4 and NuttX hashes (board_version: deploy/check_params.py)."""
+    sys.path.insert(0, str(Path(project) / 'deploy'))
+    from check_params import expected_board_version
+
     names = []
     for path in sorted((Path(project) / 'deploy').glob('*/firmware/firmware.json')):
         embedded = json.loads(path.read_text()).get('embedded') or {}
         if not embedded or version.get('git_hash_prefix') != (embedded.get('git_hash') or '')[:10]:
+            continue
+        if version.get('board_version') != expected_board_version(embedded):
             continue
         if embedded.get('nuttx_git_hash') and version.get('os_hash_prefix') != embedded['nuttx_git_hash'][:16]:
             continue
@@ -167,9 +173,10 @@ def fc_state(owner, project, release, out):
 
 def bootloader_present():
     from serial.tools import list_ports
+    from .serial_helpers import BOOTLOADER_LABEL
 
     return [p.device for p in list_ports.comports()
-            if ' BL ' in f' {p.description or ""} {p.product or ""} ' or 'BL FMU' in (p.description or '')]
+            if BOOTLOADER_LABEL.search(f'{p.description or ""} {p.product or ""}')]
 
 
 def flash_firmware(owner, project, release, out, report):

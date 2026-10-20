@@ -90,11 +90,11 @@ def external_headers(cmd,gen,matlab):
  for token in deps:
   if token.endswith(':') or not token.endswith('.h'):continue
   p=Path(token.replace('\0',' ')).resolve()
-  if matlab.resolve() in p.parents:headers['MATLAB/'+str(p.relative_to(matlab.resolve()))]=digest(p)
+  if matlab and matlab.resolve() in p.parents:headers['MATLAB/'+str(p.relative_to(matlab.resolve()))]=digest(p)
   elif gen.resolve() not in p.parents and ROOT.resolve() not in p.parents:headers[str(p)]=digest(p)
  return dict(sorted(headers.items()))
 def compile_library(cache,fp):
- gen=cache/CODEGEN;out=cache/'native';matlab=toolchain.matlab_root()
+ gen=cache/CODEGEN;out=cache/'native';rtw,matlab=toolchain.rtw_include_dirs()
  make=(gen/'SkySurfer_Core.mk').read_text();defines=[]
  for key in ['DEFINES_BUILD_ARGS','DEFINES_OPTS','DEFINES_STANDARD']:
   match=re.search(r'^'+key+r'\s*=\s*(.*)$',make,re.M);defines+=match.group(1).split() if match else []
@@ -103,9 +103,10 @@ def compile_library(cache,fp):
  sources+=[PLANT/'core/plant_core.c',PLANT/'truth/plant_truth.c',PLANT/'sensors/plant_sensors.c',PLANT/'sensors/plant_wmm.c',PLANT/'sensors/plant_wmm_coeffs.c',RUNTIME/'aircraft/skysurfer/adapter.c']
  generated={str(p.relative_to(gen)):digest(p) for p in gen.glob('*') if p.suffix in ['.c','.h']}
  includes=[]
- for inc in [RUNTIME/'interface',PLANT/'include',PLANT/'sensors',gen,matlab/'extern/include',matlab/'simulink/include',matlab/'rtw/c/src',matlab/'rtw/c/ert']:includes+=['-I',str(inc)]
+ for inc in [RUNTIME/'interface',PLANT/'include',PLANT/'sensors',gen]+rtw:includes+=['-I',str(inc)]
  base=toolchain.cc()+FLAGS+includes+defines+toolchain.model_defines(cache)+['-DHIL_SOURCE_HASH="'+fp['model/FW_SkySurfer_HIL.slx']+'"','-DHIL_PLATFORM="'+platform_id()+'"']
- toolchain_id={'makefile_sha256':digest(gen/'SkySurfer_Core.mk'),'defines':defines,'model_defines':toolchain.model_defines(cache),'external_headers':external_headers([x for x in base if x not in toolchain.shared_flags()]+[str(p) for p in sources],gen,matlab)}
+ # Without MATLAB the two run-time headers are the project's own (plant/core/rtw, already in the fingerprint).
+ toolchain_id={'makefile_sha256':digest(gen/'SkySurfer_Core.mk'),'defines':defines,'model_defines':toolchain.model_defines(cache),'external_headers':external_headers([x for x in base if x not in toolchain.shared_flags()]+[str(p) for p in sources],gen,matlab),'rtw_headers':'MATLAB' if matlab else 'plant/core/rtw'}
  identity={'fingerprint':fp,'generated':generated,'toolchain':toolchain_id}
  build_id='skysurfer-'+hashlib.sha256(json.dumps(identity,sort_keys=True).encode()).hexdigest()[:24]
  cmd=base+['-DHIL_BUILD_ID="'+build_id+'"']+[str(p) for p in sources]+['-o',str(out/toolchain.lib('skysurfer'))];subprocess.run(cmd,check=True)

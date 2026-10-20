@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -33,6 +34,10 @@ MANUAL_CONTROL_MSG_ID = 69
 CRC_EXTRA = {msgid: bytes((message.crc_extra,))
              for msgid, message in mavutil.mavlink.mavlink_map.items()}
 AUTOPILOT_USB_VIDS = frozenset((0x26AC, 0x2DAE, 0x3162, 0x3185))
+# USB names of a board waiting in its bootloader: PX4's ("PX4 BL FMU v6C.x") and the ArduPilot bootloader that
+# CubePilot boards ship with ("CubeOrange+-BL": the board name plus -BL, with the same USB VID/PID as the PX4
+# firmware). No MAVLink byte may reach a bootloader (its upload protocol has an erase command).
+BOOTLOADER_LABEL = re.compile(r'bootloader|\bpx4[ _-]*bl\b|-bl\b', re.IGNORECASE)
 
 
 def is_likely_pixhawk(port: object) -> bool:

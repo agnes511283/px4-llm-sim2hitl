@@ -86,19 +86,23 @@ def check(path):
 
     # Altitude from the module's own target before the step (TECS altitude setpoint): TECS may hold a small
     # offset from it, which is not the module's response.
+    # Without tecs_status in the log (e.g. an SD card whose etc/logging/logger_topics.txt leaves it out) the base is
+    # the measured altitude instead: the report says which, since the two do not give comparable numbers.
     tecs = log.topics.get(('tecs_status', 0))
     altitude_base = before(altitude, ALTITUDE_AT)
+    base_source = 'measured altitude (no tecs_status in the log)'
     if tecs is not None:
         ts = (tecs['timestamp'].astype(np.int64) - entered) * 1e-6
         window = (ts >= ALTITUDE_AT - 1.0) & (ts < ALTITUDE_AT)
         if window.any():
             altitude_base = float(np.mean(tecs['altitude_sp'][window]))
+            base_source = 'tecs_status altitude_sp'
     report = {'log': str(path), 'offboard_seconds': duration,
               'course': step_metrics(t, course - before(course, COURSE_AT), COURSE_AT, ALTITUDE_AT, COURSE_STEP,
                                      pos['v_xy_valid'].astype(bool)),
               'altitude': step_metrics(t, altitude - altitude_base, ALTITUDE_AT, duration, ALTITUDE_STEP,
                                        pos['z_valid'].astype(bool)),
-              'altitude_base_m': altitude_base}
+              'altitude_base_m': altitude_base, 'altitude_base_source': base_source}
     att = log.topics[('vehicle_attitude', 0)]
     ta = (att['timestamp'].astype(np.int64) - entered) * 1e-6
     q = att['q']

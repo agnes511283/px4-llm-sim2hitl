@@ -43,7 +43,7 @@
 addpath('plant/core'); cache = build_core();
 ```
 
-再 `./runbridge update-model --generate --cache <cache>`。要單獨重跑某一項檢查時，用 `./runbridge update-model` 印出的建置 cache（`~/.cache/px4-llm-sim2hitl/build_<時間>/`）；`PY` 是 venv 的 python（AGENTS 第 5 節）：
+再 `./runbridge update-model --generate --cache <cache>`。要單獨重跑某一項檢查時，用 `./runbridge update-model` 印出的建置 cache（cache 下的 `build_<時間>/`，cache 見 `./runbridge where cache`）；`PY` 是 venv 的 python（AGENTS 第 5 節）：
 
 ```bash
 "$PY" -B plant/core/compile_core.py --cache <cache>

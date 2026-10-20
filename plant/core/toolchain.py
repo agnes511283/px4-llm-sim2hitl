@@ -31,6 +31,18 @@ def matlab_root():
     raise RuntimeError('MATLAB not found: put matlab on PATH or set SIM2HITL_MATLAB_ROOT')
 
 
+def rtw_include_dirs():
+    """Where the generated core finds the two MATLAB run-time headers it includes (rtw_solver.h,
+    rtw_continuous.h): the MATLAB installation, or on a machine without MATLAB the project's own minimal
+    versions in plant/core/rtw (written from what the generated code uses; the plant gates decide whether the
+    build is right). Returns (folders, MATLAB root or None)."""
+    try:
+        root = matlab_root()
+    except RuntimeError:
+        return [Path(__file__).resolve().parent / 'rtw'], None
+    return [root / 'extern/include', root / 'simulink/include', root / 'rtw/c/src', root / 'rtw/c/ert'], root
+
+
 def cc():
     """The C compiler as a command list."""
     return (os.environ.get('CC') or 'cc').split()

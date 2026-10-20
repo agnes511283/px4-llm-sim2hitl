@@ -42,9 +42,9 @@ def main():
     generated = [gen / name for name in ('SkySurfer_Core.c', 'SkySurfer_Core_data.c', 'rtGetInf.c', 'rtGetNaN.c', 'rt_nonfinite.c')]
     sources = generated + [CORE / 'plant_core.c']
     library = out / toolchain.lib('skysurfer_core')
-    MATLAB = toolchain.matlab_root()
+    rtw, matlab = toolchain.rtw_include_dirs()
     cmd = toolchain.cc() + ['-std=c11', '-O2', '-fno-fast-math', '-ffp-contract=off'] + toolchain.shared_flags()
-    for inc in (PLANT / 'include', gen, MATLAB / 'extern/include', MATLAB / 'simulink/include', MATLAB / 'rtw/c/src', MATLAB / 'rtw/c/ert'):
+    for inc in [PLANT / 'include', gen] + rtw:
         cmd += ['-I', str(inc)]
     base = list(cmd) + ['-I', str(PLANT / 'sensors')] + defines + toolchain.model_defines(args.cache)
     cmd = base + [str(p) for p in sources] + ['-o', str(library)]
@@ -70,6 +70,7 @@ def main():
         'sources': {str(p): sha256(p) for p in plant_sources},
         'headers': {str(p): sha256(p) for p in headers},
         'compiler': toolchain.compiler_version(),
+        'rtw_headers': 'MATLAB' if matlab else 'plant/core/rtw (no MATLAB on this machine)',
         'command': cmd,
         'plant_command': plant_cmd,
     }

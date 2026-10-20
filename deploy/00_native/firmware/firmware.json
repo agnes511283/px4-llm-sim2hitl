@@ -54,6 +54,7 @@
   },
   "embedded": {
     "board_id": 56,
+    "board_version": 56,
     "git_identity": "v1.17.0",
     "git_hash": "d6f12ad1c4f70ad3230afd7d86e971421e02fef4",
     "nuttx_git_hash": "fb2fadf6f599c1406f052db013efd00a2518e72c",

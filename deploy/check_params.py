@@ -82,6 +82,14 @@ def sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def expected_board_version(embedded):
+    """What the FC of this firmware reports as AUTOPILOT_VERSION.board_version. PX4's px4_board_version() is the
+    USB product id (CONFIG_CDCACM_PRODUCTID), not the board id in the image: equal on the Pixhawk 6C (56), not on
+    the Cube Orange+ (0x1058 = 4184, board id 1063). px4/build_firmware.py records it; older records have only
+    board_id."""
+    return embedded.get('board_version', embedded['board_id'])
+
+
 def entry_problem(entry, kind):
     """Why a readback entry is not a valid value of its type (None when valid); 'bits' are the wire bytes."""
     value, bits = entry.get('value'), entry.get('bits')
@@ -128,9 +136,10 @@ def check(release_dir, readback_path):
     if not version:
         report['identity'].append({'problem': 'missing AUTOPILOT_VERSION', 'kind': 'incomplete'})
     else:
-        if version.get('board_version') != embedded['board_id']:
+        board = expected_board_version(embedded)
+        if version.get('board_version') != board:
             report['identity'].append({'problem': 'board', 'fc': version.get('board_version'),
-                                       'expected': embedded['board_id'], 'kind': 'fail'})
+                                       'expected': board, 'kind': 'fail'})
         if version.get('git_hash_prefix') != embedded['git_hash'][:10]:
             report['identity'].append({'problem': 'git hash', 'fc': version.get('git_hash_prefix'),
                                        'expected': embedded['git_hash'][:10], 'kind': 'fail'})

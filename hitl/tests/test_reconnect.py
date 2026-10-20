@@ -6,6 +6,7 @@ from unittest.mock import Mock,patch
 RUNTIME=Path(__file__).resolve().parents[1];sys.path.insert(0,str(RUNTIME))
 from platform_support import needs_model
 from host.transport import SerialTransport,FakeFC
+from host.serial_helpers import BOOTLOADER_LABEL
 from host.core import Core
 from pymavlink.dialects.v20 import common as mav
 
@@ -27,6 +28,13 @@ class TransportTests(unittest.TestCase):
   with patch('host.transport.serial.Serial') as opener:
    for _ in range(12):self.assertIs(self.transport.open(),False)
    opener.assert_not_called();self.assertEqual(self.transport.link_diagnostics()['state'],'bootloader')
+ def test_ardupilot_bootloader_of_a_cube_never_opened(self):
+  # CubePilot boards ship with the ArduPilot bootloader: "CubeOrange+-BL", same USB VID/PID as the PX4 firmware.
+  self.boot.label='CubeOrange+-BL'
+  with patch('host.transport.serial.Serial') as opener:
+   for _ in range(3):self.assertIs(self.transport.open(),False)
+   opener.assert_not_called();self.assertEqual(self.transport.link_diagnostics()['state'],'bootloader')
+  for label in ['CubeOrange+','PX4 FMU v6C.x','Pixhawk-BLUE']:self.assertIsNone(BOOTLOADER_LABEL.search(label))
  def test_application_opens_after_bootloader_without_pinning_boot_identity(self):
   with patch('host.transport.serial.Serial') as opener:
    self.assertFalse(self.transport.open());self.assertIsNone(self.transport.preferred)

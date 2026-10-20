@@ -150,6 +150,12 @@ def main():
     px4 = json.loads(image.read_text())
     listing = json.loads(lzma.decompress(params.read_bytes()))['parameters']
     nuttx = tree / 'platforms' / 'nuttx' / 'NuttX' / 'nuttx'
+    # What the FC reports as AUTOPILOT_VERSION.board_version: PX4's px4_board_version() returns the USB product id
+    # (CONFIG_CDCACM_PRODUCTID), not the board id of the image. Pixhawk 6C: both 56; Cube Orange+: 0x1058 vs 1063.
+    config = (outdir / 'NuttX' / 'nuttx' / '.config').read_text()
+    product = next((line.split('=', 1)[1] for line in config.splitlines() if line.startswith('CONFIG_CDCACM_PRODUCTID=')), None)
+    if product is None:
+        raise SystemExit(f'CONFIG_CDCACM_PRODUCTID not in {outdir}/NuttX/nuttx/.config: the board version the FC reports is unknown')
     info['outputs'] = {
         'firmware': {'file': image.name, 'sha256': sha256(image), 'size': image.stat().st_size},
         'image_bin': {'file': 'not kept (inside the .px4 image field)',
@@ -159,7 +165,8 @@ def main():
                        'origin': 'PX4 build output, unmodified'},
     }
     info['embedded'] = {
-        'board_id': px4['board_id'], 'git_identity': px4.get('git_identity'), 'git_hash': git(tree, 'rev-parse', 'HEAD'),
+        'board_id': px4['board_id'], 'board_version': int(product, 0),
+        'git_identity': px4.get('git_identity'), 'git_hash': git(tree, 'rev-parse', 'HEAD'),
         'nuttx_git_hash': git(nuttx, 'rev-parse', 'HEAD'), 'image_size': px4['image_size'],
         'image_maxsize': px4['image_maxsize'], 'flash_used_percent': round(100 * px4['image_size'] / px4['image_maxsize'], 2),
     }

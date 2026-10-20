@@ -1,4 +1,4 @@
-import importlib.util, sys, time, struct, json, lzma, math, re, hashlib
+import importlib.util, sys, time, struct, json, lzma, math, hashlib
 from pathlib import Path
 import serial
 from pymavlink.dialects.v20 import common as mav
@@ -37,7 +37,7 @@ class SerialTransport:
             (d for d in found if d.path == (self.path or self.requested)), None
         )
         label = observed.label if observed else None
-        boot = bool(label and re.search(r'bootloader|\bpx4[ _-]*bl\b', label, re.IGNORECASE))
+        boot = bool(label and serial_helpers.BOOTLOADER_LABEL.search(label))
         unknown = (
             selected is not None
             and selected.identity.startswith('path:')

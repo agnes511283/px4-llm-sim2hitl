@@ -10,7 +10,7 @@
 
 ## 驗收（這個例子自己的標準）
 
-`analysis/template_check.py` 讀飛控記錄（SITL、HITL 用同一支）：航跡角變化和 30° 差 ≤ 3°、高度變化和 10 m 差 ≤ 1.5 m（看階躍後的尾段平均）、都要安定下來、最大傾角 ≤ 25°。「安定」是進入並維持在階躍量的 5 % 內，也就是航跡角 ±1.5°、高度 ±0.5 m，和前面的誤差門檻分開判斷。觀察時間兩邊不同：SITL 情境跑 70 s、HITL 的動作是 60 s，所以高度階躍後分別看 35 s 與 25 s，報告要寫明。SITL 的狀態是真值，HITL 是 FC 上 EKF 的估測，所以兩邊比的是表現，不要求逐點相同。
+`analysis/template_check.py` 讀飛控記錄（SITL、HITL 用同一支）：航跡角變化和 30° 差 ≤ 3°、高度變化和 10 m 差 ≤ 1.5 m（看階躍後的尾段平均）、都要安定下來、最大傾角 ≤ 25°。「安定」是進入並維持在階躍量的 5 % 內，也就是航跡角 ±1.5°、高度 ±0.5 m，和前面的誤差門檻分開判斷。觀察時間兩邊不同：SITL 情境跑 70 s、HITL 的動作是 60 s，所以高度階躍後分別看 35 s 與 25 s，報告要寫明。SITL 的狀態是真值，HITL 是 FC 上 EKF 的估測，所以兩邊比的是表現，不要求逐點相同。資料不能判的時候（有壞值、缺一段、樣本太少、時間倒退、FC 標示估測無效）一律判不通過並寫出原因：壞資料不會得到 PASS。
 
 | | 結果 |
 |---|---|
@@ -23,6 +23,6 @@
 
 1. 複製 `modules/src/guidance_template/` 成新名字，改掉檔名、類別名稱、`CMakeLists.txt` 的 `MODULE`／`MAIN`；在 `sitl/px4_external/src/` 照 `guidance_template/` 加一個同樣的包裝，並列進那裡的 `CMakeLists.txt`。
 2. 改 `guidance()`（或依第 1 段討論的接法，改成要換的那一層）。
-3. SITL：照 `sitl/scenarios/template_offboard.json` 寫自己的情境，`sitl/build_sitl.py` → `sitl/run_sitl.py --scenario ...` → 自己的判定程式（照 `analysis/template_check.py`）。
+3. SITL：照 `sitl/scenarios/template_offboard.json` 寫自己的情境，`sitl/build_sitl.py` → `sitl/run_sitl.py --scenario ...` → 自己的判定程式（照 `analysis/template_check.py`）。判定程式要先確認資料能判，再算指標：照它用 `analysis/response.py` 的 `window_problems` 檢查每個窗口，資料不能判就判不通過、寫出原因。
 4. 部署配方：照 `deploy/02_template/` 複製一份，`firmware/firmware.json` 的 `recipe.modules` 換成新模組，`sd/etc/extras.txt` 寫啟動指令，`hitl.json` 指定起飛後的動作（`hitl/commands/`）與判定程式。
 5. `./runbridge deploy-test --release deploy/<新配方>` 先看計畫，再 `--flash`。

@@ -5,6 +5,8 @@
   ./runbridge deploy-test --release deploy/<name> --reuse    the FC already runs this firmware: deploy, test
   ./runbridge flash --release deploy/<name>                  only the flash step, with its checks
   --no-hitl stops after the boot file.
+The report's "scope" says what its PASS covers: deployment and flight (hitl-run), deployment only (--no-hitl: not
+flown), flash only (no parameters, boot file or flight), or the plan (nothing written).
 
 Without --flash or --reuse nothing is changed: the plan says what the FC runs now and what would happen, so the
 person decides (refresh or reuse). A failed step stops the later steps; restoring and the report still happen
@@ -238,8 +240,12 @@ def run_deploy(runtime, args):
     mode = 'flash' if args.flash else 'reuse' if args.reuse else 'plan'
     if args.action == 'flash':
         mode = 'flash-only'
-    report = {'schema_version': 1, 'release': str(release), 'mode': mode, 'created_utc': utc(), 'steps': [],
-              'verdict': None}
+    # What a PASS of this run covers: a deployment PASS is not a flight PASS.
+    scope = ('plan: nothing written' if mode == 'plan' else 'flash only: no parameters, boot file or flight'
+             if mode == 'flash-only' else 'deployment only (--no-hitl): not flown' if args.no_hitl
+             else 'deployment and flight (hitl-run)')
+    report = {'schema_version': 1, 'release': str(release), 'mode': mode, 'scope': scope, 'created_utc': utc(),
+              'steps': [], 'verdict': None}
     path = run / 'report.json'
 
     def step(name, verdict, **details):

@@ -2,13 +2,13 @@
 
 [繁體中文](README.md) | **English**
 
-> **This is a translation.** The authoritative README is [README.md](README.md) (Traditional Chinese); where the two differ, follow README.md. Translated from README.md with SHA-256 `afbced2fb58efc6f67e4e8685c710bb897ef0b0c45c521eb938f1223d0bfd11d`: if `sha256sum README.md` prints something else, this translation is behind. The AI rules ([AGENTS.md](AGENTS.md)) and the folder READMEs are in Traditional Chinese only; an AI agent reads them without trouble.
+> **This is a translation.** The authoritative README is [README.md](README.md) (Traditional Chinese); where the two differ, follow README.md. Translated from README.md with SHA-256 `2a07b67ac7a9968c08773ce9822fae85c9a48e8ef366d27d8a36a8cd25716eff`: if `sha256sum README.md` prints something else, this translation is behind. The AI rules ([AGENTS.md](AGENTS.md)) and the folder READMEs are in Traditional Chinese only; an AI agent reads them without trouble.
 
 Flight-control development kit: MATLAB/Simulink aircraft model → C → SITL (minimal PX4) → custom PX4 firmware → HITL on a real flight controller (Pixhawk). When you develop with an AI, its working rules are in [AGENTS.md](AGENTS.md).
 
 ![Overview: requirements & spec → SITL → HITL on the real flight controller; the human picks the next step, the AI does the work](images/overview.svg)
 
-**The example aircraft is SkySurfer** (fixed-wing): `model/`, `hitl/aircraft/skysurfer/`, the model release names `skysurfer-…` and `SkySurfer_Core` belong to the aircraft. The kit is called `px4-llm-sim2hitl`: folders use the full name (`~/.cache/px4-llm-sim2hitl`, `~/.local/share/px4-llm-sim2hitl/venv`, `~/.config/px4-llm-sim2hitl`), environment variables the short name `SIM2HITL_*` (environment variables cannot contain a hyphen). To use your own aircraft, see stage 1.1.
+**The example aircraft is SkySurfer** (fixed-wing): `model/`, `hitl/aircraft/skysurfer/`, the model release names `skysurfer-…` and `SkySurfer_Core` belong to the aircraft. The kit is called `px4-llm-sim2hitl`: folders use the full name (on Linux `~/.cache/px4-llm-sim2hitl`, `~/.local/share/px4-llm-sim2hitl/venv`, `~/.config/px4-llm-sim2hitl`; `./runbridge where` shows this machine's actual locations), environment variables the short name `SIM2HITL_*` (environment variables cannot contain a hyphen). To use your own aircraft, see stage 1.1.
 
 > Status: the move from the old macOS project to Ubuntu is done and the whole pipeline runs (see the last section).
 
@@ -58,7 +58,7 @@ The whole pipeline is verified on **Ubuntu 24.04 x86-64** only (how far each pla
 
 | Item | Why | Ubuntu 24.04 way (example) | How to check |
 |---|---|---|---|
-| Python environment | runtime, tests, SITL, analysis | install [uv](https://docs.astral.sh/uv/), then `./runbridge --setup` (venv in `~/.local/share/px4-llm-sim2hitl/venv`) | `./runbridge --check-python` |
+| Python environment | runtime, tests, SITL, analysis | install [uv](https://docs.astral.sh/uv/), then `./runbridge --setup` (venv location: `./runbridge where venv`) | `./runbridge --check-python` |
 | MATLAB | only to change the aircraft model (code generation in stage 1.1): R2026b + Simulink + Simulink Coder + Embedded Coder + Aerospace Blockset. No Java needed | MathWorks installer; connecting the MATLAB MCP server is recommended so the AI can drive MATLAB | `matlab` on PATH, or set `SIM2HITL_MATLAB_ROOT` |
 | C compiler | plant and HIL libraries | the system gcc (`CC` selects another) | `cc --version` |
 | PX4 source and toolchain | SITL and firmware builds; version locked in [px4/px4_lock.json](px4/px4_lock.json) | download the locked tag outside the project, `python3 px4/check_px4_tree.py --path <tree> --remember`; toolchain with PX4's official script `bash <tree>/Tools/setup/ubuntu.sh --no-sim-tools` (no Gazebo; uses sudo). Official reference: PX4 docs "Ubuntu Development Environment" | `python3 px4/check_px4_tree.py` gives PASS |
@@ -72,6 +72,7 @@ The whole pipeline is verified on **Ubuntu 24.04 x86-64** only (how far each pla
 
 ```sh
 ./runbridge --help                    # all actions
+./runbridge where                     # this machine's actual locations (venv python, cache, PX4 tree, model release); where python prints just one
 ./runbridge update-model --generate   # stage one: MATLAB code generation -> model/generated (needs MATLAB)
 ./runbridge update-model              # stage two: build, four gates, publish the model release (no MATLAB connection needed)
 ./runbridge bridge                    # start the owner (holds the model and the serial port); QGC connects over UDP

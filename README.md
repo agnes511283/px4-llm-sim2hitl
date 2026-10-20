@@ -8,7 +8,7 @@
 
 ![流程總覽：需求與規格 → SITL 電腦模擬 → HITL 實體飛控；人選下一步，AI 做技術](images/overview.svg)
 
-**範例飛機是 SkySurfer**（固定翼）：`model/`、`hitl/aircraft/skysurfer/`、模型版本名 `skysurfer-…` 與 `SkySurfer_Core` 這些是飛機本身。套件叫 `px4-llm-sim2hitl`：資料夾用全名（`~/.cache/px4-llm-sim2hitl`、`~/.local/share/px4-llm-sim2hitl/venv`、`~/.config/px4-llm-sim2hitl`），環境變數用短名 `SIM2HITL_*`（環境變數不能有減號）。換成自己的飛機見第 1.1 段。
+**範例飛機是 SkySurfer**（固定翼）：`model/`、`hitl/aircraft/skysurfer/`、模型版本名 `skysurfer-…` 與 `SkySurfer_Core` 這些是飛機本身。套件叫 `px4-llm-sim2hitl`：資料夾用全名（Linux 是 `~/.cache/px4-llm-sim2hitl`、`~/.local/share/px4-llm-sim2hitl/venv`、`~/.config/px4-llm-sim2hitl`；這台機器實際的位置用 `./runbridge where` 查），環境變數用短名 `SIM2HITL_*`（環境變數不能有減號）。換成自己的飛機見第 1.1 段。
 
 > 狀態：從舊的 macOS 專案搬到 Ubuntu 已完成，整套流程跑通（見最後一節）。
 
@@ -58,7 +58,7 @@
 
 | 項目 | 為什麼要 | Ubuntu 24.04 的做法（例子） | 怎麼確認 |
 |---|---|---|---|
-| Python 環境 | runtime、測試、SITL、分析 | 安裝 [uv](https://docs.astral.sh/uv/)，再 `./runbridge --setup`（venv 在 `~/.local/share/px4-llm-sim2hitl/venv`） | `./runbridge --check-python` |
+| Python 環境 | runtime、測試、SITL、分析 | 安裝 [uv](https://docs.astral.sh/uv/)，再 `./runbridge --setup`（venv 的位置：`./runbridge where venv`） | `./runbridge --check-python` |
 | MATLAB | 只有改飛機模型（第 1.1 段產碼）才需要：R2026b＋Simulink＋Simulink Coder＋Embedded Coder＋Aerospace Blockset。不需要 Java | MathWorks 安裝程式；建議接上 MATLAB MCP，讓 AI 能直接操作 | `matlab` 在 PATH，或設 `SIM2HITL_MATLAB_ROOT` |
 | C 編譯器 | plant 與 HIL 函式庫 | 系統內建 gcc（`CC` 可指定別的） | `cc --version` |
 | PX4 原始碼與工具鏈 | SITL 與編韌體；版本鎖在 [px4/px4_lock.json](px4/px4_lock.json) | 下載鎖定的 tag 到專案外，`python3 px4/check_px4_tree.py --path <樹> --remember`；工具鏈用 PX4 官方腳本 `bash <樹>/Tools/setup/ubuntu.sh --no-sim-tools`（不裝 Gazebo；會用 sudo）。官方說明：PX4 文件 “Ubuntu Development Environment” | `python3 px4/check_px4_tree.py` 為 PASS |
@@ -72,6 +72,7 @@
 
 ```sh
 ./runbridge --help                    # 所有動作
+./runbridge where                     # 這台機器實際的位置（venv 的 python、cache、PX4 樹、模型 release）；where python 只印一項
 ./runbridge update-model --generate   # 第一段：MATLAB 產碼 → model/generated（要 MATLAB）
 ./runbridge update-model              # 第二段：編譯、四道檢查、發布模型 release（不需要 MATLAB 連線）
 ./runbridge bridge                    # 開 owner（持有模型與序列埠）；QGC 用 UDP 連

@@ -1,6 +1,6 @@
 # analysis：判定與指標
 
-SITL 與 HITL 共用的分析程式。Python 用專案的 venv（`PY=~/.local/share/px4-llm-sim2hitl/venv/bin/python`，`./runbridge --setup` 建的；這些程式要 numpy）。
+SITL 與 HITL 共用的分析程式。Python 用專案的 venv（`PY="$(./runbridge where python)"`，`./runbridge --setup` 建的；這些程式要 numpy）。
 
 | 檔案 | 用途 |
 |---|---|

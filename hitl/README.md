@@ -8,10 +8,10 @@
 
 | 項目 | 內容 |
 |---|---|
-| 入口 | 根目錄的 bash 腳本 `./runbridge`：`update-model` 交給 `hitl/update.py`，其他動作交給 `hitl/main.py` |
-| Python | `./runbridge --setup`（要 uv）依 `pyproject.toml`／`uv.lock` 建 venv，位置 `~/.local/share/px4-llm-sim2hitl/venv`；`SIM2HITL_VENV` 改位置，`SIM2HITL_PYTHON` 指定直譯器。套件：pyserial 3.5、pymavlink 2.4.49、numpy 2.0.2 |
+| 入口 | 根目錄的 bash 腳本 `./runbridge`：`update-model` 交給 `hitl/update.py`，`where`（這台機器實際的位置）交給 `hitl/where.py`，其他動作交給 `hitl/main.py` |
+| Python | `./runbridge --setup`（要 uv）依 `pyproject.toml`／`uv.lock` 建 venv，位置見 `./runbridge where venv`（Linux 是 `~/.local/share/px4-llm-sim2hitl/venv`）；`SIM2HITL_VENV` 改位置，`SIM2HITL_PYTHON` 指定直譯器。套件：pyserial 3.5、pymavlink 2.4.49、numpy 2.0.2 |
 | 檢查 | `./runbridge --check-python` 只檢查、不安裝；找不到 Python 時退出碼 4 |
-| 模型 release | `./runbridge update-model --generate`（要 MATLAB）→ `./runbridge update-model`（編譯、四道檢查、發布）。release 在 `hitl/releases/skysurfer/linux-x64/<build-id>/`，用哪一個由 `hitl/active/linux-x64.json` 指定；兩者都在本機建、不進 git。release 含模型與 worker（`libskysurfer.so`、`libhil_worker.so`、`libskysurfer_plant.so`），只依賴系統 C 函式庫，跑 runtime 不需要 MATLAB。`./runbridge update-model --rollback` 切回前一個 |
+| 模型 release | `./runbridge update-model --generate`（要 MATLAB）→ `./runbridge update-model`（編譯、四道檢查、發布）。release 在 `hitl/releases/skysurfer/<平台>/<build-id>/`（平台見 `./runbridge where platform`，例如 `linux-x64`、`macos-arm64`），用哪一個由 `hitl/active/<平台>.json` 指定；兩者都在本機建、不進 git。release 含模型與 worker（`libskysurfer`、`libhil_worker`、`libskysurfer_plant`；Linux 是 `.so`、macOS 是 `.dylib`），只依賴系統 C 函式庫，跑 runtime 不需要 MATLAB。`./runbridge update-model --rollback` 切回前一個 |
 | FC 序列埠 | `/dev/ttyACM*`（使用者要在 `dialout` 群組）；`--port` 預設 `auto`，依 USB 廠商碼與裝置名稱挑出 FC |
 | QGC 與自動飛手 | 只走本機 UDP：owner 從 127.0.0.1:14575 送到 QGC 的 14550；自動飛手是 14576 → 14560 |
 
@@ -33,7 +33,7 @@
 
 ## 狀態資料夾
 
-`~/.cache/px4-llm-sim2hitl/runtime/<hash>/`，`<hash>` 是 `hitl/` 資料夾絕對路徑的 SHA-256 前 12 碼（`host/ipc.py` 的 `state_path`）。所以換資料夾就是另一份狀態：換之前先在原處恢復並關 owner（AGENTS 第 3 節）。設了 `SIM2HITL_CACHE` 或 `XDG_CACHE_HOME` 時，`~/.cache/px4-llm-sim2hitl` 這段跟著改（`plant/core/toolchain.py`）。
+cache 下的 `runtime/<hash>/`（這台機器的位置：`./runbridge where runtime_state`），`<hash>` 是 `hitl/` 資料夾絕對路徑的 SHA-256 前 12 碼（`host/ipc.py` 的 `state_path`）。所以換資料夾就是另一份狀態：換之前先在原處恢復並關 owner（AGENTS 第 3 節）。cache 的位置依平台而定（`plant/core/toolchain.py`：Linux 是 `~/.cache/px4-llm-sim2hitl`，macOS 是 `~/Library/Caches/px4-llm-sim2hitl`），設了 `SIM2HITL_CACHE`（Linux 另有 `XDG_CACHE_HOME`）時跟著改。
 
 | 檔案 | 內容 |
 |---|---|
@@ -44,7 +44,7 @@
 | `logs-<時間>/` | 每次 owner 的紀錄：`wire.bin`、`timing.csv`（每一步）、`io_events.jsonl`、`clock_sync.json`、`final_status.json`、`pilot/`（自動飛手） |
 
 - IPC：127.0.0.1 的 TCP，請求與回覆各一行 JSON；請求上限 64 KiB、回覆 4 MiB。同時最多 16 個還沒結束的操作（再多回「Owner busy」），已結束的保留最近 32 個。`status` 的 `operations` 只有摘要；完整結果用 `operation` 請求帶 `request_id` 取，`host/ipc.py` 的 `request()` 在操作結束時會自動取。
-- `hitl-run` 的證據另存在 `~/.cache/px4-llm-sim2hitl/hitl_runs/`。
+- `hitl-run` 的證據另存在 cache（`./runbridge where cache`）的 `hitl_runs/`。
 
 ## 執行規則
 

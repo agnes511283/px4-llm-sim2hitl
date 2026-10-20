@@ -5,7 +5,7 @@
 下面的 Python 指令都用專案的 venv（`./runbridge --setup` 建的；配平與分析要 numpy）：
 
 ```sh
-PY=~/.local/share/px4-llm-sim2hitl/venv/bin/python
+PY="$(./runbridge where python)"   # 這台機器的其他位置也用 ./runbridge where 查
 ```
 
 ## 架構
@@ -50,11 +50,11 @@ PX4 模組（Stabilized）：sensors、pwm_out_sim、control_allocator、fw_rate
 
 ```sh
 "$PY" -B sitl/build_sitl.py                      # plant library = 目前發布的模型 release 裡的那份
-"$PY" -B sitl/build_sitl.py --plant-lib ~/.cache/px4-llm-sim2hitl/build_<時間>/native/libskysurfer_plant.so   # 例如還沒發布的試建 cache
+"$PY" -B sitl/build_sitl.py --plant-lib "$(./runbridge where cache)/build_<時間>/native/libskysurfer_plant.so"   # 例如還沒發布的試建 cache（macOS 是 .dylib）
 "$PY" -B sitl/build_sitl.py --replay             # ULog 重播用的 px4_sitl_replay
 ```
 
-- 先跑 `px4/check_px4_tree.py`（PASS 才編），再在 PX4 原始碼樹執行 `make px4_sitl_default EXTERNAL_MODULES_LOCATION=<專案>/sitl/px4_external BUILD_DIR_SUFFIX=_sim2hitl CMAKE_ARGS=-DPLANT_LIB=<plant library>`。增量編譯，log 在 `~/.cache/px4-llm-sim2hitl/sitl_build_<時間>.log`。
+- 先跑 `px4/check_px4_tree.py`（PASS 才編），再在 PX4 原始碼樹執行 `make px4_sitl_default EXTERNAL_MODULES_LOCATION=<專案>/sitl/px4_external BUILD_DIR_SUFFIX=_sim2hitl CMAKE_ARGS=-DPLANT_LIB=<plant library>`。增量編譯，log 在 cache（`./runbridge where cache`）的 `sitl_build_<時間>.log`。
 - 輸出在 `<PX4 原始碼樹>/build/px4_sitl_default_sim2hitl/`（git 忽略的 build 目錄，`check_px4_tree.py` 仍 PASS）。不改 PX4 原始碼，不覆蓋 `build/px4_sitl_default`。字尾 `_sim2hitl` 可用環境變數 `SIM2HITL_SITL_SUFFIX` 換：同一台機器有第二份 checkout 共用這棵 PX4 樹時要換（根目錄 README「同一台機器放兩份」）。
 - PX4 執行檔照編譯時寫進去的路徑載入 plant library：Linux 是 RUNPATH（預設是模型 release 的資料夾）；macOS 的 library 以 `@rpath/<檔名>` 命名（`plant/core/toolchain.py` 的 `install_name`），CMake 同樣給執行檔一條指到 release 資料夾的 rpath（少了 `@rpath`，macOS 會去載入編譯那份 library 的建置 cache）。編完 `build_sitl.py` 核對執行檔實際載入的檔案（JSON 的 `loads_plant_lib`；macOS 用 otool、Linux 用 ldd），不是指定的那一份就 FAIL。發布新的模型 release 或刪 cache 後重跑本指令，否則跑的還是舊的機體，而且不會報錯（`run_sitl.py` 跑之前也會核對，見下面）。
 - `--replay`：`make px4_sitl_replay`，輸出在 `<PX4 原始碼樹>/build/px4_sitl_replay/`。這是 PX4 自己的 board（預設 SITL＋uORB 發布規則 `ORB_USE_PUBLISHER_RULES`），不含 `plant_sim`、不需要 plant library；第一次約幾分鐘。
@@ -63,7 +63,7 @@ PX4 模組（Stabilized）：sensors、pwm_out_sim、control_allocator、fw_rate
 ## 執行（離線模擬，不碰硬體）
 
 ```sh
-"$PY" -B sitl/run_sitl.py --out ~/.cache/px4-llm-sim2hitl/sitl_$(date +%Y%m%d_%H%M%S) [--scenario sitl/scenarios/stabilized_steps.json] [--instances 1]
+"$PY" -B sitl/run_sitl.py --out "$(./runbridge where cache)/sitl_$(date +%Y%m%d_%H%M%S)" [--scenario sitl/scenarios/stabilized_steps.json] [--instances 1]
 ```
 
 - `--out` 用一個新的資料夾。每個 instance 一個子資料夾：`sitl_rcS`（產生的啟動腳本）、`sitl_params.bson`、`px4.log`、`trace.csv`（每步：時間、姿態、角速度、空速、高度、搖桿、五路 controls，最後是地速 `gs_m_s` 與實際作用的風 `wind_n/e/d_m_s`）、`summary.json`（步數、模擬秒數、實際秒數、真實時間倍數），預設另有 ULog（`log/<日期>/*.ulg`，`--no-ulog` 不記）。最後印一行 JSON（各 instance 與合計）。

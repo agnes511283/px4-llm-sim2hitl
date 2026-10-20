@@ -31,6 +31,12 @@ Data quality: the time axis must be finite and strictly increasing; each window 
 baseline + step) needs finite samples, no gap above --max-gap and coverage of the whole window;
 otherwise the step is valid = false with its problems listed, and the exit code is 2.
 
+Reference: a scenario's "reference" holds recorded metrics ("steps": one object per axis with the metric names
+above; "recorded": where they come from). The report adds reference_comparison, each recorded metric beside the
+measured one (first step of that axis) and their difference. No verdict, unless the reference also gives
+"tolerance" ({metric: allowed absolute difference}, agreed with the user, AGENTS section 1); then a metric
+outside it makes the exit code 3.
+
 HITL: --hitl-log <flight log dir> instead of --trace converts <log>/host/wire.bin with
 analysis/hitl_trace.py (step times measured from the sent sticks) and writes hitl_trace.csv and
 hitl_scenario.json next to --out (required), then analyses those:
@@ -162,6 +168,32 @@ def analyse(trace, scenario, params, max_gap=0.05):
     return results
 
 
+def compare_reference(results, reference):
+    """The scenario's recorded metrics beside the measured ones; a verdict only with an agreed tolerance."""
+    tolerance = reference.get('tolerance') or {}
+    rows = []
+    for recorded in reference.get('steps', []):
+        step = next((r for r in results if r['axis'] == recorded['axis']), {})
+        for metric, value in recorded.items():
+            if metric == 'axis':
+                continue
+            measured = step.get(metric)
+            row = {'axis': recorded['axis'], 'metric': metric, 'reference': value, 'measured': measured}
+            numbers = all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in (value, measured))
+            if numbers:
+                row['difference'] = measured - value
+            else:
+                row['same'] = measured == value
+            if metric in tolerance:
+                row['within_tolerance'] = numbers and abs(row['difference']) <= tolerance[metric]
+            rows.append(row)
+    comparison = {'recorded': reference.get('recorded'), 'tolerance': tolerance or None, 'rows': rows}
+    if tolerance:
+        judged = [r.get('within_tolerance', r.get('same', True)) for r in rows]
+        comparison['verdict'] = 'PASS' if all(judged) else 'FAIL'
+    return comparison
+
+
 def no_nan(value):
     """JSON without NaN: a metric that could not be computed is null."""
     if isinstance(value, dict):
@@ -194,12 +226,16 @@ def main():
         (args.out.parent / 'hitl_scenario.json').write_text(json.dumps(scenario, indent=2))
         report['hitl_conversion'] = conversion
     results = analyse(load_trace(args.trace), scenario, args.params, args.max_gap)
+    if scenario.get('reference'):
+        report['reference_comparison'] = compare_reference(results, scenario['reference'])
     text = json.dumps(no_nan({'trace': str(args.trace), 'scenario': str(args.scenario), **report, 'steps': results}),
                       indent=2, allow_nan=False)
     if args.out:
         args.out.write_text(text)
     print(text)
-    return 0 if all(r['valid'] for r in results) else 2
+    if not all(r['valid'] for r in results):
+        return 2
+    return 3 if report.get('reference_comparison', {}).get('verdict') == 'FAIL' else 0
 
 
 if __name__ == '__main__':

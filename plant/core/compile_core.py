@@ -57,7 +57,8 @@ def main():
         subprocess.run(check + ['-Wall', '-Wextra', '-Werror', '-fsyntax-only', str(source)], check=True)
     plant_library = out / toolchain.lib('skysurfer_plant')
     plant_sources = sources + handwritten[1:]
-    plant_cmd = base + [str(p) for p in plant_sources] + ['-o', str(plant_library)]
+    # The SITL PX4 executable links this library from the release (sitl/build_sitl.py checks what it loads).
+    plant_cmd = base + [str(p) for p in plant_sources] + toolchain.install_name(plant_library) + ['-o', str(plant_library)]
     subprocess.run(plant_cmd, check=True)
     # Every hand-written header the libraries include, so the record identifies the exact build inputs.
     headers = sorted((PLANT / 'include').glob('*.h')) + sorted((PLANT / 'sensors').glob('*.h'))

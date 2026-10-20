@@ -49,6 +49,9 @@ def export_generated(cache):
  if digest(cache/'models/SkySurfer_CoreSource.slx')!=digest(MODEL/'FW_SkySurfer_HIL.slx'):raise RuntimeError('This cache was not generated from the current model/FW_SkySurfer_HIL.slx')
  gate=json.loads((cache/'results/reuse_policy.json').read_text())
  if gate.get('status')!='PASS':raise RuntimeError('Reuse-library gate did not pass: '+json.dumps(gate))
+ # One generated C for every host: no instruction-set intrinsics (build_core.m sets InstructionSetExtensions 'None').
+ isa=sorted({h for p in gen.iterdir() if p.suffix in ['.c','.h'] for h in re.findall(r'#\s*include\s*<((?:[a-z]*mmintrin|arm_neon|arm_sve)\.h)>',p.read_text(errors='replace'))})
+ if isa:raise RuntimeError('Generated code includes instruction-set headers ('+', '.join(isa)+'): set InstructionSetExtensions to None in plant/core/build_core.m, the same C must compile on x86-64 and arm64')
  staging=MODEL/('.generated-'+str(uuid.uuid4()));(staging/CODEGEN).mkdir(parents=True);(staging/'results').mkdir()
  for p in sorted(gen.iterdir()):
   if p.suffix in ['.c','.h','.mk']:shutil.copy2(p,staging/CODEGEN/p.name)

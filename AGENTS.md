@@ -51,7 +51,7 @@ AI 先查好現況、提出建議，只跟人確認**目標、選擇與成功條
 ## 2. 接手時先查平台
 
 - 完整流程只在 Ubuntu 24.04 x86-64 驗證過；各平台驗證到哪一段見 README「驗證矩陣」，macOS 的平台差異見 [platforms/macos.md](platforms/macos.md)。換平台時，照 README「環境準備」逐項查官方文件，確認做法再裝；遇到和文件不同的現象，先查證、留證據，再提議更新對應的平台文件。
-- 路徑與工具不寫死：MATLAB、編譯器、暫存位置見 `plant/core/toolchain.py`（可用環境變數指定），PX4 原始碼樹見 `px4/check_px4_tree.py`。
+- 路徑與工具不寫死：MATLAB、編譯器、暫存位置見 `plant/core/toolchain.py`（可用環境變數指定），PX4 原始碼樹見 `px4/check_px4_tree.py`；這台機器實際的位置用 `./runbridge where` 查，文件與指令不寫死某個平台的資料夾。
 - 檢查：`./runbridge --check-python`、`python3 px4/check_px4_tree.py`、`./runbridge preflight`。
 - **人說「我給你權限」，這個專案底下就是綠燈**：每一種動作（刷機、起飛、改參數、跑負載等）第一次做之前問一次，之後同一種動作先告知再做，不等回答。哪些已經確認過，記在 AI 自己的記憶或筆記（那是這台機器、這個人的事，不寫進專案）。下面三種每次都要等人回答：
   1. 收不回來或對外的：merge、刪檔、改系統設定（要 sudo 的）。推到 GitHub 的 PR 分支只告知。
@@ -98,7 +98,7 @@ AI 先查好現況、提出建議，只跟人確認**目標、選擇與成功條
 | `images/overview.svg`（README 最上面的流程總覽圖） | 圖上的字以中文為準（中文大字、英文小字），中英文 README 共用這一張；README 的流程或分工改了，圖也跟著改。改字後跑 `python3 images/embed_fonts.py images/overview.svg` 重新嵌入思源黑體子集（需要 fontTools、brotli 與系統的 Noto Sans CJK），同樣的字跑出同樣的檔案。視覺規則：墨灰＋一個跳色（朱紅）；實心色塊＝人決定、空心框＝自動化／AI；實線＝流程、虛線＝回頭修改 |
 | `README.md`（中文，權威） | 同一次 commit 更新英文翻譯 `README.en.md`，並把它開頭記的 README.md SHA-256 換成新的（`sha256sum README.md`）；來不及翻譯時，在 `README.en.md` 開頭標明落後。英文只是翻譯，兩者不一致時以中文為準；其他文件只有中文 |
 
-離線測試與負載（`PY` = venv 的 python，例如 `~/.local/share/px4-llm-sim2hitl/venv/bin/python`）：
+離線測試與負載（`PY` = venv 的 python：`PY="$(./runbridge where python)"`）：
 
 ```sh
 OUT=<新的空資料夾>; mkdir -p "$OUT"

@@ -28,5 +28,27 @@
       "end_s": 16.0,
       "yaw": 0.5
     }
-  ]
+  ],
+  "reference": {
+    "recorded": "sitl/README.md: Ubuntu 24.04 x86-64, 2026-10-18, equal to the earlier macOS record",
+    "steps": [
+      {
+        "axis": "roll",
+        "tail_mean": 22.32,
+        "rise_time_s": 0.316,
+        "settling_time_s": 0.456
+      },
+      {
+        "axis": "pitch",
+        "tail_mean": -3.39,
+        "rise_time_s": 1.06,
+        "settled": false
+      },
+      {
+        "axis": "yaw",
+        "peak_change": 7.81,
+        "peak_time_s": 0.22
+      }
+    ]
+  }
 }

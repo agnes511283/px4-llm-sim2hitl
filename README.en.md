@@ -2,7 +2,7 @@
 
 [繁體中文](README.md) | **English**
 
-> **This is a translation.** The authoritative README is [README.md](README.md) (Traditional Chinese); where the two differ, follow README.md. Translated from README.md with SHA-256 `2a07b67ac7a9968c08773ce9822fae85c9a48e8ef366d27d8a36a8cd25716eff`: if `sha256sum README.md` prints something else, this translation is behind. The AI rules ([AGENTS.md](AGENTS.md)) and the folder READMEs are in Traditional Chinese only; an AI agent reads them without trouble.
+> **This is a translation.** The authoritative README is [README.md](README.md) (Traditional Chinese); where the two differ, follow README.md. Translated from README.md with SHA-256 `8ee8d751991ea4387747507bec092469d3f4c13b5474dfc700900bcd3c226f30`: if `sha256sum README.md` prints something else, this translation is behind. The AI rules ([AGENTS.md](AGENTS.md)) and the folder READMEs are in Traditional Chinese only; an AI agent reads them without trouble.
 
 Flight-control development kit: MATLAB/Simulink aircraft model → C → SITL (minimal PX4) → custom PX4 firmware → HITL on a real flight controller (Pixhawk). When you develop with an AI, its working rules are in [AGENTS.md](AGENTS.md).
 
@@ -104,7 +104,7 @@ Only which stage was verified on which platform and when; each cell is PASS, FAI
 | Trim | PASS (2026-10-20, identical to the previous release to the last digit) | PASS (2026-10-20, identical to the last digit) |
 | SITL reference scenario and template | PASS (2026-10-20) | PASS (2026-10-20, same metrics) |
 | SITL many instances | PASS (2026-10-18, 1000 runs) | PASS (2026-10-20, one hang in the first batch, see the macOS notes) |
-| Offline runtime tests | PASS (2026-10-20) | untested |
+| Offline runtime tests | PASS (2026-10-20) | PASS (2026-10-20, 194 tests) |
 | Firmware build | PASS (2026-10-18) | untested |
 | Hardware in the loop (HITL) | PASS (2026-10-18; on 2026-10-20 timing FAIL without real-time privilege, see the record below) | untested |
 

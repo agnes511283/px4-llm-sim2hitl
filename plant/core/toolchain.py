@@ -40,6 +40,13 @@ def shared_flags():
     return ['-dynamiclib'] if sys.platform == 'darwin' else ['-shared', '-fPIC']
 
 
+def install_name(library):
+    """Linker flags naming a shared library that an executable links. macOS records the library's install name,
+    by default the path it was compiled to (a build cache, not the release it is published in); @rpath/<file>
+    makes the executable load it through its rpath. Linux: nothing to add (CMake writes the RUNPATH)."""
+    return ['-install_name', '@rpath/' + Path(library).name] if sys.platform == 'darwin' else []
+
+
 def compiler_version():
     return subprocess.check_output(cc() + ['--version'], text=True)
 

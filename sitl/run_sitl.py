@@ -29,8 +29,9 @@ real-time factor and the aggregate.
 
 The PX4 build is <PX4 tree>/build/px4_sitl_default_sim2hitl (python3 sitl/build_sitl.py; SIM2HITL_SITL_SUFFIX
 replaces _sim2hitl); the tree location comes from px4/check_px4_tree.py (SIM2HITL_PX4_ROOT or the local config
-file). Before launching it reads which plant library that build loads (Linux: ldd) and warns when it is not the
-active model release's (rebuild with build_sitl.py); run.json records both. --instance-base N numbers the PX4
+file). Before launching it reads which plant library that build loads (build_sitl.loaded_library: macOS otool,
+Linux ldd) and warns when it is not the active model release's (rebuild with build_sitl.py); run.json records
+both. --instance-base N numbers the PX4
 instances from N (their /tmp/px4-sock-<n>), so two runs at the same time do not collide.
 """
 import argparse
@@ -51,7 +52,7 @@ import wind as plant_wind  # noqa: E402  same wind description as the HITL scene
 NATIVE = ROOT / 'deploy' / '00_native'
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'px4'))
 from check_px4_tree import px4_root  # noqa: E402
-from build_sitl import active_plant_lib, build_dir  # noqa: E402
+from build_sitl import active_plant_lib, build_dir, loaded_library  # noqa: E402
 # Parameters that belong to the physical FC or to modules this SITL does not run.
 EXCLUDED_PREFIXES = ('CAL_', 'UAVCAN_', 'RC', 'MAV_', 'SER_', 'BAT', 'EKF2_', 'SDLOG_', 'DSHOT_', 'UXRCE_',
                      'HIL_ACT_', 'PWM_', 'SYS_HITL', 'SYS_AUTOSTART', 'SYS_AUTOCONFIG', 'SYS_USB_AUTO')
@@ -155,20 +156,21 @@ def scenario_text(scenario, params):
 
 
 def plant_check(px4):
-    """The plant library this PX4 build loads (ldd, Linux only) next to the active model release's. The build finds
-    it through the RUNPATH written when it was built, so after a new release, or a rebuild from another checkout
-    sharing the PX4 tree, it silently runs the plant it was built with until sitl/build_sitl.py runs again."""
+    """The plant library this PX4 build loads (build_sitl.loaded_library: macOS otool, Linux ldd) next to the active
+    model release's. The build finds it through the rpath written when it was built, so after a new release, or a
+    rebuild from another checkout sharing the PX4 tree, it silently runs the plant it was built with until
+    sitl/build_sitl.py runs again."""
     try:
         active = active_plant_lib().resolve()
     except (OSError, ValueError, KeyError, TypeError):
         active = None
     loaded = None
-    if active is not None and sys.platform.startswith('linux'):
-        out = subprocess.run(['ldd', str(px4)], capture_output=True, text=True).stdout
-        for line in out.splitlines():
-            name, _, where = line.strip().partition(' => ')
-            if name == active.name and where.startswith('/'):
-                loaded = Path(where.rsplit(' (', 1)[0]).resolve()
+    if active is not None and px4.is_file():
+        try:
+            found = loaded_library(px4, active.name)
+        except (OSError, subprocess.CalledProcessError):
+            found = None
+        loaded = found.resolve() if found else None
     return {'loaded': str(loaded) if loaded else None, 'active_release': str(active) if active else None,
             'same': None if loaded is None else loaded == active}
 

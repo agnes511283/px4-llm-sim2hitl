@@ -383,6 +383,7 @@ void PlantSim::run()
 	uint64_t wall_start = 0;
 	uint64_t warmup = 0;          // all start-up steps (wall clock and lockstep)
 	uint64_t lockstep_warmup = 0; // start-up steps after the modules are up
+	bool diverged = false;
 
 	// The plant is held at its initial state (truth and IMU of t_0 republished) during the disarmed start-up
 	// and until PX4 produces the first armed actuator output; then every step advances the plant.
@@ -408,6 +409,7 @@ void PlantSim::run()
 
 			if (plant_step(_plant, &input, &truth) != PLANT_OK || plant_sensors_step(_sensors, &truth, &sensors) != PLANT_OK) {
 				PX4_ERR("plant diverged at step %llu", (unsigned long long)_steps);
+				diverged = true;
 				break;
 			}
 
@@ -445,16 +447,18 @@ void PlantSim::run()
 	const uint64_t wall_end = wall_us();
 	const double wall_s = wall_start ? (wall_end - wall_start) * 1e-6 : 0.0;
 	const double sim_s = _steps * kStepUs * 1e-6;
-	PX4_INFO("PLANT_SIM_RESULT steps=%llu sim_s=%.3f wall_s=%.3f realtime_factor=%.2f warmup_steps=%llu",
-		 (unsigned long long)_steps, sim_s, wall_s, wall_s > 0 ? sim_s / wall_s : 0.0, (unsigned long long)warmup);
+	// How the run ended (summary "end"): sitl/run_sitl.py counts only "complete" as a run of the whole scenario.
+	const char *end = diverged ? "diverged" : _steps < total_steps ? "stopped" : "complete";
+	PX4_INFO("PLANT_SIM_RESULT steps=%llu sim_s=%.3f wall_s=%.3f realtime_factor=%.2f warmup_steps=%llu end=%s",
+		 (unsigned long long)_steps, sim_s, wall_s, wall_s > 0 ? sim_s / wall_s : 0.0, (unsigned long long)warmup, end);
 	snprintf(path, sizeof(path), "%s/summary.json", _output_dir);
 	FILE *summary = fopen(path, "w");
 
 	if (summary) {
-		fprintf(summary, "{\"steps\": %llu, \"sim_s\": %.6f, \"wall_s\": %.6f, \"realtime_factor\": %.3f, \"warmup_steps\": %llu, "
-			"\"wall_start_unix_us\": %llu, \"wall_end_unix_us\": %llu}\n",
-			(unsigned long long)_steps, sim_s, wall_s, wall_s > 0 ? sim_s / wall_s : 0.0, (unsigned long long)warmup,
-			(unsigned long long)wall_start, (unsigned long long)wall_end);
+		fprintf(summary, "{\"steps\": %llu, \"requested_steps\": %llu, \"end\": \"%s\", \"sim_s\": %.6f, \"wall_s\": %.6f, "
+			"\"realtime_factor\": %.3f, \"warmup_steps\": %llu, \"wall_start_unix_us\": %llu, \"wall_end_unix_us\": %llu}\n",
+			(unsigned long long)_steps, (unsigned long long)total_steps, end, sim_s, wall_s, wall_s > 0 ? sim_s / wall_s : 0.0,
+			(unsigned long long)warmup, (unsigned long long)wall_start, (unsigned long long)wall_end);
 		fclose(summary);
 	}
 

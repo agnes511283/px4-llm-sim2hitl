@@ -16,7 +16,8 @@ hitl_overrides.params): <instance>/log/<date>/*.ulg, the input of sitl/replay.py
 instance", copied to <instance>/etc/logging/logger_topics.txt), e.g. every input at full rate.
 --start CMD (repeatable) starts one more PX4 command after the mode's modules and before plant_sim, e.g.
 --start "guidance_template start" for a module of modules/src (a scenario's "start" list adds to these; see
-sitl/scenarios/template_offboard.json); the A/B baseline is the same run without it.
+sitl/scenarios/template_offboard.json). An A/B baseline needs a native PX4 mode with the same task targets: in an
+OFFBOARD scenario the same run without the module only removes the guidance (sitl/README.md).
 --replay ULOG instead replays a ULog through PX4's own controllers (sitl/replay.py, needs
 `python3 sitl/build_sitl.py --replay`) and compares the recomputed outputs with the logged ones
 (analysis/replay_compare.py): <out>/replay_report.json.
@@ -25,7 +26,11 @@ Each instance gets its own working directory under --out with the generated star
 log and the module output (trace.csv, summary.json). Parameters come from deploy/00_native/ (FC export
 plus HITL overrides), translated for SITL: outputs on PWM_MAIN_FUNC instead of HIL_ACT_FUNC, simulated
 IMU device ids, SYS_HITL=0, FC sensor calibration dropped. Prints one JSON line with every instance's
-real-time factor and the aggregate.
+real-time factor and the aggregate. Exit 0 only when every instance ran its whole scenario: killed at --timeout,
+a PX4 exit other than its own shutdown after the summary, no summary.json, or a plant_sim "end" other than
+"complete" (diverged, stopped, or a SITL build from before that field) is listed in the instance's "problems",
+run.json says "complete": false and the exit code is 2. A failed attempt that is retried stays as
+instance_<i>_attempt<n>.
 
 The PX4 build is <PX4 tree>/build/px4_sitl_default_sim2hitl (python3 sitl/build_sitl.py; SIM2HITL_SITL_SUFFIX
 replaces _sim2hitl); the tree location comes from px4/check_px4_tree.py (SIM2HITL_PX4_ROOT or the local config
@@ -173,6 +178,22 @@ def plant_check(px4):
             'same': None if loaded is None else loaded == active}
 
 
+def instance_problems(result, terminated):
+    """Why an instance did not run its whole scenario ([] when it did). PX4 shuts itself down after plant_sim's
+    summary or is terminated here a few seconds later: both are the expected end."""
+    problems = []
+    if result['exit'] == 'timeout':
+        problems.append('killed at --timeout')
+    elif result['exit'] != 0 and not terminated:
+        problems.append(f'PX4 exited with {result["exit"]}')
+    if 'error' in result:
+        problems.append(result['error'])
+    elif result.get('end') != 'complete':
+        problems.append(f'plant_sim end {result.get("end")!r} after {result.get("steps")} of {result.get("requested_steps")} steps'
+                        + ('' if 'end' in result else ' (summary from a SITL build before "end": run sitl/build_sitl.py)'))
+    return problems
+
+
 def replay_main(args):
     import replay
     sys.path.insert(0, str(ROOT / 'analysis'))
@@ -248,7 +269,8 @@ def main():
         log = open(work / 'px4.log', 'w')
         proc = subprocess.Popen([str(px4), '-d', '-i', str(args.instance_base + i), '-s', str(script), '-w', str(work)],
                                 stdout=log, stderr=subprocess.STDOUT, env=env)
-        return {'work': work, 'log': log, 'proc': proc, 'summary_seen': None, 'launched': time.monotonic()}
+        return {'work': work, 'log': log, 'proc': proc, 'summary_seen': None, 'launched': time.monotonic(),
+                'terminated': False}
 
     start = time.monotonic()
     runs = {}
@@ -256,6 +278,7 @@ def main():
         runs[i] = launch(i)
         time.sleep(args.stagger)
     retries = {i: 0 for i in runs}
+    attempts = {i: [] for i in runs}  # folders of the failed attempts, kept as evidence
     codes = {}
     # Poll every instance together. The module writes summary.json when the scenario ends and then asks
     # PX4 to shut down; terminate PX4 ourselves if it has not exited a few seconds after the summary.
@@ -274,6 +297,9 @@ def main():
                         proc.wait()
                     run['log'].close()
                     retries[i] += 1
+                    kept = work.with_name(f'{work.name}_attempt{retries[i]}')
+                    work.rename(kept)  # the next attempt starts in a new folder of the old name
+                    attempts[i].append(kept.name)
                     runs[i] = launch(i)
                     continue
             if code is None and done:
@@ -281,6 +307,7 @@ def main():
                 if time.monotonic() - run['summary_seen'] > 5.0:
                     proc.terminate()
                     code = proc.wait()
+                    run['terminated'] = True
             if code is not None:
                 codes[i] = code
         time.sleep(0.05)
@@ -293,13 +320,15 @@ def main():
         run['log'].close()
         summary = run['work'] / 'summary.json'
         result = json.loads(summary.read_text()) if summary.is_file() else {'error': 'no summary'}
-        result.update({'instance': i, 'exit': codes[i], 'retries': retries[i]})
+        result.update({'instance': i, 'exit': codes[i], 'retries': retries[i], 'failed_attempts': attempts[i]})
+        result['problems'] = instance_problems(result, run['terminated'])
         results.append(result)
+    incomplete = [r['instance'] for r in results if r['problems']]
     wall = time.monotonic() - start
     sim = sum(r.get('sim_s', 0.0) for r in results)
     stepping = [r for r in results if 'wall_start_unix_us' in r]
     window = (max(r['wall_end_unix_us'] for r in stepping) - min(r['wall_start_unix_us'] for r in stepping)) * 1e-6 if stepping else 0.0
-    report = {'scenario': scenario['name'], 'start': args.start, 'trim': trim_result, 'wind_reminders': wind_reminders, 'plant_library': plant, 'instances': results, 'parameters': len(params), 'wall_s_total': wall,
+    report = {'scenario': scenario['name'], 'complete': not incomplete, 'start': args.start, 'trim': trim_result, 'wind_reminders': wind_reminders, 'plant_library': plant, 'instances': results, 'parameters': len(params), 'wall_s_total': wall,
               # Throughput: simulated seconds of all instances per wall second, from the first instance's
               # first plant step to the last instance's last (only meaningful when the runs overlap).
               'throughput_realtime_factor': sum(r['sim_s'] for r in stepping) / window if window else 0.0,
@@ -307,6 +336,9 @@ def main():
               'realtime_factor_including_startup': sim / wall if wall else 0.0}
     (args.out / 'run.json').write_text(json.dumps(report, indent=2))
     print(json.dumps(report))
+    if incomplete:
+        print(f'not run through: instance {incomplete}, see "problems" in {args.out / "run.json"}', file=sys.stderr)
+    return 2 if incomplete else 0
 
 
 if __name__ == '__main__':

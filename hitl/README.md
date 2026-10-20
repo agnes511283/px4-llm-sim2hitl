@@ -68,6 +68,8 @@ QGC 的搖桿（畫面上的虛擬搖桿，或 USB 遊戲手把）經 UDP 送 MA
 - 虛擬搖桿：QGC 左上 **Q 圖示 → Application Settings → General → Fly View** 區段，勾 **Virtual Joystick**；回到飛行畫面會出現兩個圓盤（mode 2：左邊上下是油門、左右是方向舵；右邊是俯仰與滾轉）。有「Auto-Center Throttle」時不要勾（固定翼的油門不回中）。
 - USB 手把：插上後 **Q 圖示 → Vehicle Setup → Joystick**，在 Active joystick 選它，**Calibrate → Start** 照提示動桿，最後啟用。PX4 的 `COM_RC_IN_MODE` 不能是 0（預設 3：遙控或搖桿、先到先用）。
 
+**一鍵版**：`hitl/qgc_session.sh`（Linux）把下面的「每次飛」串成一次：開 owner（沒開才開）→ 檢查 FC（未解鎖、`SYS_HITL=1`、沒有待恢復；有待恢復先做一次標準 `recover`）→ 開 QGC（設定檔沒關 USB 自動連線就不開，並說明原因）→ 模型上地面 → 問要不要自動起飛 → 你飛，視窗每 2 s 顯示高度、空速、模式 → 按 Enter、Ctrl-C 或關視窗都會停模型、`recover --hil-force-disarm`、檢查、關 owner。任何一項沒準備好就停下說明，不繞過。選項見 `hitl/qgc_session.py --help`（`--altitude`、`--no-takeoff`、`--no-qgc`、`--keep-owner`）。要點兩下就跑，建一個桌面捷徑（`.desktop`，例：`Exec=gnome-terminal -- <專案>/hitl/qgc_session.sh`），放在 `~/.local/share/applications/` 或桌面；放桌面的要允許執行（右鍵 Allow Launching）。捷徑的路徑屬於這台機器，不進專案。
+
 **每次飛**
 
 ```sh
